@@ -1,0 +1,120 @@
+<Page
+    x:Class="WhisperDrop.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WhisperDrop">
+    <Grid Padding="24" RowSpacing="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Spacing="6">
+            <TextBlock FontSize="28" FontWeight="SemiBold" Text="WhisperDrop" />
+            <TextBlock
+                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                Text="Transcription runs locally. Your audio never leaves this device."
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <TabView Grid.Row="1" SelectedIndex="{x:Bind ViewModel.SelectedTabIndex, Mode=TwoWay}">
+            <TabViewItem Header="Transcribe">
+                <Grid Padding="20" RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border x:Name="DropZone" AllowDrop="True" Background="Transparent" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" DragLeave="DropZone_DragLeave" DragOver="DropZone_DragOver" Drop="DropZone_Drop" Padding="16">
+                        <StackPanel HorizontalAlignment="Center" Spacing="8">
+                            <TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="Add audio files" />
+                            <TextBlock x:Name="DropFeedback" HorizontalAlignment="Center" Text="Drop WAV files here, or choose files." />
+                            <Button HorizontalAlignment="Center" Click="AddFiles_Click" Content="Add files" />
+                        </StackPanel>
+                    </Border>
+                    <InfoBar x:Name="UnsupportedFormatInfo" Grid.Row="1" IsOpen="False" Severity="Warning" />
+                    <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasTranscriptionGuidance, Mode=OneWay}" Message="{x:Bind ViewModel.TranscriptionGuidance, Mode=OneWay}" Severity="Warning" />
+                    <Grid Grid.Row="3">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Button Click="TranscribeAll_Click" Content="Transcribe all" IsEnabled="{x:Bind ViewModel.CanTranscribeAll, Mode=OneWay}" />
+                            <Button Click="CopyAll_Click" Content="Copy all" IsEnabled="{x:Bind ViewModel.CanCopyAll, Mode=OneWay}" />
+                        </StackPanel>
+                        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <TextBlock HorizontalAlignment="Center" FontSize="20" FontWeight="SemiBold" Text="Ready when you are" />
+                            <TextBlock HorizontalAlignment="Center" Text="Your Transcribe workspace is empty." />
+                        </StackPanel>
+                        <ListView x:Name="QueueList" AllowDrop="True" CanDragItems="{x:Bind ViewModel.CanReorderQueue, Mode=OneWay}" CanReorderItems="{x:Bind ViewModel.CanReorderQueue, Mode=OneWay}" DragItemsCompleted="QueueList_DragItemsCompleted" ItemsSource="{x:Bind ViewModel.QueueRows}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Padding="8" ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock VerticalAlignment="Center" Text="☰" ToolTipService.ToolTip="Drag to reorder" />
+                                        <StackPanel Grid.Column="1" MinWidth="220">
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="12" Opacity="0.7" Text="{Binding FilePath}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="12" Text="{Binding Preview}" TextWrapping="Wrap" MaxWidth="500" />
+                                            <TextBlock FontSize="12" Foreground="IndianRed" Text="{Binding ErrorMessage}" TextWrapping="Wrap" MaxWidth="500" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding Status}" />
+                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding Progress}" />
+                                        <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding Language}" />
+                                        <Button Grid.Column="5" Click="Transcribe_Click" IsEnabled="{Binding CanTranscribe}" Content="Transcribe" Tag="{Binding}" />
+                                        <Button Grid.Column="6" Click="Copy_Click" IsEnabled="{Binding CanCopy}" Content="Copy" Tag="{Binding}" />
+                                        <Button Grid.Column="7" Click="RemoveFile_Click" Content="Remove" Tag="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+            <TabViewItem Header="Settings">
+                <ScrollViewer Padding="20">
+                    <StackPanel MaxWidth="640" Spacing="12">
+                        <TextBlock FontSize="20" FontWeight="SemiBold" Text="Recognition settings" />
+                        <TextBlock Text="Models folder" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{x:Bind ViewModel.ModelsFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="1" Click="BrowseModelsFolder_Click" Content="Browse" />
+                        </Grid>
+                        <TextBlock Text="Recognition model" />
+                        <ComboBox
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.ModelOptions}"
+                            SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
+                            SelectedValuePath="Id" />
+                        <TextBlock Text="Recognition language" />
+                        <ComboBox
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                            SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
+                            SelectedValuePath="Code" />
+                        <InfoBar
+                            IsOpen="True"
+                            Message="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}"
+                            Severity="Informational" />
+                        <ProgressBar
+                            IsIndeterminate="{x:Bind ViewModel.IsModelDownloadIndeterminate, Mode=OneWay}"
+                            Maximum="1"
+                            Value="{x:Bind ViewModel.SelectedModelDownloadProgress, Mode=OneWay}" />
+                        <Button Click="DownloadModel_Click" Content="Download model" IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</Page>
