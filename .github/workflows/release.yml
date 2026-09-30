@@ -321,7 +321,8 @@ jobs:
             "",
             "- Packages are self-contained and do not require a separately installed .NET Runtime.",
             "- Whisper recognition and VAD models are downloaded separately by the application when explicitly requested.",
-            "- macOS builds are currently unsigned and not notarized. On first launch, use Finder -> Open if Gatekeeper blocks the application."
+            "- macOS builds are currently unsigned and not notarized. On first launch, use Finder -> Open if Gatekeeper blocks the application.",
+            "- Homebrew install: brew tap dimonsmart/whisperdrop https://github.com/DimonSmart/WhisperDrop ; brew install --cask whisperdrop"
           )
 
           $notesPath = Join-Path $env:RUNNER_TEMP "release-notes.md"
