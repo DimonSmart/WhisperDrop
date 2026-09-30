@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using WhisperDrop.State;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
+using WhisperDrop.State;
 using Xunit;
 
 namespace WhisperDrop.Tests;
@@ -11,11 +11,12 @@ namespace WhisperDrop.Tests;
 public sealed class InitialApplicationStateTests
 {
     [Fact]
-    public void Starts_on_the_Settings_tab_when_the_selected_model_is_not_available()
+    public void Starts_on_the_Transcribe_tab_when_the_selected_model_is_not_available()
     {
         var state = CreateState();
 
-        Assert.Equal(InitialApplicationState.SettingsTabIndex, state.SelectedTabIndex);
+        Assert.Equal(InitialApplicationState.TranscribeTabIndex, state.SelectedTabIndex);
+        Assert.False(state.IsSelectedModelAvailable);
         Assert.True(state.IsTranscribeWorkspaceEmpty);
     }
 
@@ -34,15 +35,8 @@ public sealed class InitialApplicationStateTests
         var state = new InitialApplicationState(settings, catalog, new RecognitionLanguageCatalog(), availability);
 
         Assert.Equal(InitialApplicationState.TranscribeTabIndex, state.SelectedTabIndex);
+        Assert.True(state.IsSelectedModelAvailable);
         Assert.True(state.IsTranscribeWorkspaceEmpty);
-    }
-
-    [Fact]
-    public void Communicates_the_local_only_privacy_promise()
-    {
-        var state = CreateState();
-
-        Assert.Equal("Transcription runs locally. Your audio never leaves this device.", state.PrivacyMessage);
     }
 
     [Theory]

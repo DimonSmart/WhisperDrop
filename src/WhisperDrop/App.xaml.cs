@@ -27,6 +27,7 @@ public partial class App : Application
                 services.AddSingleton<IWhisperModelCatalog, WhisperModelCatalog>();
                 services.AddSingleton<IRecognitionLanguageCatalog, RecognitionLanguageCatalog>();
                 services.AddSingleton<ISelectedModelAvailability, SelectedModelAvailability>();
+                services.AddSingleton<ILocalModelInventory, LocalModelInventory>();
                 services.AddSingleton<ISelectedModelDownloader, SelectedModelDownloader>();
                 services.AddSingleton<ISelectedModelDownloadManager, SelectedModelDownloadManager>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();

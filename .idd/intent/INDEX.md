@@ -30,5 +30,5 @@ opened.
 | --- | --- | --- | --- | --- |
 | IDD-0001 | Spec | Product overview and privacy | Local desktop transcription, supported platforms, privacy, distribution, and session-data boundaries. | — |
 | IDD-0002 | Spec | Transcription workspace | File queue, ordering, sequential transcription, language display, previews, and clipboard results. | — |
-| IDD-0003 | Spec | Settings and models | Model storage, explicit downloads, availability, and persistent settings. | — |
-| IDD-0004 | Spec | Visual system | Compact dark desktop presentation, semantic visual resources, navigation, queue hierarchy, and status/action styling. | — |
+| IDD-0003 | Spec | Recognition and models | Recognition choices on Transcribe; local model storage, inventory, sizes, explicit downloads, deletion, availability, and persistent settings. | — |
+| IDD-0004 | Spec | Visual system | Compact dark desktop presentation, semantic visual resources, Transcribe/Models navigation, queue hierarchy, and model-management styling. | — |

@@ -1,6 +1,6 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -15,12 +15,15 @@ namespace WhisperDrop.State;
 public sealed class InitialApplicationState : INotifyPropertyChanged
 {
     public const int TranscribeTabIndex = 0;
-    public const int SettingsTabIndex = 1;
+    public const int ModelsTabIndex = 1;
+    public const int SettingsTabIndex = ModelsTabIndex;
+
     private readonly IUserSettingsStore settingsStore;
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
+    private readonly ILocalModelInventory localModelInventory;
     private UserSettings settings;
     private int selectedTabIndex = TranscribeTabIndex;
     private string? unsupportedFormatMessage;
@@ -36,19 +39,26 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         IRecognitionLanguageCatalog languageCatalog,
         ISelectedModelAvailability availability,
         ISelectedModelDownloadManager? downloadManager = null,
-        IRecognitionService? recognitionService = null)
+        IRecognitionService? recognitionService = null,
+        ILocalModelInventory? localModelInventory = null)
     {
         this.settingsStore = settingsStore;
         this.availability = availability;
         this.downloadManager = downloadManager ?? new SelectedModelDownloadManager(modelCatalog, availability, new SelectedModelDownloader());
         this.recognitionService = recognitionService ?? new WhisperRecognitionService();
+        this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
         settings = settingsStore.Load();
         ModelOptions = modelCatalog.Models;
         this.languageCatalog = languageCatalog;
         LanguageOptions = languageCatalog.Languages;
+        RefreshInstalledModels();
         ReevaluateSelectedModel();
-        SelectedTabIndex = IsSelectedModelAvailable ? TranscribeTabIndex : SettingsTabIndex;
-        QueueRows.CollectionChanged += (_, _) => { OnPropertyChanged(nameof(IsTranscribeWorkspaceEmpty)); RefreshQueueActionState(); };
+        SelectedTabIndex = TranscribeTabIndex;
+        QueueRows.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(IsTranscribeWorkspaceEmpty));
+            RefreshQueueActionState();
+        };
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -58,6 +68,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public IReadOnlyList<RecognitionLanguage> LanguageOptions { get; }
 
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
+
+    public ObservableCollection<LocalModelInfo> InstalledModels { get; } = [];
 
     public int SelectedTabIndex
     {
@@ -91,33 +103,61 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool CanDownloadSelectedModel => SelectedModelDownloadState is SelectedModelDownloadState.NotDownloaded or SelectedModelDownloadState.Error;
 
-    public bool IsModelDownloadIndeterminate => SelectedModelDownloadState == SelectedModelDownloadState.Downloading && SelectedModelDownloadProgress is null;
+    public bool IsModelDownloadIndeterminate =>
+        SelectedModelDownloadState == SelectedModelDownloadState.Downloading &&
+        SelectedModelDownloadProgress is null;
 
     public string SelectedModelStatus => SelectedModelDownloadState switch
     {
-        SelectedModelDownloadState.Downloaded => "Downloaded — ready to transcribe locally.",
-        SelectedModelDownloadState.Downloading when SelectedModelDownloadProgress is double progress => $"Downloading model — {progress:P0} complete.",
-        SelectedModelDownloadState.Downloading => "Downloading model…",
-        SelectedModelDownloadState.Error => $"Download failed — {selectedModelDownloadError} Check the models folder and try Download model again.",
-        _ => "Not downloaded — choose Download model before transcription."
+        SelectedModelDownloadState.Downloaded => "Installed",
+        SelectedModelDownloadState.Downloading when SelectedModelDownloadProgress is double progress => $"Downloading — {progress:P0}",
+        SelectedModelDownloadState.Downloading => "Downloading…",
+        SelectedModelDownloadState.Error => $"Download failed — {selectedModelDownloadError}",
+        _ => "Not installed"
     };
 
+    public bool HasInstalledModels => InstalledModels.Count > 0;
+
+    public string InstalledModelsSummary
+    {
+        get
+        {
+            var total = InstalledModels.Sum(model => model.SizeBytes);
+            var suffix = InstalledModels.Count == 1 ? "model" : "models";
+            return $"{InstalledModels.Count} {suffix} · {LocalModelInfo.FormatBytes(total)}";
+        }
+    }
+
+    public string? InstalledModelsEmptyMessage => HasInstalledModels ? null : "No models downloaded yet.";
+
     public bool IsTranscribeWorkspaceEmpty => QueueRows.Count == 0;
-    public bool IsBatchActive { get => isBatchActive; private set => SetField(ref isBatchActive, value); }
+
+    public bool IsBatchActive
+    {
+        get => isBatchActive;
+        private set => SetField(ref isBatchActive, value);
+    }
+
     public bool CanReorderQueue => !IsBatchActive;
     public bool CanTranscribeAll => IsSelectedModelAvailable && !IsBatchActive && QueueRows.Any();
     public bool CanCopyAll => QueueRows.Any(row => row.CanCopy);
+
     public string? TranscriptionGuidance
     {
         get => transcriptionGuidance;
         private set
         {
-            if (EqualityComparer<string?>.Default.Equals(transcriptionGuidance, value)) return;
+            if (EqualityComparer<string?>.Default.Equals(transcriptionGuidance, value))
+            {
+                return;
+            }
+
             transcriptionGuidance = value;
             OnPropertyChanged(nameof(TranscriptionGuidance));
             OnPropertyChanged(nameof(HasTranscriptionGuidance));
         }
     }
+
     public bool HasTranscriptionGuidance => !string.IsNullOrWhiteSpace(TranscriptionGuidance);
 
     public string? UnsupportedFormatMessage
@@ -126,7 +166,77 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         private set => SetField(ref unsupportedFormatMessage, value);
     }
 
-    public string PrivacyMessage => "Transcription runs locally. Your audio never leaves this device.";
+    public bool IsModelDownloaded(string modelId) => availability.IsAvailable(ModelsFolder, modelId);
+
+    public async Task DownloadModelAsync(
+        string modelId,
+        IProgress<ModelDownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (availability.IsAvailable(ModelsFolder, modelId))
+        {
+            RefreshInstalledModels();
+            if (string.Equals(modelId, SelectedModelId, StringComparison.Ordinal))
+            {
+                ReevaluateSelectedModel();
+            }
+
+            return;
+        }
+
+        var affectsSelectedModel = string.Equals(modelId, SelectedModelId, StringComparison.Ordinal);
+        if (affectsSelectedModel)
+        {
+            selectedModelDownloadError = null;
+            selectedModelDownloadProgress = null;
+            SetSelectedModelDownloadState(SelectedModelDownloadState.Downloading);
+        }
+
+        var combinedProgress = new Progress<ModelDownloadProgress>(update =>
+        {
+            progress?.Report(update);
+            if (!affectsSelectedModel)
+            {
+                return;
+            }
+
+            selectedModelDownloadProgress = update.TotalBytes is > 0
+                ? (double)update.BytesReceived / update.TotalBytes.Value
+                : null;
+            OnPropertyChanged(nameof(SelectedModelDownloadProgress));
+            OnPropertyChanged(nameof(SelectedModelStatus));
+        });
+
+        try
+        {
+            await downloadManager.DownloadAsync(ModelsFolder, modelId, combinedProgress, cancellationToken);
+            RefreshInstalledModels();
+            if (affectsSelectedModel)
+            {
+                ReevaluateSelectedModel();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (affectsSelectedModel)
+            {
+                ReevaluateSelectedModel();
+            }
+
+            throw;
+        }
+        catch (Exception exception)
+        {
+            if (affectsSelectedModel)
+            {
+                selectedModelDownloadError = exception.Message;
+                selectedModelDownloadProgress = null;
+                SetSelectedModelDownloadState(SelectedModelDownloadState.Error);
+            }
+
+            throw;
+        }
+    }
 
     public async Task DownloadSelectedModelAsync(CancellationToken cancellationToken = default)
     {
@@ -135,29 +245,32 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             return;
         }
 
-        var modelsFolder = ModelsFolder;
-        var modelId = SelectedModelId;
-        selectedModelDownloadError = null;
-        selectedModelDownloadProgress = null;
-        SetSelectedModelDownloadState(SelectedModelDownloadState.Downloading);
-        var progress = new Progress<ModelDownloadProgress>(update =>
-        {
-            selectedModelDownloadProgress = update.TotalBytes is > 0 ? (double)update.BytesReceived / update.TotalBytes.Value : null;
-            OnPropertyChanged(nameof(SelectedModelDownloadProgress));
-            OnPropertyChanged(nameof(SelectedModelStatus));
-        });
-
         try
         {
-            await downloadManager.DownloadAsync(modelsFolder, modelId, progress, cancellationToken);
-            ReevaluateSelectedModel();
+            await DownloadModelAsync(SelectedModelId, cancellationToken: cancellationToken);
         }
-        catch (Exception exception)
+        catch
         {
-            selectedModelDownloadError = exception.Message;
-            selectedModelDownloadProgress = null;
-            SetSelectedModelDownloadState(SelectedModelDownloadState.Error);
+            // The selected-model state already contains the actionable error.
         }
+    }
+
+    public void DeleteModel(string modelId)
+    {
+        EnsureModelStorageCanChange();
+        recognitionService.UnloadModel();
+        localModelInventory.Delete(ModelsFolder, modelId);
+        RefreshInstalledModels();
+        ReevaluateSelectedModel();
+    }
+
+    public void DeleteAllModels()
+    {
+        EnsureModelStorageCanChange();
+        recognitionService.UnloadModel();
+        localModelInventory.DeleteAll(ModelsFolder);
+        RefreshInstalledModels();
+        ReevaluateSelectedModel();
     }
 
     public FileQueueAddResult AddFiles(IEnumerable<string> filePaths)
@@ -191,7 +304,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool MoveQueueItem(int sourceIndex, int destinationIndex)
     {
-        if (IsBatchActive) return false;
+        if (IsBatchActive)
+        {
+            return false;
+        }
+
         if (sourceIndex < 0 || sourceIndex >= QueueRows.Count ||
             destinationIndex < 0 || destinationIndex >= QueueRows.Count ||
             sourceIndex == destinationIndex)
@@ -209,11 +326,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         if (!IsSelectedModelAvailable)
         {
-            TranscriptionGuidance = "Download the selected model in Settings before transcription.";
-            SelectedTabIndex = SettingsTabIndex;
+            TranscriptionGuidance = "Download the selected model before transcription.";
             return;
         }
 
+        TranscriptionGuidance = null;
         await TranscribeItemAsync(item, cancellationToken);
     }
 
@@ -221,20 +338,29 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         if (!IsSelectedModelAvailable)
         {
-            TranscriptionGuidance = "Download the selected model in Settings before transcription.";
-            SelectedTabIndex = SettingsTabIndex;
+            TranscriptionGuidance = "Download the selected model before transcription.";
             return;
         }
 
+        TranscriptionGuidance = null;
         IsBatchActive = true;
         RefreshQueueActionState();
         try
         {
             foreach (var item in QueueRows.ToArray())
             {
-                try { await TranscribeItemAsync(item, cancellationToken); }
-                catch (OperationCanceledException) { throw; }
-                catch { /* The item is already marked Error; continue the visual queue. */ }
+                try
+                {
+                    await TranscribeItemAsync(item, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // The item is already marked Error; continue the visual queue.
+                }
             }
         }
         finally
@@ -244,14 +370,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
-    public string GetCompletedTranscriptsForCopy() => string.Join(Environment.NewLine + Environment.NewLine, QueueRows.Where(row => row.CanCopy).Select(row => row.Transcript));
+    public string GetCompletedTranscriptsForCopy() =>
+        string.Join(
+            Environment.NewLine + Environment.NewLine,
+            QueueRows.Where(row => row.CanCopy).Select(row => row.Transcript));
 
     public static bool IsSupportedAudioFile(string filePath) =>
         string.Equals(Path.GetExtension(filePath), ".wav", StringComparison.OrdinalIgnoreCase);
 
-    private static StringComparer FilePathComparer => OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private static StringComparer FilePathComparer =>
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
     private static string NormalizeFilePath(string filePath) => Path.GetFullPath(filePath);
 
@@ -262,16 +390,37 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         OnPropertyChanged(nameof(ModelsFolder));
         OnPropertyChanged(nameof(SelectedModelId));
         OnPropertyChanged(nameof(RecognitionLanguageCode));
+        RefreshInstalledModels();
         ReevaluateSelectedModel();
+    }
+
+    private void RefreshInstalledModels()
+    {
+        var installed = localModelInventory.GetInstalled(ModelsFolder);
+        InstalledModels.Clear();
+        foreach (var model in installed)
+        {
+            InstalledModels.Add(model);
+        }
+
+        OnPropertyChanged(nameof(HasInstalledModels));
+        OnPropertyChanged(nameof(InstalledModelsSummary));
+        OnPropertyChanged(nameof(InstalledModelsEmptyMessage));
     }
 
     private void ReevaluateSelectedModel()
     {
         selectedModelDownloadError = null;
         selectedModelDownloadProgress = null;
-        SetSelectedModelDownloadState(availability.IsAvailable(ModelsFolder, SelectedModelId)
-            ? SelectedModelDownloadState.Downloaded
-            : SelectedModelDownloadState.NotDownloaded);
+        SetSelectedModelDownloadState(
+            availability.IsAvailable(ModelsFolder, SelectedModelId)
+                ? SelectedModelDownloadState.Downloaded
+                : SelectedModelDownloadState.NotDownloaded);
+
+        if (IsSelectedModelAvailable)
+        {
+            TranscriptionGuidance = null;
+        }
     }
 
     private void SetSelectedModelDownloadState(SelectedModelDownloadState value)
@@ -295,25 +444,50 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         item.Transcript = null;
         RefreshQueueActionState();
         var progress = new Progress<double>(value => item.Progress = $"{value * 100:0}%");
+
         try
         {
             var result = await recognitionService.TranscribeAsync(
-                availability.GetModelPath(ModelsFolder, SelectedModelId), RecognitionLanguageCode, item.FilePath, progress, cancellationToken);
+                availability.GetModelPath(ModelsFolder, SelectedModelId),
+                RecognitionLanguageCode,
+                item.FilePath,
+                progress,
+                cancellationToken);
             item.Transcript = result.Transcript;
             item.Language = RecognitionLanguageCode == "auto"
-                ? result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName) ? displayName : result.DetectedLanguage ?? "Auto"
+                ? result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)
+                    ? displayName
+                    : result.DetectedLanguage ?? "Auto"
                 : languageCatalog.Get(RecognitionLanguageCode).DisplayName;
             item.Progress = "100%";
             item.Status = "Completed";
         }
-        catch (OperationCanceledException) { item.Status = "Pending"; item.Progress = "—"; throw; }
+        catch (OperationCanceledException)
+        {
+            item.Status = "Pending";
+            item.Progress = "—";
+            throw;
+        }
         catch (Exception exception)
         {
             item.Status = "Error";
             item.Progress = "—";
             item.ErrorMessage = exception.Message;
         }
-        finally { item.NotifyActionState(); OnPropertyChanged(nameof(CanCopyAll)); RefreshQueueActionState(); }
+        finally
+        {
+            item.NotifyActionState();
+            OnPropertyChanged(nameof(CanCopyAll));
+            RefreshQueueActionState();
+        }
+    }
+
+    private void EnsureModelStorageCanChange()
+    {
+        if (QueueRows.Any(row => row.Status == "Transcribing"))
+        {
+            throw new InvalidOperationException("Models cannot be deleted while transcription is running.");
+        }
     }
 
     private void RefreshQueueActionState()
@@ -323,6 +497,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             row.CanTranscribe = IsSelectedModelAvailable && !IsBatchActive && row.Status != "Transcribing";
             row.NotifyActionState();
         }
+
         OnPropertyChanged(nameof(CanReorderQueue));
         OnPropertyChanged(nameof(CanTranscribeAll));
         OnPropertyChanged(nameof(CanCopyAll));

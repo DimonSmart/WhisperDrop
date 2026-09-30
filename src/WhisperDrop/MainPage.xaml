@@ -8,15 +8,10 @@
     <Grid Padding="{StaticResource PagePadding}" RowSpacing="{StaticResource SpacingMd}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock
-            Style="{StaticResource PageSubtitleTextStyle}"
-            Text="Transcription runs locally. Your audio never leaves this device." />
-
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
             <ToggleButton
                 x:Name="TranscribeNavButton"
                 Style="{StaticResource NavigationTabButtonStyle}"
@@ -24,26 +19,70 @@
                 IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=0}"
                 Click="TranscribeNav_Click" />
             <ToggleButton
-                x:Name="SettingsNavButton"
+                x:Name="ModelsNavButton"
                 Style="{StaticResource NavigationTabButtonStyle}"
-                Content="Settings"
+                Content="Models"
                 IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=1}"
-                Click="SettingsNav_Click" />
+                Click="ModelsNav_Click" />
         </StackPanel>
 
         <Grid
-            Grid.Row="2"
+            Grid.Row="1"
             RowSpacing="{StaticResource SpacingSm}"
             Visibility="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=0}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
+            <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
+                    <Grid ColumnSpacing="{StaticResource SpacingSm}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.ModelOptions}"
+                            SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
+                            SelectedValuePath="Id" />
+                        <Button
+                            Grid.Column="1"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="DownloadSelectedModel_Click"
+                            Content="Download"
+                            IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+                    </Grid>
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition language" />
+                    <ComboBox
+                        Style="{StaticResource SettingsComboBoxStyle}"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
+                        SelectedValuePath="Code" />
+                </StackPanel>
+            </Grid>
+
             <Border
                 x:Name="DropZone"
+                Grid.Row="1"
                 Style="{StaticResource DropZoneStyle}"
                 AllowDrop="True"
                 DragLeave="DropZone_DragLeave"
@@ -75,7 +114,7 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="1" Spacing="{StaticResource SpacingXs}">
+            <StackPanel Grid.Row="2" Spacing="{StaticResource SpacingXs}">
                 <InfoBar
                     x:Name="UnsupportedFormatInfo"
                     IsOpen="False"
@@ -86,7 +125,7 @@
                     Severity="Warning" />
             </StackPanel>
 
-            <Grid Grid.Row="2" ColumnSpacing="{StaticResource SpacingMd}">
+            <Grid Grid.Row="3" ColumnSpacing="{StaticResource SpacingMd}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -124,7 +163,7 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="3">
+            <Grid Grid.Row="4">
                 <TextBlock
                     x:Name="EmptyState"
                     Margin="2,8,0,0"
@@ -265,7 +304,7 @@
         </Grid>
 
         <ScrollViewer
-            Grid.Row="2"
+            Grid.Row="1"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto"
             Visibility="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=1}">
@@ -273,12 +312,6 @@
                 MaxWidth="720"
                 HorizontalAlignment="Left"
                 Spacing="{StaticResource SpacingMd}">
-                <StackPanel Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition settings" />
-                    <TextBlock
-                        Style="{StaticResource PageSubtitleTextStyle}"
-                        Text="Choose the local model, language, and storage folder used for transcription." />
-                </StackPanel>
 
                 <StackPanel Spacing="{StaticResource SpacingXs}">
                     <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Models folder" />
@@ -303,45 +336,79 @@
                     </Grid>
                 </StackPanel>
 
-                <StackPanel Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
-                    <ComboBox
-                        Style="{StaticResource SettingsComboBoxStyle}"
-                        DisplayMemberPath="DisplayName"
-                        ItemsSource="{x:Bind ViewModel.ModelOptions}"
-                        SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
-                        SelectedValuePath="Id" />
+                <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Style="{StaticResource SectionTitleTextStyle}"
+                        Text="Downloaded models" />
+                    <TextBlock
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SecondaryTextStyle}"
+                        Text="{x:Bind ViewModel.InstalledModelsSummary, Mode=OneWay}" />
+                </Grid>
+
+                <TextBlock
+                    Style="{StaticResource SecondaryTextStyle}"
+                    Text="{x:Bind ViewModel.InstalledModelsEmptyMessage, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.InstalledModelsEmptyMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                <ListView
+                    MaxHeight="360"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ItemContainerStyle="{StaticResource FileQueueListItemStyle}"
+                    ItemsSource="{x:Bind ViewModel.InstalledModels}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource FileQueueRowStyle}">
+                                <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                                        <TextBlock
+                                            Style="{StaticResource FileNameTextStyle}"
+                                            Text="{Binding DisplayName}" />
+                                        <TextBlock
+                                            Style="{StaticResource CaptionTextStyle}"
+                                            Text="{Binding FileName}"
+                                            TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource BodyTextStyle}"
+                                        Text="{Binding SizeText}" />
+                                    <Button
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource DangerButtonStyle}"
+                                        Click="DeleteModel_Click"
+                                        Content="Delete"
+                                        Tag="{Binding}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
+                    <Button
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="DownloadModel_Click"
+                        Content="Download model…" />
+                    <Button
+                        Style="{StaticResource DangerButtonStyle}"
+                        Click="DeleteAllModels_Click"
+                        Content="Delete all…"
+                        IsEnabled="{x:Bind ViewModel.HasInstalledModels, Mode=OneWay}" />
                 </StackPanel>
-
-                <StackPanel Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition language" />
-                    <ComboBox
-                        Style="{StaticResource SettingsComboBoxStyle}"
-                        DisplayMemberPath="DisplayName"
-                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
-                        SelectedValuePath="Code" />
-                </StackPanel>
-
-                <Border Style="{StaticResource StatusPanelStyle}">
-                    <StackPanel Spacing="{StaticResource SpacingSm}">
-                        <TextBlock
-                            Style="{StaticResource SecondaryTextStyle}"
-                            Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}"
-                            TextWrapping="Wrap" />
-                        <ProgressBar
-                            IsIndeterminate="{x:Bind ViewModel.IsModelDownloadIndeterminate, Mode=OneWay}"
-                            Maximum="1"
-                            Value="{x:Bind ViewModel.SelectedModelDownloadProgress, Mode=OneWay}" />
-                    </StackPanel>
-                </Border>
-
-                <Button
-                    HorizontalAlignment="Left"
-                    Style="{StaticResource SecondaryButtonStyle}"
-                    Click="DownloadModel_Click"
-                    Content="Download model"
-                    IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

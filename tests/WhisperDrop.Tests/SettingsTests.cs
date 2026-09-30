@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
+using WhisperDrop.State;
 using Xunit;
 
 namespace WhisperDrop.Tests;
@@ -63,6 +64,44 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Local_inventory_reports_actual_file_sizes_and_ignores_unrelated_files()
+    {
+        var catalog = new WhisperModelCatalog();
+        var availability = new SelectedModelAvailability(catalog);
+        var inventory = new LocalModelInventory(catalog, availability);
+        var modelsFolder = Path.Combine(root, "models");
+        Directory.CreateDirectory(modelsFolder);
+        File.WriteAllBytes(availability.GetModelPath(modelsFolder, "base"), new byte[1536]);
+        File.WriteAllText(Path.Combine(modelsFolder, "notes.txt"), "keep");
+
+        var installed = inventory.GetInstalled(modelsFolder);
+
+        var model = Assert.Single(installed);
+        Assert.Equal("base", model.Id);
+        Assert.Equal(1536, model.SizeBytes);
+        Assert.Equal("1.5 KB", model.SizeText);
+    }
+
+    [Fact]
+    public void Delete_all_removes_only_known_model_files()
+    {
+        var catalog = new WhisperModelCatalog();
+        var availability = new SelectedModelAvailability(catalog);
+        var inventory = new LocalModelInventory(catalog, availability);
+        var modelsFolder = Path.Combine(root, "models");
+        Directory.CreateDirectory(modelsFolder);
+        File.WriteAllText(availability.GetModelPath(modelsFolder, "base"), "base");
+        File.WriteAllText(availability.GetModelPath(modelsFolder, "small"), "small");
+        var unrelatedPath = Path.Combine(modelsFolder, "notes.txt");
+        File.WriteAllText(unrelatedPath, "keep");
+
+        inventory.DeleteAll(modelsFolder);
+
+        Assert.Empty(inventory.GetInstalled(modelsFolder));
+        Assert.True(File.Exists(unrelatedPath));
+    }
+
+    [Fact]
     public void Settings_are_retained_without_any_workspace_data()
     {
         var paths = new ApplicationPaths(root);
@@ -117,7 +156,7 @@ public sealed class SettingsTests : IDisposable
         var catalog = new WhisperModelCatalog();
         var availability = new SelectedModelAvailability(catalog);
         var downloader = new TestDownloader("base model");
-        var state = new WhisperDrop.State.InitialApplicationState(
+        var state = new InitialApplicationState(
             new JsonUserSettingsStore(paths),
             catalog,
             new RecognitionLanguageCatalog(),
@@ -126,16 +165,19 @@ public sealed class SettingsTests : IDisposable
 
         Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
         Assert.Equal(0, downloader.CallCount);
+        Assert.Empty(state.InstalledModels);
 
         await state.DownloadSelectedModelAsync();
 
         Assert.Equal(1, downloader.CallCount);
         Assert.Equal(SelectedModelDownloadState.Downloaded, state.SelectedModelDownloadState);
+        Assert.Single(state.InstalledModels);
 
         state.SelectedModelId = "small";
         Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
         state.ModelsFolder = Path.Combine(root, "another-models-folder");
         Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
+        Assert.Empty(state.InstalledModels);
     }
 
     [Fact]
@@ -144,7 +186,7 @@ public sealed class SettingsTests : IDisposable
         var paths = new ApplicationPaths(root);
         var catalog = new WhisperModelCatalog();
         var availability = new SelectedModelAvailability(catalog);
-        var state = new WhisperDrop.State.InitialApplicationState(
+        var state = new InitialApplicationState(
             new JsonUserSettingsStore(paths),
             catalog,
             new RecognitionLanguageCatalog(),
@@ -155,7 +197,7 @@ public sealed class SettingsTests : IDisposable
 
         Assert.Equal(SelectedModelDownloadState.Error, state.SelectedModelDownloadState);
         Assert.True(state.CanDownloadSelectedModel);
-        Assert.Contains("try Download model again", state.SelectedModelStatus);
+        Assert.Contains("Download failed", state.SelectedModelStatus);
     }
 
     private sealed class TestDownloader : ISelectedModelDownloader

@@ -12,6 +12,8 @@ public sealed record RecognitionResult(string Transcript, string? DetectedLangua
 public interface IRecognitionService : IDisposable
 {
     Task<RecognitionResult> TranscribeAsync(string modelPath, string languageCode, string audioPath, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
+
+    void UnloadModel();
 }
 
 /// <summary>Owns exactly one loaded Whisper factory for the current selected model.</summary>
@@ -28,7 +30,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         {
             if (!string.Equals(factoryModelPath, modelPath, StringComparison.Ordinal))
             {
-                factory?.Dispose();
+                UnloadModel();
                 factory = await Task.Run(() => WhisperFactory.FromPath(modelPath), cancellationToken).ConfigureAwait(false);
                 factoryModelPath = modelPath;
             }
@@ -50,12 +52,22 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 return new RecognitionResult(transcript.ToString(), detectedLanguage);
             }, cancellationToken).ConfigureAwait(false);
         }
-        finally { gate.Release(); }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public void UnloadModel()
+    {
+        factory?.Dispose();
+        factory = null;
+        factoryModelPath = null;
     }
 
     public void Dispose()
     {
-        factory?.Dispose();
+        UnloadModel();
         gate.Dispose();
     }
 }
