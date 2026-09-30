@@ -268,7 +268,7 @@ public sealed partial class MainPage : Page
 
         void RefreshSelectedModel()
         {
-            if (modelPicker.SelectedItem is not RecognitionModel model)
+            if (modelPicker.SelectedItem is not RecognitionModelOption model)
             {
                 return;
             }
@@ -300,7 +300,7 @@ public sealed partial class MainPage : Page
 
         downloadButton.Click += async (_, _) =>
         {
-            if (modelPicker.SelectedItem is not RecognitionModel model || ViewModel.IsModelDownloaded(model.Id))
+            if (modelPicker.SelectedItem is not RecognitionModelOption model || ViewModel.IsModelDownloaded(model.Id))
             {
                 RefreshSelectedModel();
                 return;

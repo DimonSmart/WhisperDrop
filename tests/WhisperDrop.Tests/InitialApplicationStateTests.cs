@@ -107,6 +107,52 @@ public sealed class InitialApplicationStateTests
         Assert.False(row.CanCopy);
     }
 
+    [Fact]
+    public void Model_options_put_installed_models_first_and_show_actual_size()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = new ApplicationPaths(root);
+            var catalog = new WhisperModelCatalog();
+            var availability = new SelectedModelAvailability(catalog);
+            var modelsFolder = Path.Combine(root, "models");
+            Directory.CreateDirectory(modelsFolder);
+            File.WriteAllBytes(availability.GetModelPath(modelsFolder, "base"), new byte[1536]);
+            File.WriteAllBytes(availability.GetModelPath(modelsFolder, "medium"), new byte[2048]);
+
+            var store = new JsonUserSettingsStore(paths);
+            store.Save(new UserSettings { ModelsFolder = modelsFolder });
+            var state = new InitialApplicationState(
+                store,
+                catalog,
+                new RecognitionLanguageCatalog(),
+                availability);
+
+            Assert.Equal(["base", "medium"], state.ModelOptions.Take(2).Select(model => model.Id));
+
+            var baseOption = state.ModelOptions.Single(model => model.Id == "base");
+            Assert.True(baseOption.IsInstalled);
+            Assert.Equal("Installed · 1.5 KB", baseOption.InstalledSummary);
+
+            var tinyOption = state.ModelOptions.Single(model => model.Id == "tiny");
+            Assert.False(tinyOption.IsInstalled);
+            Assert.Equal(string.Empty, tinyOption.InstalledSummary);
+
+            state.DeleteModel("base");
+
+            Assert.False(state.ModelOptions.Single(model => model.Id == "base").IsInstalled);
+            Assert.Equal("medium", state.ModelOptions[0].Id);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
     private static InitialApplicationState CreateState()
     {
         var paths = new ApplicationPaths(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));

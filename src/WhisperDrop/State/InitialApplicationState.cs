@@ -19,6 +19,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public const int SettingsTabIndex = ModelsTabIndex;
 
     private readonly IUserSettingsStore settingsStore;
+    private readonly IWhisperModelCatalog modelCatalog;
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
@@ -43,12 +44,12 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ILocalModelInventory? localModelInventory = null)
     {
         this.settingsStore = settingsStore;
+        this.modelCatalog = modelCatalog;
         this.availability = availability;
         this.downloadManager = downloadManager ?? new SelectedModelDownloadManager(modelCatalog, availability, new SelectedModelDownloader());
         this.recognitionService = recognitionService ?? new WhisperRecognitionService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
         settings = settingsStore.Load();
-        ModelOptions = modelCatalog.Models;
         this.languageCatalog = languageCatalog;
         LanguageOptions = languageCatalog.Languages;
         RefreshInstalledModels();
@@ -63,7 +64,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public IReadOnlyList<RecognitionModel> ModelOptions { get; }
+    public IReadOnlyList<RecognitionModelOption> ModelOptions { get; private set; } = [];
 
     public IReadOnlyList<RecognitionLanguage> LanguageOptions { get; }
 
@@ -403,6 +404,25 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             InstalledModels.Add(model);
         }
 
+        var installedById = installed.ToDictionary(model => model.Id, StringComparer.Ordinal);
+        ModelOptions = modelCatalog.Models
+            .Select(model => installedById.TryGetValue(model.Id, out var localModel)
+                ? new RecognitionModelOption(
+                    model.Id,
+                    model.DisplayName,
+                    model.ApproximateSize,
+                    true,
+                    localModel.SizeText)
+                : new RecognitionModelOption(
+                    model.Id,
+                    model.DisplayName,
+                    model.ApproximateSize,
+                    false,
+                    null))
+            .OrderByDescending(model => model.IsInstalled)
+            .ToArray();
+
+        OnPropertyChanged(nameof(ModelOptions));
         OnPropertyChanged(nameof(HasInstalledModels));
         OnPropertyChanged(nameof(InstalledModelsSummary));
         OnPropertyChanged(nameof(InstalledModelsEmptyMessage));

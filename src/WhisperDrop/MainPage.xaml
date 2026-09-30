@@ -53,10 +53,42 @@
                         </Grid.ColumnDefinitions>
                         <ComboBox
                             Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
                             ItemsSource="{x:Bind ViewModel.ModelOptions}"
                             SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
-                            SelectedValuePath="Id" />
+                            SelectedValuePath="Id">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid MinWidth="300" ColumnSpacing="{StaticResource SpacingMd}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource BodyTextStyle}"
+                                            Text="{Binding DisplayName}" />
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="{StaticResource SpacingXs}"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding InstalledSummary, Converter={StaticResource StringToVisibilityConverter}}">
+                                            <FontIcon
+                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                FontSize="12"
+                                                Foreground="{StaticResource SuccessBrush}"
+                                                Glyph="&#xE8FB;" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SuccessBrush}"
+                                                Text="{Binding InstalledSummary}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <Button
                             Grid.Column="1"
                             Style="{StaticResource SecondaryButtonStyle}"
