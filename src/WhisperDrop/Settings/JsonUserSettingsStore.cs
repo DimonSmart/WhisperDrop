@@ -83,7 +83,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         var processingDevice = settings is not null && Enum.IsDefined(typeof(ProcessingDevice), settings.ProcessingDevice)
             ? settings.ProcessingDevice
             : ProcessingDevice.Auto;
-        var cpuThreads = settings?.CpuThreads is int threads && threads >= 1 && threads <= Environment.ProcessorCount
+        int? cpuThreads = settings?.CpuThreads is int threads && threads >= 1 && threads <= Environment.ProcessorCount
             ? threads
             : null;
 
