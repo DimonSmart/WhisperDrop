@@ -25,6 +25,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly IRecognitionService recognitionService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
+    private readonly IVadModelManager vadModelManager;
+    private readonly IWhisperRuntimeSelector runtimeSelector;
     private UserSettings settings;
     private int selectedTabIndex = TranscribeTabIndex;
     private string? unsupportedFormatMessage;
@@ -41,17 +43,40 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ISelectedModelAvailability availability,
         ISelectedModelDownloadManager? downloadManager = null,
         IRecognitionService? recognitionService = null,
-        ILocalModelInventory? localModelInventory = null)
+        ILocalModelInventory? localModelInventory = null,
+        IVadModelManager? vadModelManager = null,
+        IWhisperRuntimeSelector? runtimeSelector = null)
     {
         this.settingsStore = settingsStore;
         this.modelCatalog = modelCatalog;
         this.availability = availability;
         this.downloadManager = downloadManager ?? new SelectedModelDownloadManager(modelCatalog, availability, new SelectedModelDownloader());
-        this.recognitionService = recognitionService ?? new WhisperRecognitionService();
+        this.runtimeSelector = runtimeSelector ?? new WhisperRuntimeSelector();
+        this.vadModelManager = vadModelManager ?? new VadModelManager(new ApplicationPaths(), new VadModelDownloader());
+        this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector, this.vadModelManager);
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
-        settings = settingsStore.Load();
         this.languageCatalog = languageCatalog;
+
+        settings = settingsStore.Load();
         LanguageOptions = languageCatalog.Languages;
+        TaskOptions =
+        [
+            new(TranscriptionTask.Transcribe, "Transcribe"),
+            new(TranscriptionTask.TranslateToEnglish, "Translate to English")
+        ];
+        ProcessingDeviceOptions =
+        [
+            new(ProcessingDevice.Auto, "Auto"),
+            new(ProcessingDevice.Cpu, "CPU"),
+            new(ProcessingDevice.Gpu, "GPU")
+        ];
+        CpuThreadOptions =
+        [
+            new CpuThreadsOption(null, "Auto"),
+            .. Enumerable.Range(1, Math.Max(1, Environment.ProcessorCount))
+                .Select(value => new CpuThreadsOption(value, value.ToString()))
+        ];
+
         RefreshInstalledModels();
         ReevaluateSelectedModel();
         SelectedTabIndex = TranscribeTabIndex;
@@ -68,6 +93,12 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public IReadOnlyList<RecognitionLanguage> LanguageOptions { get; }
 
+    public IReadOnlyList<TranscriptionTaskOption> TaskOptions { get; }
+
+    public IReadOnlyList<ProcessingDeviceOption> ProcessingDeviceOptions { get; }
+
+    public IReadOnlyList<CpuThreadsOption> CpuThreadOptions { get; }
+
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
 
     public ObservableCollection<LocalModelInfo> InstalledModels { get; } = [];
@@ -81,20 +112,89 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public string ModelsFolder
     {
         get => settings.ModelsFolder!;
-        set => UpdateSettings(settings with { ModelsFolder = value });
+        set
+        {
+            if (string.Equals(settings.ModelsFolder, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            recognitionService.UnloadModel();
+            UpdateSettings(settings with { ModelsFolder = value }, nameof(ModelsFolder), reevaluateModels: true);
+        }
     }
 
     public string SelectedModelId
     {
         get => settings.SelectedModelId;
-        set => UpdateSettings(settings with { SelectedModelId = value });
+        set
+        {
+            if (settings.SelectedModelId == value)
+            {
+                return;
+            }
+
+            recognitionService.UnloadModel();
+            UpdateSettings(settings with { SelectedModelId = value }, nameof(SelectedModelId), reevaluateModels: true);
+        }
     }
 
     public string RecognitionLanguageCode
     {
         get => settings.RecognitionLanguageCode;
-        set => UpdateSettings(settings with { RecognitionLanguageCode = value });
+        set => UpdateSettings(settings with { RecognitionLanguageCode = value }, nameof(RecognitionLanguageCode));
     }
+
+    public TranscriptionTask SelectedTranscriptionTask
+    {
+        get => settings.Task;
+        set => UpdateSettings(settings with { Task = value }, nameof(SelectedTranscriptionTask));
+    }
+
+    public string VocabularyContext
+    {
+        get => settings.VocabularyContext;
+        set => UpdateSettings(settings with { VocabularyContext = value ?? string.Empty }, nameof(VocabularyContext));
+    }
+
+    public bool SkipSilence
+    {
+        get => settings.SkipSilence;
+        set
+        {
+            if (value && !vadModelManager.IsAvailable)
+            {
+                return;
+            }
+
+            UpdateSettings(settings with { SkipSilence = value }, nameof(SkipSilence));
+        }
+    }
+
+    public ProcessingDevice ProcessingDevice
+    {
+        get => settings.ProcessingDevice;
+        set
+        {
+            UpdateSettings(settings with { ProcessingDevice = value }, nameof(ProcessingDevice));
+            NotifyRuntimeStatusChanged();
+        }
+    }
+
+    public int? CpuThreads
+    {
+        get => settings.CpuThreads;
+        set => UpdateSettings(settings with { CpuThreads = value }, nameof(CpuThreads));
+    }
+
+    public bool IsVadModelAvailable => vadModelManager.IsAvailable;
+
+    public string? ProcessingDeviceRestartMessage =>
+        runtimeSelector.RequiresRestart(settings.ProcessingDevice)
+            ? "Restart required to change processing device."
+            : null;
+
+    public bool HasProcessingDeviceRestartMessage => ProcessingDeviceRestartMessage is not null;
 
     public bool IsSelectedModelAvailable => SelectedModelDownloadState == SelectedModelDownloadState.Downloaded;
 
@@ -168,6 +268,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     }
 
     public bool IsModelDownloaded(string modelId) => availability.IsAvailable(ModelsFolder, modelId);
+
+    public async Task DownloadVadModelAsync(
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        await vadModelManager.DownloadAsync(progress, cancellationToken);
+        OnPropertyChanged(nameof(IsVadModelAvailable));
+    }
 
     public async Task DownloadModelAsync(
         string modelId,
@@ -325,21 +433,28 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public async Task TranscribeAsync(TranscriptionQueueItem item, CancellationToken cancellationToken = default)
     {
-        if (!IsSelectedModelAvailable)
+        if (!TryCreateRecognitionRequest(out var modelPath, out var options, out var guidance))
         {
-            TranscriptionGuidance = "Download the selected model before transcription.";
+            TranscriptionGuidance = guidance;
             return;
         }
 
         TranscriptionGuidance = null;
-        await TranscribeItemAsync(item, cancellationToken);
+        try
+        {
+            await TranscribeItemAsync(item, modelPath, options, cancellationToken);
+        }
+        catch (RecognitionConfigurationException exception)
+        {
+            TranscriptionGuidance = exception.Message;
+        }
     }
 
     public async Task TranscribeAllAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsSelectedModelAvailable)
+        if (!TryCreateRecognitionRequest(out var modelPath, out var options, out var guidance))
         {
-            TranscriptionGuidance = "Download the selected model before transcription.";
+            TranscriptionGuidance = guidance;
             return;
         }
 
@@ -352,15 +467,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             {
                 try
                 {
-                    await TranscribeItemAsync(item, cancellationToken);
+                    await TranscribeItemAsync(item, modelPath, options, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
                     throw;
                 }
-                catch
+                catch (RecognitionConfigurationException exception)
                 {
-                    // The item is already marked Error; continue the visual queue.
+                    TranscriptionGuidance = exception.Message;
+                    break;
                 }
             }
         }
@@ -384,15 +500,22 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     private static string NormalizeFilePath(string filePath) => Path.GetFullPath(filePath);
 
-    private void UpdateSettings(UserSettings updated)
+    private void UpdateSettings(UserSettings updated, string propertyName, bool reevaluateModels = false)
     {
+        if (updated == settings)
+        {
+            return;
+        }
+
         settingsStore.Save(updated);
         settings = updated;
-        OnPropertyChanged(nameof(ModelsFolder));
-        OnPropertyChanged(nameof(SelectedModelId));
-        OnPropertyChanged(nameof(RecognitionLanguageCode));
-        RefreshInstalledModels();
-        ReevaluateSelectedModel();
+        OnPropertyChanged(propertyName);
+
+        if (reevaluateModels)
+        {
+            RefreshInstalledModels();
+            ReevaluateSelectedModel();
+        }
     }
 
     private void RefreshInstalledModels()
@@ -456,29 +579,83 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         RefreshQueueActionState();
     }
 
-    private async Task TranscribeItemAsync(TranscriptionQueueItem item, CancellationToken cancellationToken)
+    private bool TryCreateRecognitionRequest(
+        out string modelPath,
+        out RecognitionOptions options,
+        out string? guidance)
+    {
+        modelPath = string.Empty;
+        options = CreateRecognitionOptionsSnapshot();
+        guidance = null;
+
+        if (!IsSelectedModelAvailable)
+        {
+            guidance = "Download the selected model before transcription.";
+            return false;
+        }
+
+        var model = modelCatalog.Get(SelectedModelId);
+        if (options.Task == TranscriptionTask.TranslateToEnglish && model.IsEnglishOnly)
+        {
+            guidance = "Translation requires a multilingual Whisper model.";
+            return false;
+        }
+
+        if (options.SkipSilence && !vadModelManager.IsAvailable)
+        {
+            guidance = "Voice detection model is missing.";
+            return false;
+        }
+
+        modelPath = availability.GetModelPath(ModelsFolder, SelectedModelId);
+        return true;
+    }
+
+    private RecognitionOptions CreateRecognitionOptionsSnapshot()
+    {
+        var effectiveDevice = runtimeSelector.IsInitialized
+            ? runtimeSelector.ActiveDevice
+            : settings.ProcessingDevice;
+
+        return new RecognitionOptions
+        {
+            LanguageCode = settings.RecognitionLanguageCode,
+            Task = settings.Task,
+            Prompt = settings.VocabularyContext,
+            SkipSilence = settings.SkipSilence,
+            ProcessingDevice = effectiveDevice,
+            CpuThreads = settings.CpuThreads
+        };
+    }
+
+    private async Task TranscribeItemAsync(
+        TranscriptionQueueItem item,
+        string modelPath,
+        RecognitionOptions options,
+        CancellationToken cancellationToken)
     {
         item.Status = "Transcribing";
         item.Progress = "0%";
         item.ErrorMessage = null;
         item.Transcript = null;
         RefreshQueueActionState();
-        var progress = new Progress<double>(value => item.Progress = $"{value * 100:0}%");
+        var progress = new Progress<double>(value =>
+            item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
 
         try
         {
             var result = await recognitionService.TranscribeAsync(
-                availability.GetModelPath(ModelsFolder, SelectedModelId),
-                RecognitionLanguageCode,
+                modelPath,
+                options,
                 item.FilePath,
                 progress,
                 cancellationToken);
             item.Transcript = result.Transcript;
-            item.Language = RecognitionLanguageCode == "auto"
+            item.Language = options.LanguageCode == "auto"
                 ? result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)
                     ? displayName
                     : result.DetectedLanguage ?? "Auto"
-                : languageCatalog.Get(RecognitionLanguageCode).DisplayName;
+                : languageCatalog.Get(options.LanguageCode).DisplayName;
             item.Progress = "100%";
             item.Status = "Completed";
         }
@@ -486,6 +663,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             item.Status = "Pending";
             item.Progress = "—";
+            item.Transcript = null;
+            throw;
+        }
+        catch (RecognitionConfigurationException exception)
+        {
+            item.Status = "Error";
+            item.Progress = "—";
+            item.ErrorMessage = exception.Message;
             throw;
         }
         catch (Exception exception)
@@ -499,6 +684,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             item.NotifyActionState();
             OnPropertyChanged(nameof(CanCopyAll));
             RefreshQueueActionState();
+            NotifyRuntimeStatusChanged();
         }
     }
 
@@ -521,6 +707,12 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanReorderQueue));
         OnPropertyChanged(nameof(CanTranscribeAll));
         OnPropertyChanged(nameof(CanCopyAll));
+    }
+
+    private void NotifyRuntimeStatusChanged()
+    {
+        OnPropertyChanged(nameof(ProcessingDeviceRestartMessage));
+        OnPropertyChanged(nameof(HasProcessingDeviceRestartMessage));
     }
 
     private bool TryGetLanguageName(string code, out string displayName)

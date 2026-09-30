@@ -111,14 +111,55 @@ public sealed partial class MainPage : Page
 
     private async void Transcribe_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: TranscriptionQueueItem item })
+        if (sender is Button { Tag: TranscriptionQueueItem item } &&
+            await EnsureVadModelForCurrentSettingsAsync())
         {
             await ViewModel.TranscribeAsync(item);
         }
     }
 
-    private async void TranscribeAll_Click(object sender, RoutedEventArgs e) =>
-        await ViewModel.TranscribeAllAsync();
+    private async void TranscribeAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (await EnsureVadModelForCurrentSettingsAsync())
+        {
+            await ViewModel.TranscribeAllAsync();
+        }
+    }
+
+    private async void SkipSilence_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox checkBox)
+        {
+            return;
+        }
+
+        if (checkBox.IsChecked != true)
+        {
+            ViewModel.SkipSilence = false;
+            checkBox.IsChecked = false;
+            return;
+        }
+
+        if (!ViewModel.IsVadModelAvailable &&
+            !await ShowVadModelDownloadDialogAsync())
+        {
+            checkBox.IsChecked = false;
+            return;
+        }
+
+        ViewModel.SkipSilence = true;
+        checkBox.IsChecked = ViewModel.SkipSilence;
+    }
+
+    private async Task<bool> EnsureVadModelForCurrentSettingsAsync()
+    {
+        if (!ViewModel.SkipSilence || ViewModel.IsVadModelAvailable)
+        {
+            return true;
+        }
+
+        return await ShowVadModelDownloadDialogAsync();
+    }
 
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
@@ -194,6 +235,130 @@ public sealed partial class MainPage : Page
         {
             await ShowErrorDialogAsync("Could not delete models", exception.Message);
         }
+    }
+
+    private async Task<bool> ShowVadModelDownloadDialogAsync()
+    {
+        if (ViewModel.IsVadModelAvailable)
+        {
+            return true;
+        }
+
+        var description = new TextBlock
+        {
+            Text = "Voice detection requires an additional model.",
+            Style = GetStyle("SecondaryTextStyle"),
+            TextWrapping = TextWrapping.Wrap
+        };
+        var progressBar = new ProgressBar
+        {
+            Maximum = 1,
+            IsIndeterminate = false,
+            Visibility = Visibility.Collapsed
+        };
+        var status = new TextBlock
+        {
+            Style = GetStyle("SecondaryTextStyle"),
+            TextWrapping = TextWrapping.Wrap
+        };
+        var downloadButton = new Button
+        {
+            Content = "Download",
+            Style = GetStyle("PrimaryButtonStyle")
+        };
+        var closeButton = new Button
+        {
+            Content = "Cancel",
+            Style = GetStyle("SecondaryButtonStyle")
+        };
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8
+        };
+        actions.Children.Add(closeButton);
+        actions.Children.Add(downloadButton);
+
+        var content = new StackPanel
+        {
+            Spacing = 12,
+            MinWidth = 360
+        };
+        content.Children.Add(description);
+        content.Children.Add(progressBar);
+        content.Children.Add(status);
+        content.Children.Add(actions);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Voice detection",
+            Content = content
+        };
+
+        var downloaded = false;
+        CancellationTokenSource? cancellation = null;
+
+        closeButton.Click += (_, _) =>
+        {
+            if (cancellation is null)
+            {
+                dialog.Hide();
+            }
+            else
+            {
+                cancellation.Cancel();
+            }
+        };
+
+        downloadButton.Click += async (_, _) =>
+        {
+            cancellation = new CancellationTokenSource();
+            downloadButton.IsEnabled = false;
+            closeButton.Content = "Cancel";
+            progressBar.Visibility = Visibility.Visible;
+            progressBar.IsIndeterminate = true;
+            status.Text = "Downloading voice detection model…";
+
+            var progress = new Progress<double>(value =>
+            {
+                if (value >= 1)
+                {
+                    progressBar.IsIndeterminate = false;
+                    progressBar.Value = 1;
+                    status.Text = "Downloaded.";
+                }
+            });
+
+            try
+            {
+                await ViewModel.DownloadVadModelAsync(progress, cancellation.Token);
+                downloaded = true;
+                dialog.Hide();
+            }
+            catch (OperationCanceledException)
+            {
+                status.Text = "Download canceled.";
+            }
+            catch (Exception exception)
+            {
+                status.Text = $"Download failed: {exception.Message}";
+            }
+            finally
+            {
+                cancellation.Dispose();
+                cancellation = null;
+                downloadButton.IsEnabled = true;
+                closeButton.Content = "Cancel";
+                progressBar.IsIndeterminate = false;
+            }
+        };
+
+        await dialog.ShowAsync();
+        cancellation?.Cancel();
+        cancellation?.Dispose();
+        return downloaded;
     }
 
     private async Task ShowDownloadModelDialogAsync(string preselectedModelId)

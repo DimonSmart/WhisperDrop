@@ -18,7 +18,10 @@ public sealed class LocalWhisperIntegrationTests
         if (string.IsNullOrWhiteSpace(model) || string.IsNullOrWhiteSpace(wav) || !File.Exists(model) || !File.Exists(wav)) return;
 
         using var service = new WhisperRecognitionService();
-        var result = await service.TranscribeAsync(model, "auto", wav);
+        var result = await service.TranscribeAsync(
+            model,
+            new RecognitionOptions { LanguageCode = "auto" },
+            wav);
         Assert.NotNull(result.Transcript);
     }
 }

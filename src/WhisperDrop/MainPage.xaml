@@ -38,79 +38,166 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <StackPanel Spacing="{StaticResource SpacingSm}">
+                <TextBlock
+                    Style="{StaticResource CaptionTextStyle}"
+                    FontWeight="SemiBold"
+                    Text="TRANSCRIPTION" />
 
-                <StackPanel Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
-                    <Grid ColumnSpacing="{StaticResource SpacingSm}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            ItemsSource="{x:Bind ViewModel.ModelOptions}"
-                            SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
-                            SelectedValuePath="Id">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid MinWidth="300" ColumnSpacing="{StaticResource SpacingMd}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock
-                                            VerticalAlignment="Center"
-                                            Style="{StaticResource BodyTextStyle}"
-                                            Text="{Binding DisplayName}" />
-                                        <StackPanel
-                                            Grid.Column="1"
-                                            Orientation="Horizontal"
-                                            Spacing="{StaticResource SpacingXs}"
-                                            VerticalAlignment="Center"
-                                            Visibility="{Binding InstalledSummary, Converter={StaticResource StringToVisibilityConverter}}">
-                                            <FontIcon
-                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                                FontSize="12"
-                                                Foreground="{StaticResource SuccessBrush}"
-                                                Glyph="&#xE8FB;" />
+                <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
+                        <Grid ColumnSpacing="{StaticResource SpacingSm}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox
+                                Style="{StaticResource SettingsComboBoxStyle}"
+                                ItemsSource="{x:Bind ViewModel.ModelOptions}"
+                                SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
+                                SelectedValuePath="Id">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid MinWidth="300" ColumnSpacing="{StaticResource SpacingMd}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
                                             <TextBlock
                                                 VerticalAlignment="Center"
-                                                FontSize="12"
-                                                FontWeight="SemiBold"
-                                                Foreground="{StaticResource SuccessBrush}"
-                                                Text="{Binding InstalledSummary}" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                        <Button
-                            Grid.Column="1"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Click="DownloadSelectedModel_Click"
-                            Content="Download"
-                            IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
-                    </Grid>
-                    <TextBlock
-                        Style="{StaticResource CaptionTextStyle}"
-                        Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}" />
-                </StackPanel>
+                                                Style="{StaticResource BodyTextStyle}"
+                                                Text="{Binding DisplayName}" />
+                                            <StackPanel
+                                                Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="{StaticResource SpacingXs}"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding InstalledSummary, Converter={StaticResource StringToVisibilityConverter}}">
+                                                <FontIcon
+                                                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource SuccessBrush}"
+                                                    Glyph="&#xE8FB;" />
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource SuccessBrush}"
+                                                    Text="{Binding InstalledSummary}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button
+                                Grid.Column="1"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="DownloadSelectedModel_Click"
+                                Content="Download"
+                                IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+                        </Grid>
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}" />
+                    </StackPanel>
 
-                <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition language" />
-                    <ComboBox
-                        Style="{StaticResource SettingsComboBoxStyle}"
-                        DisplayMemberPath="DisplayName"
-                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
-                        SelectedValuePath="Code" />
-                </StackPanel>
-            </Grid>
+                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Language" />
+                        <ComboBox
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                            SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
+                            SelectedValuePath="Code" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Task" />
+                        <ComboBox
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.TaskOptions}"
+                            SelectedValue="{x:Bind ViewModel.SelectedTranscriptionTask, Mode=TwoWay}"
+                            SelectedValuePath="Value" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
+                        <TextBox
+                            Style="{StaticResource SettingsTextBoxStyle}"
+                            PlaceholderText="C#, .NET, WhisperDrop..."
+                            Text="{x:Bind ViewModel.VocabularyContext, Mode=TwoWay}" />
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="Optional words, names and terms to help recognition." />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock
+                    Margin="0,2,0,0"
+                    Style="{StaticResource CaptionTextStyle}"
+                    FontWeight="SemiBold"
+                    Text="PROCESSING" />
+
+                <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Voice detection" />
+                        <CheckBox
+                            x:Name="SkipSilenceCheckBox"
+                            Content="Skip silence"
+                            IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
+                            Click="SkipSilence_Click" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Processing device" />
+                        <ComboBox
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.ProcessingDeviceOptions}"
+                            SelectedValue="{x:Bind ViewModel.ProcessingDevice, Mode=TwoWay}"
+                            SelectedValuePath="Value" />
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    </StackPanel>
+                </Grid>
+
+                <Expander Header="Advanced">
+                    <StackPanel
+                        Padding="0,8,0,0"
+                        MaxWidth="360"
+                        HorizontalAlignment="Left"
+                        Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
+                        <ComboBox
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            DisplayMemberPath="DisplayName"
+                            ItemsSource="{x:Bind ViewModel.CpuThreadOptions}"
+                            SelectedValue="{x:Bind ViewModel.CpuThreads, Mode=TwoWay}"
+                            SelectedValuePath="Value" />
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
 
             <Border
                 x:Name="DropZone"

@@ -10,16 +10,20 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-    <PackageReference Include="Whisper.net" Version="1.8.0" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionService.cs" Link="State/WhisperRecognitionService.cs" />
+    <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
+    <Compile Include="../../src/WhisperDrop/State/WhisperRuntimeSelector.cs" Link="State/WhisperRuntimeSelector.cs" />
+    <Compile Include="../../src/WhisperDrop/State/VadModelManager.cs" Link="State/VadModelManager.cs" />
     <Compile Include="../../src/WhisperDrop/State/FileQueueAddResult.cs" Link="State/FileQueueAddResult.cs" />
     <Compile Include="../../src/WhisperDrop/Models/WhisperModelCatalog.cs" Link="Models/WhisperModelCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionLanguageCatalog.cs" Link="Models/RecognitionLanguageCatalog.cs" />
+    <Compile Include="../../src/WhisperDrop/Models/RecognitionSettingOptions.cs" Link="Models/RecognitionSettingOptions.cs" />
     <Compile Include="../../src/WhisperDrop/Models/TranscriptionQueueItem.cs" Link="Models/TranscriptionQueueItem.cs" />
     <Compile Include="../../src/WhisperDrop/Models/SelectedModelAvailability.cs" Link="Models/SelectedModelAvailability.cs" />
     <Compile Include="../../src/WhisperDrop/Models/SelectedModelDownload.cs" Link="Models/SelectedModelDownload.cs" />
