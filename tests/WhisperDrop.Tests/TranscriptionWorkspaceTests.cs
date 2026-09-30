@@ -86,6 +86,58 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
+    public async Task Single_transcription_passes_task_prompt_threads_and_device_as_one_snapshot()
+    {
+        var recognition = new FakeRecognitionService();
+        var state = CreateAvailableState(recognition);
+        state.RecognitionLanguageCode = "es";
+        state.SelectedTranscriptionTask = TranscriptionTask.TranslateToEnglish;
+        state.VocabularyContext = "C#, .NET, WhisperDrop";
+        state.CpuThreads = 1;
+        state.ProcessingDevice = ProcessingDevice.Cpu;
+        state.AddFiles(["recording.wav"]);
+
+        await state.TranscribeAsync(state.QueueRows[0]);
+
+        var options = Assert.Single(recognition.Options);
+        Assert.Equal("es", options.LanguageCode);
+        Assert.Equal(TranscriptionTask.TranslateToEnglish, options.Task);
+        Assert.Equal("C#, .NET, WhisperDrop", options.Prompt);
+        Assert.Equal(1, options.CpuThreads);
+        Assert.Equal(ProcessingDevice.Cpu, options.ProcessingDevice);
+    }
+
+    [Fact]
+    public void Runtime_selector_configures_auto_and_cpu_before_first_use()
+    {
+        var autoSelector = new WhisperRuntimeSelector();
+        var autoOptions = autoSelector.ConfigureBeforeFirstUse(ProcessingDevice.Auto);
+        Assert.True(autoOptions.UseGpu);
+
+        var cpuSelector = new WhisperRuntimeSelector();
+        var cpuOptions = cpuSelector.ConfigureBeforeFirstUse(ProcessingDevice.Cpu);
+        Assert.False(cpuOptions.UseGpu);
+    }
+
+    [Fact]
+    public void Runtime_selector_gpu_matches_packaged_platform_support()
+    {
+        var selector = new WhisperRuntimeSelector();
+
+        if (OperatingSystem.IsMacOS())
+        {
+            var options = selector.ConfigureBeforeFirstUse(ProcessingDevice.Gpu);
+            Assert.True(options.UseGpu);
+        }
+        else
+        {
+            var error = Assert.Throws<RecognitionConfigurationException>(
+                () => selector.ConfigureBeforeFirstUse(ProcessingDevice.Gpu));
+            Assert.Contains("GPU acceleration is not available", error.Message);
+        }
+    }
+
+    [Fact]
     public async Task Translation_rejects_an_english_only_model_before_recognition()
     {
         var recognition = new FakeRecognitionService();
