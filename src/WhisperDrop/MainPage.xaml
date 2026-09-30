@@ -344,11 +344,18 @@
                     <TextBlock
                         Style="{StaticResource SectionTitleTextStyle}"
                         Text="Downloaded models" />
-                    <TextBlock
+                    <StackPanel
                         Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource SecondaryTextStyle}"
-                        Text="{x:Bind ViewModel.InstalledModelsSummary, Mode=OneWay}" />
+                        Orientation="Horizontal"
+                        Spacing="{StaticResource SpacingXs}"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="Disk usage:" />
+                        <TextBlock
+                            Style="{StaticResource BodyTextStyle}"
+                            Text="{x:Bind ViewModel.InstalledModelsSummary, Mode=OneWay}" />
+                    </StackPanel>
                 </Grid>
 
                 <TextBlock
@@ -369,24 +376,31 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
                                         <TextBlock
                                             Style="{StaticResource FileNameTextStyle}"
                                             Text="{Binding DisplayName}" />
-                                        <TextBlock
-                                            Style="{StaticResource CaptionTextStyle}"
-                                            Text="{Binding FileName}"
-                                            TextTrimming="CharacterEllipsis" />
+                                        <StackPanel
+                                            Orientation="Horizontal"
+                                            Spacing="{StaticResource SpacingXs}">
+                                            <TextBlock
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="Size:" />
+                                            <TextBlock
+                                                Style="{StaticResource BodyTextStyle}"
+                                                Text="{Binding SizeText}" />
+                                            <TextBlock
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="·" />
+                                            <TextBlock
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="{Binding FileName}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
                                     </StackPanel>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        Style="{StaticResource BodyTextStyle}"
-                                        Text="{Binding SizeText}" />
                                     <Button
-                                        Grid.Column="2"
+                                        Grid.Column="1"
                                         VerticalAlignment="Center"
                                         Style="{StaticResource DangerButtonStyle}"
                                         Click="DeleteModel_Click"
