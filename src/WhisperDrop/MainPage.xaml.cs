@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -54,24 +55,40 @@ public sealed partial class MainPage : Page
     private async void DownloadModel_Click(object sender, RoutedEventArgs e) =>
         await ViewModel.DownloadSelectedModelAsync();
 
+    private void TranscribeNav_Click(object sender, RoutedEventArgs e)
+    {
+        TranscribeNavButton.IsChecked = true;
+        ViewModel.SelectedTabIndex = InitialApplicationState.TranscribeTabIndex;
+    }
+
+    private void SettingsNav_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsNavButton.IsChecked = true;
+        ViewModel.SelectedTabIndex = InitialApplicationState.SettingsTabIndex;
+    }
+
     private void DropZone_DragOver(object sender, DragEventArgs e)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.None;
+            SetDropZoneActive(false);
             return;
         }
 
         e.AcceptedOperation = DataPackageOperation.Copy;
         DropFeedback.Text = "Drop to add WAV files.";
+        SetDropZoneActive(true);
     }
 
-    private void DropZone_DragLeave(object sender, DragEventArgs e) =>
-        DropFeedback.Text = "Drop WAV files here, or choose files.";
+    private void DropZone_DragLeave(object sender, DragEventArgs e)
+    {
+        ResetDropZone();
+    }
 
     private async void DropZone_Drop(object sender, DragEventArgs e)
     {
-        DropFeedback.Text = "Drop WAV files here, or choose files.";
+        ResetDropZone();
         var items = await e.DataView.GetStorageItemsAsync().AsTask();
         AddFiles(items.OfType<StorageFile>().Select(file => file.Path));
     }
@@ -140,4 +157,18 @@ public sealed partial class MainPage : Page
         EmptyState.Visibility = ViewModel.IsTranscribeWorkspaceEmpty ? Visibility.Visible : Visibility.Collapsed;
         QueueList.Visibility = ViewModel.IsTranscribeWorkspaceEmpty ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    private void SetDropZoneActive(bool isActive)
+    {
+        DropZone.BorderBrush = GetBrush(isActive ? "AccentBrush" : "ControlBorderBrush");
+        DropZone.Background = GetBrush(isActive ? "AccentSubtleBrush" : "DropZoneBackgroundBrush");
+    }
+
+    private void ResetDropZone()
+    {
+        DropFeedback.Text = "Drop WAV files or choose files.";
+        SetDropZoneActive(false);
+    }
+
+    private static Brush GetBrush(string key) => (Brush)Application.Current.Resources[key];
 }

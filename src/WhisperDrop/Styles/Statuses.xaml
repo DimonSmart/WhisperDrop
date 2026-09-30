@@ -1,0 +1,14 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="using:WhisperDrop.UI">
+
+    <ui:StatusToBrushConverter x:Key="StatusToBrushConverter" />
+    <ui:StatusToGlyphConverter x:Key="StatusToGlyphConverter" />
+    <ui:StatusEqualsVisibilityConverter x:Key="StatusEqualsVisibilityConverter" />
+    <ui:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    <ui:ProgressTextToDoubleConverter x:Key="ProgressTextToDoubleConverter" />
+    <ui:IndexToVisibilityConverter x:Key="IndexToVisibilityConverter" />
+    <ui:IndexEqualsConverter x:Key="IndexEqualsConverter" />
+    <ui:QueueCountToLabelConverter x:Key="QueueCountToLabelConverter" />
+</ResourceDictionary>

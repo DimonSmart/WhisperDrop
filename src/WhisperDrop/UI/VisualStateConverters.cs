@@ -1,0 +1,112 @@
+using System;
+using System.Globalization;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
+
+namespace WhisperDrop.UI;
+
+public sealed class StatusToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        GetBrush(value as string switch
+        {
+            "Transcribing" => "AccentBrush",
+            "Completed" => "SuccessBrush",
+            "Error" => "ErrorBrush",
+            _ => "MutedTextBrush"
+        });
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+
+    private static Brush GetBrush(string key) => (Brush)Application.Current.Resources[key];
+}
+
+public sealed class StatusToGlyphConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value as string switch
+        {
+            "Transcribing" => "\uE895",
+            "Completed" => "\uE8FB",
+            "Error" => "\uE783",
+            _ => "\uE917"
+        };
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class StatusEqualsVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        string.Equals(value as string, parameter as string, StringComparison.Ordinal)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class StringToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        string.IsNullOrWhiteSpace(value as string) ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class ProgressTextToDoubleConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var text = value as string;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return 0d;
+        }
+
+        return double.TryParse(text.TrimEnd('%'), NumberStyles.Number, CultureInfo.InvariantCulture, out var progress)
+            ? Math.Clamp(progress, 0d, 100d)
+            : 0d;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class IndexToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        IsMatch(value, parameter) ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+
+    private static bool IsMatch(object value, object parameter) =>
+        value is int index &&
+        int.TryParse(parameter?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var expected) &&
+        index == expected;
+}
+
+public sealed class IndexEqualsConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value is int index &&
+        int.TryParse(parameter?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var expected) &&
+        index == expected;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class QueueCountToLabelConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        $"Audio files ({(value is int count ? count : 0)})";
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
