@@ -14,6 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <UnoIcon Include="Assets\Icons\icon.png" Resize="true" />
+  </ItemGroup>
+
+  <ItemGroup>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-arm64\*.dll"><RuntimeIdentifier>win-arm64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x64\*.dll"><RuntimeIdentifier>win-x64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x86\*.dll"><RuntimeIdentifier>win-x86</RuntimeIdentifier></WhisperRuntimeFile>
@@ -30,6 +34,37 @@
   <Target Name="CopyBundledWhisperRuntimeToPublishDirectory" AfterTargets="Publish">
     <Copy SourceFiles="@(WhisperRuntimeFile)"
           DestinationFiles="@(WhisperRuntimeFile->'$(PublishDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="PrepareWindowsRuntimeAppIcon"
+          DependsOnTargets="UnoResizetizeImages"
+          Condition="'$(OS)' == 'Windows_NT'">
+    <ItemGroup>
+      <_WindowsRuntimeAppIcon Include="$(AppIconPath)"
+                              Condition="'$(AppIconPath)' != '' and Exists('$(AppIconPath)')" />
+      <_WindowsRuntimeAppIcon Include="$(IntermediateOutputPath)unoresizetizer\AppIcons\*.ico"
+                              Condition="'@(_WindowsRuntimeAppIcon)' == ''" />
+    </ItemGroup>
+    <Error Condition="'@(_WindowsRuntimeAppIcon)' == ''"
+           Text="Uno.Resizetizer did not generate the Windows application icon." />
+  </Target>
+
+  <Target Name="CopyWindowsRuntimeAppIconToOutput"
+          AfterTargets="CopyFilesToOutputDirectory"
+          DependsOnTargets="PrepareWindowsRuntimeAppIcon"
+          Condition="'$(OS)' == 'Windows_NT'">
+    <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(TargetDir)WhisperDrop.ico')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyWindowsRuntimeAppIconToPublish"
+          AfterTargets="Publish"
+          DependsOnTargets="PrepareWindowsRuntimeAppIcon"
+          Condition="'$(OS)' == 'Windows_NT' and '$(PublishDir)' != ''">
+    <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(PublishDir)WhisperDrop.ico')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>

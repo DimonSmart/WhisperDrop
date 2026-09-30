@@ -40,7 +40,18 @@ public partial class App : Application
         {
             Title = "WhisperDrop"
         };
+        SetWindowIcon(MainWindow);
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
         MainWindow.Activate();
+    }
+
+    private static void SetWindowIcon(Window window)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "WhisperDrop.ico");
+        if (File.Exists(iconPath))
+            window.AppWindow.SetIcon(iconPath);
     }
 }
