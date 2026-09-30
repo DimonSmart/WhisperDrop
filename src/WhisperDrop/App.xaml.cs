@@ -36,7 +36,10 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        MainWindow = new Window();
+        MainWindow = new Window
+        {
+            Title = "WhisperDrop"
+        };
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
         MainWindow.Activate();
     }

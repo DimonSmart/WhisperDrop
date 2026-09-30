@@ -12,12 +12,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Spacing="{StaticResource SpacingXs}">
-            <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="WhisperDrop" />
-            <TextBlock
-                Style="{StaticResource PageSubtitleTextStyle}"
-                Text="Transcription runs locally. Your audio never leaves this device." />
-        </StackPanel>
+        <TextBlock
+            Style="{StaticResource PageSubtitleTextStyle}"
+            Text="Transcription runs locally. Your audio never leaves this device." />
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
             <ToggleButton
@@ -56,10 +53,6 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Spacing="{StaticResource SpacingSm}">
-                    <SymbolIcon
-                        HorizontalAlignment="Center"
-                        Foreground="{StaticResource AccentBrush}"
-                        Symbol="Add" />
                     <TextBlock
                         HorizontalAlignment="Center"
                         Style="{StaticResource SectionTitleTextStyle}"
@@ -68,7 +61,7 @@
                         x:Name="DropFeedback"
                         HorizontalAlignment="Center"
                         Style="{StaticResource SecondaryTextStyle}"
-                        Text="Drop WAV files or choose files." />
+                        Text="WAV files only" />
                     <Button
                         HorizontalAlignment="Center"
                         Style="{StaticResource SecondaryButtonStyle}"
@@ -226,6 +219,7 @@
 
                                     <StackPanel
                                         Grid.Column="2"
+                                        Margin="0,0,4,0"
                                         Orientation="Horizontal"
                                         Spacing="{StaticResource SpacingXs}"
                                         VerticalAlignment="Center">
@@ -256,7 +250,10 @@
                                             Click="RemoveFile_Click"
                                             Tag="{Binding}"
                                             ToolTipService.ToolTip="Remove from queue">
-                                            <SymbolIcon Symbol="Delete" />
+                                            <FontIcon
+                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                FontSize="16"
+                                                Glyph="&#xE74D;" />
                                         </Button>
                                     </StackPanel>
                                 </Grid>
@@ -272,82 +269,80 @@
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto"
             Visibility="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=1}">
-            <Border
-                MaxWidth="620"
-                HorizontalAlignment="Stretch"
-                Style="{StaticResource SettingsPanelStyle}">
-                <StackPanel Spacing="{StaticResource SpacingMd}">
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition settings" />
-                        <TextBlock
-                            Style="{StaticResource PageSubtitleTextStyle}"
-                            Text="Choose the local model, language, and storage folder used for transcription." />
-                    </StackPanel>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Models folder" />
-                        <Grid ColumnSpacing="{StaticResource SpacingSm}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox
-                                Style="{StaticResource SettingsTextBoxStyle}"
-                                Text="{x:Bind ViewModel.ModelsFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button
-                                Grid.Column="1"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Click="BrowseModelsFolder_Click"
-                                ToolTipService.ToolTip="Choose models folder">
-                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
-                                    <SymbolIcon Symbol="OpenFile" />
-                                    <TextBlock Text="Browse" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.ModelOptions}"
-                            SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
-                            SelectedValuePath="Id" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition language" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-                            SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
-                            SelectedValuePath="Code" />
-                    </StackPanel>
-
-                    <Border Style="{StaticResource StatusPanelStyle}">
-                        <StackPanel Spacing="{StaticResource SpacingSm}">
-                            <TextBlock
-                                Style="{StaticResource SecondaryTextStyle}"
-                                Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}"
-                                TextWrapping="Wrap" />
-                            <ProgressBar
-                                IsIndeterminate="{x:Bind ViewModel.IsModelDownloadIndeterminate, Mode=OneWay}"
-                                Maximum="1"
-                                Value="{x:Bind ViewModel.SelectedModelDownloadProgress, Mode=OneWay}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Button
-                        HorizontalAlignment="Left"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Click="DownloadModel_Click"
-                        Content="Download model"
-                        IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+            <StackPanel
+                MaxWidth="720"
+                HorizontalAlignment="Left"
+                Spacing="{StaticResource SpacingMd}">
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition settings" />
+                    <TextBlock
+                        Style="{StaticResource PageSubtitleTextStyle}"
+                        Text="Choose the local model, language, and storage folder used for transcription." />
                 </StackPanel>
-            </Border>
+
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Models folder" />
+                    <Grid ColumnSpacing="{StaticResource SpacingSm}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Style="{StaticResource SettingsTextBoxStyle}"
+                            Text="{x:Bind ViewModel.ModelsFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button
+                            Grid.Column="1"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="BrowseModelsFolder_Click"
+                            ToolTipService.ToolTip="Choose models folder">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
+                                <SymbolIcon Symbol="OpenFile" />
+                                <TextBlock Text="Browse" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
+                    <ComboBox
+                        Style="{StaticResource SettingsComboBoxStyle}"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{x:Bind ViewModel.ModelOptions}"
+                        SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
+                        SelectedValuePath="Id" />
+                </StackPanel>
+
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition language" />
+                    <ComboBox
+                        Style="{StaticResource SettingsComboBoxStyle}"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
+                        SelectedValuePath="Code" />
+                </StackPanel>
+
+                <Border Style="{StaticResource StatusPanelStyle}">
+                    <StackPanel Spacing="{StaticResource SpacingSm}">
+                        <TextBlock
+                            Style="{StaticResource SecondaryTextStyle}"
+                            Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                        <ProgressBar
+                            IsIndeterminate="{x:Bind ViewModel.IsModelDownloadIndeterminate, Mode=OneWay}"
+                            Maximum="1"
+                            Value="{x:Bind ViewModel.SelectedModelDownloadProgress, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
+
+                <Button
+                    HorizontalAlignment="Left"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Click="DownloadModel_Click"
+                    Content="Download model"
+                    IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>

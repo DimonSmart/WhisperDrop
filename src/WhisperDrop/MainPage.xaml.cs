@@ -77,7 +77,7 @@ public sealed partial class MainPage : Page
         }
 
         e.AcceptedOperation = DataPackageOperation.Copy;
-        DropFeedback.Text = "Drop to add WAV files.";
+        DropFeedback.Text = "Drop to add WAV files";
         SetDropZoneActive(true);
     }
 
@@ -166,7 +166,7 @@ public sealed partial class MainPage : Page
 
     private void ResetDropZone()
     {
-        DropFeedback.Text = "Drop WAV files or choose files.";
+        DropFeedback.Text = "WAV files only";
         SetDropZoneActive(false);
     }
 
