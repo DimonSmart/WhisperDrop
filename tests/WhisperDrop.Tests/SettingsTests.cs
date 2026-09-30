@@ -57,7 +57,7 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("C#, .NET, WhisperDrop", loaded.VocabularyContext);
         Assert.True(loaded.SkipSilence);
         Assert.Equal(ProcessingDevice.Cpu, loaded.ProcessingDevice);
-        Assert.Equal(Environment.ProcessorCount >= 2 ? 2 : null, loaded.CpuThreads);
+        Assert.Equal(Environment.ProcessorCount >= 2 ? (int?)2 : null, loaded.CpuThreads);
         Assert.DoesNotContain(Directory.EnumerateFiles(root), path => Path.GetFileName(path).Contains(".tmp", StringComparison.Ordinal));
     }
 
@@ -88,7 +88,7 @@ public sealed class SettingsTests : IDisposable
         Directory.CreateDirectory(root);
         File.WriteAllText(
             paths.SettingsFilePath,
-            "{\"SelectedModelId\":\"medium\",\"RecognitionLanguageCode\":\"fr\",\"Task\":999,\"ProcessingDevice\":999,\"CpuThreads\":999999}");
+            "{\"SelectedModelId\":\"medium\",\"RecognitionLanguageCode\":\"fr\",\"Task\":\"Unexpected\",\"ProcessingDevice\":\"Quantum\",\"CpuThreads\":999999}");
 
         var loaded = new JsonUserSettingsStore(paths).Load();
 
@@ -115,6 +115,21 @@ public sealed class SettingsTests : IDisposable
         var failing = new VadModelManager(paths, new TestVadDownloader(exception: new IOException("network failed")));
         await Assert.ThrowsAsync<IOException>(() => failing.DownloadAsync());
         Assert.False(failing.IsAvailable);
+        Assert.False(File.Exists(paths.VadModelPath + ".download"));
+    }
+
+    [Fact]
+    public async Task Cancelled_vad_download_leaves_no_partial_model()
+    {
+        var paths = new ApplicationPaths(root);
+        var manager = new VadModelManager(paths, new TestVadDownloader("vad"));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => manager.DownloadAsync(cancellationToken: cancellation.Token));
+
+        Assert.False(manager.IsAvailable);
         Assert.False(File.Exists(paths.VadModelPath + ".download"));
     }
 

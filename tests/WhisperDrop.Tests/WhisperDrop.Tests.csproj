@@ -22,6 +22,8 @@
     <Compile Include="../../src/WhisperDrop/State/VadModelManager.cs" Link="State/VadModelManager.cs" />
     <Compile Include="../../src/WhisperDrop/State/FileQueueAddResult.cs" Link="State/FileQueueAddResult.cs" />
     <Compile Include="../../src/WhisperDrop/Models/WhisperModelCatalog.cs" Link="Models/WhisperModelCatalog.cs" />
+    <Compile Include="../../src/WhisperDrop/Models/LocalModelInventory.cs" Link="Models/LocalModelInventory.cs" />
+    <Compile Include="../../src/WhisperDrop/Models/RecognitionModelOption.cs" Link="Models/RecognitionModelOption.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionLanguageCatalog.cs" Link="Models/RecognitionLanguageCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionSettingOptions.cs" Link="Models/RecognitionSettingOptions.cs" />
     <Compile Include="../../src/WhisperDrop/Models/TranscriptionQueueItem.cs" Link="Models/TranscriptionQueueItem.cs" />

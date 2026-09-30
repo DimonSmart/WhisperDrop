@@ -26,12 +26,16 @@
   </ItemGroup>
 
   <Target Name="CopyBundledWhisperRuntime" AfterTargets="Build">
+    <Error Condition="'@(WhisperRuntimeFile)' == ''"
+           Text="Whisper.net.Runtime native files were not found. Verify the package layout before publishing." />
     <Copy SourceFiles="@(WhisperRuntimeFile)"
           DestinationFiles="@(WhisperRuntimeFile->'$(OutDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyBundledWhisperRuntimeToPublishDirectory" AfterTargets="Publish">
+    <Error Condition="'@(WhisperRuntimeFile)' == ''"
+           Text="Whisper.net.Runtime native files were not found in the publish build." />
     <Copy SourceFiles="@(WhisperRuntimeFile)"
           DestinationFiles="@(WhisperRuntimeFile->'$(PublishDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />

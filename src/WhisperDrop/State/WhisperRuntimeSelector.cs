@@ -108,14 +108,20 @@ public sealed class WhisperRuntimeSelector : IWhisperRuntimeSelector
         {
             case ProcessingDevice.Auto:
             case ProcessingDevice.Cpu:
-                // WhisperDrop currently ships the portable Whisper.net CPU runtime.
-                // Auto therefore delegates to the only backend included in this build.
                 RuntimeOptions.RuntimeLibraryOrder = new List<RuntimeLibrary> { RuntimeLibrary.Cpu };
                 break;
 
             case ProcessingDevice.Gpu:
-                throw new RecognitionConfigurationException(
-                    "GPU acceleration is not available in this WhisperDrop build. Choose Auto or CPU.");
+                if (!OperatingSystem.IsMacOS())
+                {
+                    throw new RecognitionConfigurationException(
+                        "GPU acceleration is not available on this system. Choose Auto or CPU.");
+                }
+
+                // Whisper.net.Runtime 1.9.1 includes the Metal backend in its macOS
+                // portable runtime. UseGpu controls whether the factory may use it.
+                RuntimeOptions.RuntimeLibraryOrder = new List<RuntimeLibrary> { RuntimeLibrary.Cpu };
+                break;
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(device), device, null);
