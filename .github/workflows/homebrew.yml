@@ -1,0 +1,157 @@
+name: Homebrew
+
+on:
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish to the Homebrew Cask, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update_homebrew:
+    name: Update Homebrew Cask
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+          }
+          else {
+            $headSha = "${{ github.event.workflow_run.head_sha }}"
+            $tagPattern = '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$'
+
+            $tag = git for-each-ref --format="%(refname:short)|%(objectname)|%(*objectname)" refs/tags |
+              ForEach-Object {
+                $parts = $_ -split '\|', 3
+                if ($parts.Count -eq 3 -and
+                    ($parts[1] -eq $headSha -or $parts[2] -eq $headSha) -and
+                    $parts[0] -match $tagPattern) {
+                  [pscustomobject]@{
+                    Tag = $parts[0]
+                    Major = [int] $Matches["major"]
+                    Minor = [int] $Matches["minor"]
+                    Patch = [int] $Matches["patch"]
+                  }
+                }
+              } |
+              Sort-Object Major, Minor, Patch |
+              Select-Object -Last 1 |
+              Select-Object -ExpandProperty Tag
+          }
+
+          if (-not $tag -or $tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Could not resolve a vMAJOR.MINOR.PATCH release tag. Got '$tag'."
+          }
+
+          "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+          "VERSION=$($tag.Substring(1))" >> $env:GITHUB_ENV
+
+      - name: Download release checksums
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $downloadDir = Join-Path $env:RUNNER_TEMP "homebrew"
+          New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern "SHA256SUMS.txt" --dir $downloadDir
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to download SHA256SUMS.txt for $env:RELEASE_TAG."
+          }
+
+          "CHECKSUMS_PATH=$(Join-Path $downloadDir 'SHA256SUMS.txt')" >> $env:GITHUB_ENV
+
+      - name: Update Cask
+        shell: pwsh
+        run: |
+          $armName = "WhisperDrop-$env:RELEASE_TAG-osx-arm64-app.zip"
+          $intelName = "WhisperDrop-$env:RELEASE_TAG-osx-x64-app.zip"
+
+          function Get-ReleaseHash([string] $fileName) {
+            $line = Get-Content $env:CHECKSUMS_PATH |
+              Where-Object { $_ -match "^[0-9a-fA-F]{64}\s+$([regex]::Escape($fileName))$" } |
+              Select-Object -First 1
+
+            if (-not $line) {
+              throw "SHA-256 for '$fileName' was not found in SHA256SUMS.txt."
+            }
+
+            return ($line -split '\s+', 2)[0].ToLowerInvariant()
+          }
+
+          $armHash = Get-ReleaseHash $armName
+          $intelHash = Get-ReleaseHash $intelName
+
+          $cask = @"
+          cask "whisperdrop" do
+            arch arm: "arm64", intel: "x64"
+
+            version "$env:VERSION"
+
+            sha256 arm: "$armHash",
+                   intel: "$intelHash"
+
+            url "https://github.com/DimonSmart/WhisperDrop/releases/download/v#{version}/WhisperDrop-v#{version}-osx-#{arch}-app.zip"
+
+            name "WhisperDrop"
+            desc "Local desktop speech-to-text application powered by Whisper"
+            homepage "https://github.com/DimonSmart/WhisperDrop"
+
+            app "WhisperDrop.app"
+
+            caveats <<~EOS
+              WhisperDrop is currently unsigned and not notarized.
+              On first launch macOS may require using Open from the Finder context menu.
+            EOS
+          end
+          "@
+
+          $normalized = ($cask -split [Environment]::NewLine | ForEach-Object { $_ -replace '^          ', '' }) -join [Environment]::NewLine
+          ($normalized.TrimStart() + [Environment]::NewLine) | Set-Content Casks/whisperdrop.rb -Encoding utf8NoBOM
+
+      - name: Validate Cask syntax
+        run: ruby -c Casks/whisperdrop.rb
+
+      - name: Commit Homebrew metadata
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/whisperdrop.rb
+
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Homebrew Cask is already up to date for $env:RELEASE_TAG."
+            exit 0
+          }
+
+          git commit -m "Update Homebrew Cask for $env:RELEASE_TAG"
+          git fetch origin main
+          git rebase origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not rebase Homebrew metadata update onto the latest main."
+          }
+
+          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not push Homebrew metadata update to main."
+          }
