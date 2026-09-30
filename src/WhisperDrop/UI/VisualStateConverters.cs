@@ -9,7 +9,7 @@ namespace WhisperDrop.UI;
 public sealed class StatusToBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        GetBrush(value as string switch
+        GetBrush((value as string) switch
         {
             "Transcribing" => "AccentBrush",
             "Completed" => "SuccessBrush",
@@ -26,7 +26,7 @@ public sealed class StatusToBrushConverter : IValueConverter
 public sealed class StatusToGlyphConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        value as string switch
+        (value as string) switch
         {
             "Transcribing" => "\uE895",
             "Completed" => "\uE8FB",
