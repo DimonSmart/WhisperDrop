@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" GeneratePathProperty="true" />
+    <PackageReference Include="Whisper.net.Runtime.Metal" Version="1.9.1" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <WhisperMetalResource Include="$(PkgWhisper_net_Runtime_Metal)\build\ggml-metal.metal" />
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-arm64\*.dll"><RuntimeIdentifier>win-arm64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x64\*.dll"><RuntimeIdentifier>win-x64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x86\*.dll"><RuntimeIdentifier>win-x86</RuntimeIdentifier></WhisperRuntimeFile>
@@ -28,16 +30,26 @@
   <Target Name="CopyBundledWhisperRuntime" AfterTargets="Build">
     <Error Condition="'@(WhisperRuntimeFile)' == ''"
            Text="Whisper.net.Runtime native files were not found. Verify the package layout before publishing." />
+    <Error Condition="'@(WhisperMetalResource)' == ''"
+           Text="Whisper.net.Runtime.Metal shader resource was not found." />
     <Copy SourceFiles="@(WhisperRuntimeFile)"
           DestinationFiles="@(WhisperRuntimeFile->'$(OutDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(WhisperMetalResource)"
+          DestinationFolder="$(OutDir)"
           SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyBundledWhisperRuntimeToPublishDirectory" AfterTargets="Publish">
     <Error Condition="'@(WhisperRuntimeFile)' == ''"
            Text="Whisper.net.Runtime native files were not found in the publish build." />
+    <Error Condition="'@(WhisperMetalResource)' == ''"
+           Text="Whisper.net.Runtime.Metal shader resource was not found in the publish build." />
     <Copy SourceFiles="@(WhisperRuntimeFile)"
           DestinationFiles="@(WhisperRuntimeFile->'$(PublishDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(WhisperMetalResource)"
+          DestinationFolder="$(PublishDir)"
           SkipUnchangedFiles="true" />
   </Target>
 

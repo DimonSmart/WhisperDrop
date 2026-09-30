@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Whisper.net;
 using Whisper.net.LibraryLoader;
 using WhisperDrop.Settings;
@@ -112,14 +113,15 @@ public sealed class WhisperRuntimeSelector : IWhisperRuntimeSelector
                 break;
 
             case ProcessingDevice.Gpu:
-                if (!OperatingSystem.IsMacOS())
+                if (!OperatingSystem.IsMacOS() ||
+                    RuntimeInformation.ProcessArchitecture != Architecture.Arm64)
                 {
                     throw new RecognitionConfigurationException(
                         "GPU acceleration is not available on this system. Choose Auto or CPU.");
                 }
 
-                // Whisper.net.Runtime 1.9.1 includes the Metal backend in its macOS
-                // portable runtime. UseGpu controls whether the factory may use it.
+                // The supported macOS ARM64 package contains the Metal backend.
+                // UseGpu controls whether the factory may use it.
                 RuntimeOptions.RuntimeLibraryOrder = new List<RuntimeLibrary> { RuntimeLibrary.Cpu };
                 break;
 
