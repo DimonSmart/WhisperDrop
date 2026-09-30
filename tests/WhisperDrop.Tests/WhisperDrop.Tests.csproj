@@ -32,5 +32,7 @@
     <Compile Include="../../src/WhisperDrop/Settings/ApplicationPaths.cs" Link="Settings/ApplicationPaths.cs" />
     <Compile Include="../../src/WhisperDrop/Settings/UserSettings.cs" Link="Settings/UserSettings.cs" />
     <Compile Include="../../src/WhisperDrop/Settings/JsonUserSettingsStore.cs" Link="Settings/JsonUserSettingsStore.cs" />
+    <Compile Include="../../src/WhisperDrop/Updates/ApplicationUpdates.cs" Link="Updates/ApplicationUpdates.cs" />
+    <Compile Include="../../src/WhisperDrop/Updates/ApplicationUpdateServices.cs" Link="Updates/ApplicationUpdateServices.cs" />
   </ItemGroup>
 </Project>
