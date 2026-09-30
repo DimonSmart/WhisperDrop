@@ -11,20 +11,39 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
-            <ToggleButton
-                x:Name="TranscribeNavButton"
-                Style="{StaticResource NavigationTabButtonStyle}"
-                Content="Transcribe"
-                IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=0}"
-                Click="TranscribeNav_Click" />
-            <ToggleButton
-                x:Name="ModelsNavButton"
-                Style="{StaticResource NavigationTabButtonStyle}"
-                Content="Models"
-                IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=1}"
-                Click="ModelsNav_Click" />
-        </StackPanel>
+        <Grid>
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
+                <ToggleButton
+                    x:Name="TranscribeNavButton"
+                    Style="{StaticResource NavigationTabButtonStyle}"
+                    Content="Transcribe"
+                    IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=0}"
+                    Click="TranscribeNav_Click" />
+                <ToggleButton
+                    x:Name="ModelsNavButton"
+                    Style="{StaticResource NavigationTabButtonStyle}"
+                    Content="Models"
+                    IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=1}"
+                    Click="ModelsNav_Click" />
+            </StackPanel>
+
+            <Button
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Style="{StaticResource SubtleButtonStyle}"
+                ToolTipService.ToolTip="Application menu"
+                AutomationProperties.Name="Application menu">
+                <FontIcon
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    FontSize="16"
+                    Glyph="&#xE712;" />
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="About WhisperDrop…" Click="About_Click" />
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
 
         <Grid
             Grid.Row="1"

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
 using WhisperDrop.State;
+using WhisperDrop.Updates;
 
 namespace WhisperDrop;
 
@@ -34,6 +35,15 @@ public partial class App : Application
                 services.AddSingleton<IVadModelDownloader, VadModelDownloader>();
                 services.AddSingleton<IVadModelManager, VadModelManager>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
+                services.AddSingleton<IApplicationVersionProvider>(_ => new ApplicationVersionProvider(typeof(App).Assembly));
+                services.AddSingleton<IUpdateCheckService, GitHubUpdateCheckService>();
+                services.AddSingleton<IProcessExecutor, ProcessExecutor>();
+                services.AddSingleton<IApplicationUpdateEnvironment, DefaultApplicationUpdateEnvironment>();
+                if (OperatingSystem.IsMacOS())
+                    services.AddSingleton<IApplicationUpdateInstaller, MacOsHomebrewUpdateInstaller>();
+                else
+                    services.AddSingleton<IApplicationUpdateInstaller, UnsupportedApplicationUpdateInstaller>();
+                services.AddSingleton<ISystemUriLauncher, SystemUriLauncher>();
                 services.AddSingleton<InitialApplicationState>();
                 services.AddSingleton<MainPage>();
             })
@@ -49,6 +59,12 @@ public partial class App : Application
         SetWindowIcon(MainWindow);
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
         MainWindow.Activate();
+    }
+
+    internal static void CompleteApplicationUpdateRestart(MainPage page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        page.DispatcherQueue.TryEnqueue(() => MainWindow.Close());
     }
 
     private static void SetWindowIcon(Window window)

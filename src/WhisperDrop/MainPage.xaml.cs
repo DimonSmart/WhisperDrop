@@ -12,14 +12,24 @@ using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WhisperDrop.Models;
 using WhisperDrop.State;
+using WhisperDrop.Updates;
 
 namespace WhisperDrop;
 
 public sealed partial class MainPage : Page
 {
-    public MainPage(InitialApplicationState viewModel)
+    public MainPage(
+        InitialApplicationState viewModel,
+        IApplicationVersionProvider applicationVersionProvider,
+        IUpdateCheckService updateCheckService,
+        IApplicationUpdateInstaller applicationUpdateInstaller,
+        ISystemUriLauncher systemUriLauncher)
     {
         ViewModel = viewModel;
+        this.applicationVersionProvider = applicationVersionProvider;
+        this.updateCheckService = updateCheckService;
+        this.applicationUpdateInstaller = applicationUpdateInstaller;
+        this.systemUriLauncher = systemUriLauncher;
         InitializeComponent();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateQueuePresentation();

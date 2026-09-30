@@ -4,6 +4,12 @@
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
     <RootNamespace>WhisperDrop</RootNamespace>
+    <AssemblyName>WhisperDrop</AssemblyName>
+    <ApplicationTitle>WhisperDrop</ApplicationTitle>
+    <ApplicationId>io.dimonsmart.whisperdrop</ApplicationId>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <PublishTrimmed>false</PublishTrimmed>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
