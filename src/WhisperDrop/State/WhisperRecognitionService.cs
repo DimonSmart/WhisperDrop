@@ -10,6 +10,48 @@ namespace WhisperDrop.State;
 
 public sealed record RecognitionResult(string Transcript, string? DetectedLanguage);
 
+internal sealed record WhisperProcessorPlan(
+    bool DetectLanguage,
+    string? LanguageCode,
+    bool Translate,
+    string? Prompt,
+    int? Threads,
+    TimeSpan? Offset,
+    TimeSpan? Duration);
+
+internal sealed record VadRegionPlan(
+    TimeSpan Start,
+    TimeSpan Duration,
+    double ProgressOffset,
+    double ProgressWeight);
+
+internal sealed class MonotonicProgressReporter
+{
+    private readonly IProgress<double>? target;
+    private readonly object sync = new();
+    private double lastValue;
+
+    public MonotonicProgressReporter(IProgress<double>? target)
+    {
+        this.target = target;
+    }
+
+    public void Report(double value)
+    {
+        value = Math.Clamp(value, 0, 1);
+        lock (sync)
+        {
+            if (value < lastValue)
+            {
+                return;
+            }
+
+            lastValue = value;
+            target?.Report(value);
+        }
+    }
+}
+
 public interface IRecognitionService : IDisposable
 {
     Task<RecognitionResult> TranscribeAsync(
@@ -71,7 +113,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
             var factoryOptions = runtimeSelector.ConfigureBeforeFirstUse(options.ProcessingDevice);
             var effectiveDevice = runtimeSelector.ActiveDevice;
-            var reporter = new MonotonicProgress(progress);
+            var reporter = new MonotonicProgressReporter(progress);
             reporter.Report(0);
 
             return await Task.Run(
@@ -128,7 +170,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         ProcessingDevice device,
         RecognitionOptions options,
         string audioPath,
-        MonotonicProgress progress,
+        MonotonicProgressReporter progress,
         CancellationToken cancellationToken)
     {
         var recognitionFactory = EnsureRecognitionFactory(modelPath, factoryOptions, device);
@@ -148,7 +190,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         ProcessingDevice device,
         RecognitionOptions options,
         string audioPath,
-        MonotonicProgress progress,
+        MonotonicProgressReporter progress,
         CancellationToken cancellationToken)
     {
         var voiceFactory = EnsureVadFactory(factoryOptions, device);
@@ -165,21 +207,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
             return new RecognitionResult(string.Empty, null);
         }
 
-        var validRegions = new System.Collections.Generic.List<VadSegmentData>(speechRegions.Count);
-        double totalSpeechSeconds = 0;
-        foreach (var region in speechRegions)
-        {
-            var seconds = (region.End - region.Start).TotalSeconds;
-            if (seconds <= 0)
-            {
-                continue;
-            }
-
-            validRegions.Add(region);
-            totalSpeechSeconds += seconds;
-        }
-
-        if (validRegions.Count == 0 || totalSpeechSeconds <= 0)
+        var regionPlans = CreateVadRegionPlan(speechRegions);
+        if (regionPlans.Count == 0)
         {
             progress.Report(1);
             return new RecognitionResult(string.Empty, null);
@@ -188,15 +217,10 @@ public sealed class WhisperRecognitionService : IRecognitionService
         var recognitionFactory = EnsureRecognitionFactory(modelPath, factoryOptions, device);
         var transcript = new StringBuilder();
         string? detectedLanguage = null;
-        double completedSeconds = 0;
 
-        foreach (var region in validRegions)
+        foreach (var region in regionPlans)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var duration = region.End - region.Start;
-            var regionSeconds = duration.TotalSeconds;
-            var regionBase = completedSeconds / totalSpeechSeconds;
-            var regionWeight = regionSeconds / totalSpeechSeconds;
 
             using var processor = BuildProcessor(
                 recognitionFactory,
@@ -204,16 +228,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 nativeProgress =>
                 {
                     var chunkProgress = Math.Clamp(nativeProgress / 100d, 0, 1);
-                    progress.Report(0.1 + (0.9 * (regionBase + (regionWeight * chunkProgress))));
+                    progress.Report(0.1 + (0.9 * (region.ProgressOffset + (region.ProgressWeight * chunkProgress))));
                 },
                 region.Start,
-                duration);
+                region.Duration);
 
             var chunk = await ProcessAsync(processor, audioPath, cancellationToken).ConfigureAwait(false);
             transcript.Append(chunk.Transcript);
             detectedLanguage ??= chunk.DetectedLanguage;
-            completedSeconds += regionSeconds;
-            progress.Report(0.1 + (0.9 * (completedSeconds / totalSpeechSeconds)));
+            progress.Report(0.1 + (0.9 * (region.ProgressOffset + region.ProgressWeight)));
         }
 
         progress.Report(1);
@@ -226,8 +249,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         ProcessingDevice device)
     {
         if (factory is not null &&
-            string.Equals(factoryModelPath, modelPath, StringComparison.Ordinal) &&
-            factoryDevice == device)
+            !RequiresRecognitionFactoryReload(factoryModelPath, factoryDevice, modelPath, device))
         {
             return factory;
         }
@@ -264,38 +286,39 @@ public sealed class WhisperRecognitionService : IRecognitionService
         TimeSpan? offset = null,
         TimeSpan? duration = null)
     {
+        var plan = CreateProcessorPlan(options, offset, duration);
         var builder = recognitionFactory.CreateBuilder();
 
-        if (string.Equals(options.LanguageCode, "auto", StringComparison.OrdinalIgnoreCase))
+        if (plan.DetectLanguage)
         {
             builder.WithLanguageDetection();
         }
         else
         {
-            builder.WithLanguage(options.LanguageCode);
+            builder.WithLanguage(plan.LanguageCode!);
         }
 
-        if (options.Task == TranscriptionTask.TranslateToEnglish)
+        if (plan.Translate)
         {
             builder.WithTranslate();
         }
 
-        if (!string.IsNullOrWhiteSpace(options.Prompt))
+        if (plan.Prompt is not null)
         {
-            builder.WithPrompt(options.Prompt);
+            builder.WithPrompt(plan.Prompt);
         }
 
-        if (options.CpuThreads is int threads)
+        if (plan.Threads is int threads)
         {
             builder.WithThreads(threads);
         }
 
-        if (offset is TimeSpan start)
+        if (plan.Offset is TimeSpan start)
         {
             builder.WithOffset(start);
         }
 
-        if (duration is TimeSpan length)
+        if (plan.Duration is TimeSpan length)
         {
             builder.WithDuration(length);
         }
@@ -339,30 +362,64 @@ public sealed class WhisperRecognitionService : IRecognitionService
         gate.Dispose();
     }
 
-    private sealed class MonotonicProgress
+    internal static WhisperProcessorPlan CreateProcessorPlan(
+        RecognitionOptions options,
+        TimeSpan? offset = null,
+        TimeSpan? duration = null)
     {
-        private readonly IProgress<double>? target;
-        private readonly object sync = new();
-        private double lastValue;
-
-        public MonotonicProgress(IProgress<double>? target)
-        {
-            this.target = target;
-        }
-
-        public void Report(double value)
-        {
-            value = Math.Clamp(value, 0, 1);
-            lock (sync)
-            {
-                if (value < lastValue)
-                {
-                    return;
-                }
-
-                lastValue = value;
-                target?.Report(value);
-            }
-        }
+        var detectLanguage = string.Equals(options.LanguageCode, "auto", StringComparison.OrdinalIgnoreCase);
+        return new WhisperProcessorPlan(
+            detectLanguage,
+            detectLanguage ? null : options.LanguageCode,
+            options.Task == TranscriptionTask.TranslateToEnglish,
+            string.IsNullOrWhiteSpace(options.Prompt) ? null : options.Prompt,
+            options.CpuThreads,
+            offset,
+            duration);
     }
+
+    internal static IReadOnlyList<VadRegionPlan> CreateVadRegionPlan(IReadOnlyList<VadSegmentData> regions)
+    {
+        var valid = new System.Collections.Generic.List<(TimeSpan Start, TimeSpan Duration)>();
+        double totalSeconds = 0;
+        foreach (var region in regions)
+        {
+            var duration = region.End - region.Start;
+            if (duration <= TimeSpan.Zero)
+            {
+                continue;
+            }
+
+            valid.Add((region.Start, duration));
+            totalSeconds += duration.TotalSeconds;
+        }
+
+        if (totalSeconds <= 0)
+        {
+            return [];
+        }
+
+        var plans = new VadRegionPlan[valid.Count];
+        double completedSeconds = 0;
+        for (var i = 0; i < valid.Count; i++)
+        {
+            var region = valid[i];
+            plans[i] = new VadRegionPlan(
+                region.Start,
+                region.Duration,
+                completedSeconds / totalSeconds,
+                region.Duration.TotalSeconds / totalSeconds);
+            completedSeconds += region.Duration.TotalSeconds;
+        }
+
+        return plans;
+    }
+
+    internal static bool RequiresRecognitionFactoryReload(
+        string? loadedModelPath,
+        ProcessingDevice? loadedDevice,
+        string requestedModelPath,
+        ProcessingDevice requestedDevice) =>
+        !string.Equals(loadedModelPath, requestedModelPath, StringComparison.Ordinal) ||
+        loadedDevice != requestedDevice;
 }

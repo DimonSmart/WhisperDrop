@@ -138,6 +138,85 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
+    public void Processor_plan_maps_language_task_prompt_threads_and_chunk_bounds()
+    {
+        var explicitPlan = WhisperRecognitionService.CreateProcessorPlan(
+            new RecognitionOptions
+            {
+                LanguageCode = "es",
+                Task = TranscriptionTask.TranslateToEnglish,
+                Prompt = " C#, .NET ",
+                CpuThreads = 3
+            },
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(5));
+
+        Assert.False(explicitPlan.DetectLanguage);
+        Assert.Equal("es", explicitPlan.LanguageCode);
+        Assert.True(explicitPlan.Translate);
+        Assert.Equal(" C#, .NET ", explicitPlan.Prompt);
+        Assert.Equal(3, explicitPlan.Threads);
+        Assert.Equal(TimeSpan.FromSeconds(2), explicitPlan.Offset);
+        Assert.Equal(TimeSpan.FromSeconds(5), explicitPlan.Duration);
+
+        var autoPlan = WhisperRecognitionService.CreateProcessorPlan(
+            new RecognitionOptions { LanguageCode = "auto", Prompt = "   " });
+
+        Assert.True(autoPlan.DetectLanguage);
+        Assert.Null(autoPlan.LanguageCode);
+        Assert.False(autoPlan.Translate);
+        Assert.Null(autoPlan.Prompt);
+        Assert.Null(autoPlan.Threads);
+    }
+
+    [Fact]
+    public void Factory_reload_policy_ignores_processor_options_and_tracks_model_or_device()
+    {
+        Assert.False(WhisperRecognitionService.RequiresRecognitionFactoryReload(
+            "model.bin", ProcessingDevice.Cpu, "model.bin", ProcessingDevice.Cpu));
+        Assert.True(WhisperRecognitionService.RequiresRecognitionFactoryReload(
+            "model.bin", ProcessingDevice.Cpu, "other.bin", ProcessingDevice.Cpu));
+        Assert.True(WhisperRecognitionService.RequiresRecognitionFactoryReload(
+            "model.bin", ProcessingDevice.Cpu, "model.bin", ProcessingDevice.Auto));
+    }
+
+    [Fact]
+    public void Vad_region_plan_preserves_order_skips_empty_regions_and_weights_progress()
+    {
+        var plans = WhisperRecognitionService.CreateVadRegionPlan(
+        [
+            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)),
+            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5)),
+            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(13))
+        ]);
+
+        Assert.Equal(2, plans.Count);
+        Assert.Equal(TimeSpan.FromSeconds(1), plans[0].Start);
+        Assert.Equal(TimeSpan.FromSeconds(2), plans[0].Duration);
+        Assert.Equal(0, plans[0].ProgressOffset, 6);
+        Assert.Equal(0.25, plans[0].ProgressWeight, 6);
+        Assert.Equal(TimeSpan.FromSeconds(7), plans[1].Start);
+        Assert.Equal(0.25, plans[1].ProgressOffset, 6);
+        Assert.Equal(0.75, plans[1].ProgressWeight, 6);
+
+        Assert.Empty(WhisperRecognitionService.CreateVadRegionPlan([]));
+    }
+
+    [Fact]
+    public void Monotonic_progress_never_moves_back_and_clamps_to_one()
+    {
+        var values = new List<double>();
+        var reporter = new MonotonicProgressReporter(new CollectingProgress(values));
+
+        reporter.Report(0);
+        reporter.Report(0.6);
+        reporter.Report(0.4);
+        reporter.Report(1.4);
+
+        Assert.Equal([0d, 0.6d, 1d], values);
+    }
+
+    [Fact]
     public async Task Translation_rejects_an_english_only_model_before_recognition()
     {
         var recognition = new FakeRecognitionService();
@@ -267,6 +346,11 @@ public sealed class TranscriptionWorkspaceTests
         public void Dispose()
         {
         }
+    }
+
+    private sealed class CollectingProgress(List<double> values) : IProgress<double>
+    {
+        public void Report(double value) => values.Add(value);
     }
 
     private sealed class FakeRuntimeSelector : IWhisperRuntimeSelector
