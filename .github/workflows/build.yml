@@ -44,3 +44,7 @@ jobs:
 
       - name: Test
         run: dotnet test WhisperDrop.sln --configuration Release --no-build --verbosity minimal
+
+      - name: Validate Homebrew Cask syntax
+        if: runner.os == 'Linux'
+        run: ruby -c Casks/whisperdrop.rb
