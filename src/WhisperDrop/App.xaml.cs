@@ -30,6 +30,9 @@ public partial class App : Application
                 services.AddSingleton<ILocalModelInventory, LocalModelInventory>();
                 services.AddSingleton<ISelectedModelDownloader, SelectedModelDownloader>();
                 services.AddSingleton<ISelectedModelDownloadManager, SelectedModelDownloadManager>();
+                services.AddSingleton<IWhisperRuntimeSelector, WhisperRuntimeSelector>();
+                services.AddSingleton<IVadModelDownloader, VadModelDownloader>();
+                services.AddSingleton<IVadModelManager, VadModelManager>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
                 services.AddSingleton<InitialApplicationState>();
                 services.AddSingleton<MainPage>();

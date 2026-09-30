@@ -25,7 +25,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
     {
         if (!File.Exists(paths.SettingsFilePath))
         {
-            return new UserSettings { ModelsFolder = paths.DefaultModelsFolder };
+            return Defaults();
         }
 
         try
@@ -35,11 +35,11 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         }
         catch (IOException)
         {
-            return new UserSettings { ModelsFolder = paths.DefaultModelsFolder };
+            return Defaults();
         }
         catch (JsonException)
         {
-            return new UserSettings { ModelsFolder = paths.DefaultModelsFolder };
+            return Defaults();
         }
     }
 
@@ -64,10 +64,30 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         }
     }
 
-    private UserSettings Normalize(UserSettings? settings) => new()
+    private UserSettings Defaults() => new() { ModelsFolder = paths.DefaultModelsFolder };
+
+    private UserSettings Normalize(UserSettings? settings)
     {
-        ModelsFolder = string.IsNullOrWhiteSpace(settings?.ModelsFolder) ? paths.DefaultModelsFolder : settings.ModelsFolder,
-        SelectedModelId = string.IsNullOrWhiteSpace(settings?.SelectedModelId) ? "base" : settings.SelectedModelId,
-        RecognitionLanguageCode = string.IsNullOrWhiteSpace(settings?.RecognitionLanguageCode) ? "auto" : settings.RecognitionLanguageCode
-    };
+        var task = settings is not null && Enum.IsDefined(typeof(TranscriptionTask), settings.Task)
+            ? settings.Task
+            : TranscriptionTask.Transcribe;
+        var processingDevice = settings is not null && Enum.IsDefined(typeof(ProcessingDevice), settings.ProcessingDevice)
+            ? settings.ProcessingDevice
+            : ProcessingDevice.Auto;
+        var cpuThreads = settings?.CpuThreads is int threads && threads >= 1 && threads <= Environment.ProcessorCount
+            ? threads
+            : null;
+
+        return new UserSettings
+        {
+            ModelsFolder = string.IsNullOrWhiteSpace(settings?.ModelsFolder) ? paths.DefaultModelsFolder : settings.ModelsFolder,
+            SelectedModelId = string.IsNullOrWhiteSpace(settings?.SelectedModelId) ? "base" : settings.SelectedModelId,
+            RecognitionLanguageCode = string.IsNullOrWhiteSpace(settings?.RecognitionLanguageCode) ? "auto" : settings.RecognitionLanguageCode,
+            Task = task,
+            VocabularyContext = settings?.VocabularyContext ?? string.Empty,
+            SkipSilence = settings?.SkipSilence ?? false,
+            ProcessingDevice = processingDevice,
+            CpuThreads = cpuThreads
+        };
+    }
 }
