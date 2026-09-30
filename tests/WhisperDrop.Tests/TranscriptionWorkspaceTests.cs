@@ -124,7 +124,9 @@ public sealed class TranscriptionWorkspaceTests
     {
         var selector = new WhisperRuntimeSelector();
 
-        if (OperatingSystem.IsMacOS())
+        if (OperatingSystem.IsMacOS() &&
+            System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+            System.Runtime.InteropServices.Architecture.Arm64)
         {
             var options = selector.ConfigureBeforeFirstUse(ProcessingDevice.Gpu);
             Assert.True(options.UseGpu);
