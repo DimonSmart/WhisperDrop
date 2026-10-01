@@ -34,3 +34,4 @@ opened.
 | IDD-0004 | Spec | Visual system | Compact dark desktop presentation, semantic visual resources, Transcribe/Models navigation, queue hierarchy, and model-management styling. | — |
 | IDD-0005 | Spec | Release distribution | CI, tag-driven GitHub Releases, Windows/macOS artifacts, checksums, and Homebrew Cask publication. | — |
 | IDD-0006 | Spec | About and application updates | Version display, GitHub update checks, release navigation, and safe Homebrew-based macOS self-update. | — |
+| IDD-0007 | Spec | AI transcript post-processing | Optional Agent Framework correction, raw-result preservation, OpenAI-compatible endpoints, chunking, structured validation, and AI failure semantics. | — |
