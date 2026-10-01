@@ -49,7 +49,8 @@ Return only the requested structured result.
             credential: new ApiKeyCredential(apiKey),
             options: new OpenAIClientOptions
             {
-                Endpoint = endpoint
+                Endpoint = endpoint,
+                NetworkTimeout = TimeSpan.FromMinutes(10)
             });
 
         var agent = chatClient.AsAIAgent(new ChatClientAgentOptions
