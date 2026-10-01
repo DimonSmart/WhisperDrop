@@ -227,6 +227,7 @@ public sealed class SettingsTests : IDisposable
         Assert.DoesNotContain("transcript", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("workspace", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("progress", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ApiKey", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
