@@ -673,8 +673,7 @@
                         <Button
                             Style="{StaticResource SecondaryButtonStyle}"
                             Click="TestAiConnection_Click"
-                            Content="Test connection"
-                            IsEnabled="{x:Bind ViewModel.IsAiConnectionTesting, Mode=OneWay, Converter={StaticResource InverseBooleanConverter}}" />
+                            Content="Test connection" />
                         <TextBlock
                             VerticalAlignment="Center"
                             Style="{StaticResource SecondaryTextStyle}"
