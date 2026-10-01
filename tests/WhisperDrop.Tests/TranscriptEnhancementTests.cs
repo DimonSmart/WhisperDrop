@@ -125,6 +125,25 @@ public sealed class TranscriptEnhancementTests
         Assert.Equal(1d, progressValues[^1]);
     }
 
+    [Theory]
+    [InlineData("not-a-uri")]
+    [InlineData("ftp://localhost/model")]
+    public void Invalid_endpoint_is_rejected_before_agent_creation(string endpoint)
+    {
+        var options = new AiPostProcessingOptions { Endpoint = endpoint };
+
+        Assert.Throws<TranscriptEnhancementException>(() => options.GetValidatedEndpoint());
+    }
+
+    [Fact]
+    public void Equivalent_endpoint_trailing_slashes_normalize_to_the_same_uri()
+    {
+        var first = new AiPostProcessingOptions { Endpoint = "http://localhost:11434/v1" }.GetValidatedEndpoint();
+        var second = new AiPostProcessingOptions { Endpoint = "http://localhost:11434/v1/" }.GetValidatedEndpoint();
+
+        Assert.Equal(first, second);
+    }
+
     [Fact]
     public async Task Failure_does_not_produce_a_partial_result()
     {
