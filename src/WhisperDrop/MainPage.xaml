@@ -53,231 +53,280 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Spacing="{StaticResource SpacingSm}">
-                <TextBlock
-                    Style="{StaticResource CaptionTextStyle}"
-                    FontWeight="SemiBold"
-                    Text="TRANSCRIPTION" />
+            <Grid
+                x:Name="RecognitionSettingsGrid"
+                ColumnSpacing="{StaticResource SpacingMd}"
+                RowSpacing="{StaticResource SpacingSm}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroup x:Name="RecognitionSettingsWidthStates">
+                        <VisualState x:Name="WideRecognitionSettings">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="900" />
+                            </VisualState.StateTriggers>
+                            <VisualState.Setters>
+                                <Setter Target="RecognitionModelPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="RecognitionModelPanel.(Grid.Column)" Value="0" />
+                                <Setter Target="RecognitionModelPanel.(Grid.ColumnSpan)" Value="2" />
+                                <Setter Target="LanguagePanel.(Grid.Row)" Value="0" />
+                                <Setter Target="LanguagePanel.(Grid.Column)" Value="2" />
+                                <Setter Target="LanguagePanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="TaskPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="TaskPanel.(Grid.Column)" Value="3" />
+                                <Setter Target="TaskPanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="SkipSilenceCheckBox.(Grid.Row)" Value="1" />
+                                <Setter Target="SkipSilenceCheckBox.(Grid.Column)" Value="0" />
+                                <Setter Target="SkipSilenceCheckBox.(Grid.ColumnSpan)" Value="2" />
+                                <Setter Target="AdvancedSettingsExpander.(Grid.Row)" Value="1" />
+                                <Setter Target="AdvancedSettingsExpander.(Grid.Column)" Value="2" />
+                                <Setter Target="AdvancedSettingsExpander.(Grid.ColumnSpan)" Value="2" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
 
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
-                        <Grid ColumnSpacing="{StaticResource SpacingSm}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox
-                                Style="{StaticResource SettingsComboBoxStyle}"
-                                ItemsSource="{x:Bind ViewModel.ModelOptions}"
-                                SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
-                                SelectedValuePath="Id">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid MinWidth="300" ColumnSpacing="{StaticResource SpacingMd}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
+                <StackPanel
+                    x:Name="RecognitionModelPanel"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="4"
+                    MinWidth="0"
+                    Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Recognition model" />
+                    <Grid ColumnSpacing="{StaticResource SpacingSm}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox
+                            MinWidth="0"
+                            Style="{StaticResource SettingsComboBoxStyle}"
+                            ItemsSource="{x:Bind ViewModel.ModelOptions}"
+                            SelectedValue="{x:Bind ViewModel.SelectedModelId, Mode=TwoWay}"
+                            SelectedValuePath="Id">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid MinWidth="0" ColumnSpacing="{StaticResource SpacingMd}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            MinWidth="0"
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource BodyTextStyle}"
+                                            Text="{Binding DisplayName}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="{StaticResource SpacingXs}"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding InstalledSummary, Converter={StaticResource StringToVisibilityConverter}}">
+                                            <FontIcon
+                                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                FontSize="12"
+                                                Foreground="{StaticResource SuccessBrush}"
+                                                Glyph="&#xE8FB;" />
                                             <TextBlock
                                                 VerticalAlignment="Center"
-                                                Style="{StaticResource BodyTextStyle}"
-                                                Text="{Binding DisplayName}" />
-                                            <StackPanel
-                                                Grid.Column="1"
-                                                Orientation="Horizontal"
-                                                Spacing="{StaticResource SpacingXs}"
-                                                VerticalAlignment="Center"
-                                                Visibility="{Binding InstalledSummary, Converter={StaticResource StringToVisibilityConverter}}">
-                                                <FontIcon
-                                                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                                    FontSize="12"
-                                                    Foreground="{StaticResource SuccessBrush}"
-                                                    Glyph="&#xE8FB;" />
-                                                <TextBlock
-                                                    VerticalAlignment="Center"
-                                                    FontSize="12"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{StaticResource SuccessBrush}"
-                                                    Text="{Binding InstalledSummary}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <Button
-                                Grid.Column="1"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Click="DownloadSelectedModel_Click"
-                                Content="Download"
-                                IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}" />
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SuccessBrush}"
+                                                Text="{Binding InstalledSummary}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button
+                            Grid.Column="1"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="DownloadSelectedModel_Click"
+                            Content="Download"
+                            IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.SelectedModelDownloadState, Mode=OneWay, Converter={StaticResource SelectedModelDownloadStateToVisibilityConverter}, ConverterParameter=DownloadAction}" />
+                    </Grid>
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind ViewModel.SelectedModelDownloadState, Mode=OneWay, Converter={StaticResource SelectedModelDownloadStateToVisibilityConverter}, ConverterParameter=DetailedStatus}" />
+                </StackPanel>
+
+                <StackPanel
+                    x:Name="LanguagePanel"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
+                    MinWidth="0"
+                    Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Language" />
+                    <ComboBox
+                        MinWidth="0"
+                        Style="{StaticResource SettingsComboBoxStyle}"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
+                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
+                        SelectedValuePath="Code" />
+                </StackPanel>
+
+                <StackPanel
+                    x:Name="TaskPanel"
+                    Grid.Row="1"
+                    Grid.Column="2"
+                    Grid.ColumnSpan="2"
+                    MinWidth="0"
+                    Spacing="{StaticResource SpacingXs}">
+                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Task" />
+                    <ComboBox
+                        MinWidth="0"
+                        Style="{StaticResource SettingsComboBoxStyle}"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{x:Bind ViewModel.TaskOptions}"
+                        SelectedValue="{x:Bind ViewModel.SelectedTranscriptionTask, Mode=TwoWay}"
+                        SelectedValuePath="Value" />
+                </StackPanel>
+
+                <CheckBox
+                    x:Name="SkipSilenceCheckBox"
+                    Grid.Row="2"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="4"
+                    VerticalAlignment="Top"
+                    Content="Skip silence"
+                    IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
+                    Click="SkipSilence_Click" />
+
+                <Expander
+                    x:Name="AdvancedSettingsExpander"
+                    Grid.Row="3"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="4"
+                    Header="Advanced">
+                    <StackPanel Padding="0,8,0,0" Spacing="{StaticResource SpacingSm}">
+                        <StackPanel Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
+                            <TextBox
+                                Style="{StaticResource SettingsTextBoxStyle}"
+                                PlaceholderText="C#, .NET, WhisperDrop..."
+                                Text="{x:Bind ViewModel.VocabularyContext, Mode=TwoWay}" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Text="Optional words, names and terms to help recognition." />
+                        </StackPanel>
+                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Processing device" />
+                                <ComboBox
+                                    MinWidth="0"
+                                    Style="{StaticResource SettingsComboBoxStyle}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.ProcessingDeviceOptions}"
+                                    SelectedValue="{x:Bind ViewModel.ProcessingDevice, Mode=TwoWay}"
+                                    SelectedValuePath="Value" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextStyle}"
+                                    Text="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay}"
+                                    TextWrapping="Wrap"
+                                    Visibility="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
+                                <ComboBox
+                                    MinWidth="0"
+                                    Style="{StaticResource SettingsComboBoxStyle}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.CpuThreadOptions}"
+                                    SelectedValue="{x:Bind ViewModel.CpuThreads, Mode=TwoWay}"
+                                    SelectedValuePath="Value" />
+                            </StackPanel>
                         </Grid>
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Language" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-                            SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
-                            SelectedValuePath="Code" />
-                    </StackPanel>
-                </Grid>
-
-                <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Task" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.TaskOptions}"
-                            SelectedValue="{x:Bind ViewModel.SelectedTranscriptionTask, Mode=TwoWay}"
-                            SelectedValuePath="Value" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
-                        <TextBox
-                            Style="{StaticResource SettingsTextBoxStyle}"
-                            PlaceholderText="C#, .NET, WhisperDrop..."
-                            Text="{x:Bind ViewModel.VocabularyContext, Mode=TwoWay}" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="Optional words, names and terms to help recognition." />
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock
-                    Margin="0,2,0,0"
-                    Style="{StaticResource CaptionTextStyle}"
-                    FontWeight="SemiBold"
-                    Text="PROCESSING" />
-
-                <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Voice detection" />
-                        <CheckBox
-                            x:Name="SkipSilenceCheckBox"
-                            Content="Skip silence"
-                            IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
-                            Click="SkipSilence_Click" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Processing device" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.ProcessingDeviceOptions}"
-                            SelectedValue="{x:Bind ViewModel.ProcessingDevice, Mode=TwoWay}"
-                            SelectedValuePath="Value" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay}"
-                            Visibility="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-                    </StackPanel>
-                </Grid>
-
-                <Expander Header="Advanced">
-                    <StackPanel
-                        Padding="0,8,0,0"
-                        MaxWidth="360"
-                        HorizontalAlignment="Left"
-                        Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
-                        <ComboBox
-                            Style="{StaticResource SettingsComboBoxStyle}"
-                            DisplayMemberPath="DisplayName"
-                            ItemsSource="{x:Bind ViewModel.CpuThreadOptions}"
-                            SelectedValue="{x:Bind ViewModel.CpuThreads, Mode=TwoWay}"
-                            SelectedValuePath="Value" />
                     </StackPanel>
                 </Expander>
-            </StackPanel>
+            </Grid>
 
-            <Border
-                x:Name="DropZone"
-                Grid.Row="1"
-                Style="{StaticResource DropZoneStyle}"
-                AllowDrop="True"
-                DragLeave="DropZone_DragLeave"
-                DragOver="DropZone_DragOver"
-                Drop="DropZone_Drop">
-                <StackPanel
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="{StaticResource SpacingSm}">
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource SectionTitleTextStyle}"
-                        Text="Drop audio or video files here" />
-                    <TextBlock
-                        x:Name="DropFeedback"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource SecondaryTextStyle}"
-                        Text="Common audio and video formats" />
-                    <Button
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Click="AddFiles_Click"
-                        ToolTipService.ToolTip="Choose audio or video files">
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
-                            <SymbolIcon Symbol="Add" />
-                            <TextBlock Text="Add files" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-
-            <StackPanel Grid.Row="2" Spacing="{StaticResource SpacingXs}">
-                <InfoBar
-                    x:Name="UnsupportedFormatInfo"
-                    IsOpen="False"
-                    Severity="Warning" />
+            <StackPanel Grid.Row="1" Spacing="{StaticResource SpacingXs}">
+                <InfoBar x:Name="UnsupportedFormatInfo" IsOpen="False" Severity="Warning" />
                 <InfoBar
                     IsOpen="{x:Bind ViewModel.HasTranscriptionGuidance, Mode=OneWay}"
                     Message="{x:Bind ViewModel.TranscriptionGuidance, Mode=OneWay}"
                     Severity="Warning" />
             </StackPanel>
 
-            <Grid Grid.Row="3" ColumnSpacing="{StaticResource SpacingMd}">
+            <Grid
+                x:Name="FilesToolbar"
+                Grid.Row="2"
+                ColumnSpacing="{StaticResource SpacingMd}"
+                RowSpacing="{StaticResource SpacingSm}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroup x:Name="FilesToolbarWidthStates">
+                        <VisualState x:Name="WideFilesToolbar">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="760" />
+                            </VisualState.StateTriggers>
+                            <VisualState.Setters>
+                                <Setter Target="FilesTitle.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="FileActionsPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="FileActionsPanel.(Grid.Column)" Value="1" />
+                                <Setter Target="FileActionsPanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="FileActionsPanel.HorizontalAlignment" Value="Right" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
                 <TextBlock
+                    x:Name="FilesTitle"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
                     VerticalAlignment="Center"
                     Style="{StaticResource SectionTitleTextStyle}"
                     Text="{x:Bind ViewModel.QueueRows.Count, Mode=OneWay, Converter={StaticResource QueueCountToLabelConverter}}" />
-
                 <StackPanel
-                    Grid.Column="1"
+                    x:Name="FileActionsPanel"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
+                    HorizontalAlignment="Left"
                     Orientation="Horizontal"
                     Spacing="{StaticResource SpacingSm}">
+                    <Button
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="AddFiles_Click"
+                        ToolTipService.ToolTip="Choose audio or video files">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
+                            <SymbolIcon Symbol="Add" />
+                            <TextBlock Text="Add files" />
+                        </StackPanel>
+                    </Button>
                     <Button
                         Style="{StaticResource SubtleButtonStyle}"
                         Click="CopyAll_Click"
@@ -301,18 +350,40 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="4">
-                <TextBlock
-                    x:Name="EmptyState"
-                    Margin="2,8,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Style="{StaticResource SecondaryTextStyle}"
-                    Text="No files queued yet." />
+            <Border
+                x:Name="FileQueueWorkspace"
+                Grid.Row="3"
+                Style="{StaticResource FileQueueWorkspaceStyle}"
+                AllowDrop="True"
+                DragLeave="FileQueueWorkspace_DragLeave"
+                DragOver="FileQueueWorkspace_DragOver"
+                Drop="FileQueueWorkspace_Drop">
+                <Grid>
+                    <StackPanel
+                        x:Name="EmptyState"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="{StaticResource SpacingXs}">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource SectionTitleTextStyle}"
+                            Text="Drop audio or video files here"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource SecondaryTextStyle}"
+                            Text="Common audio and video formats"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
 
                 <ListView
                     x:Name="QueueList"
                     AllowDrop="True"
+                    DragLeave="FileQueueWorkspace_DragLeave"
+                    DragOver="FileQueueWorkspace_DragOver"
+                    Drop="FileQueueWorkspace_Drop"
                     Background="Transparent"
                     BorderThickness="0"
                     CanDragItems="{x:Bind ViewModel.CanReorderQueue, Mode=OneWay}"
@@ -462,7 +533,8 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-            </Grid>
+                </Grid>
+            </Border>
         </Grid>
 
         <ScrollViewer

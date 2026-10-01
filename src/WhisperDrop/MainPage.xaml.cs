@@ -86,28 +86,39 @@ public sealed partial class MainPage : Page
         ViewModel.SelectedTabIndex = InitialApplicationState.ModelsTabIndex;
     }
 
-    private void DropZone_DragOver(object sender, DragEventArgs e)
+    private void FileQueueWorkspace_DragOver(object sender, DragEventArgs e)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
-            e.AcceptedOperation = DataPackageOperation.None;
-            SetDropZoneActive(false);
             return;
         }
 
         e.AcceptedOperation = DataPackageOperation.Copy;
-        DropFeedback.Text = "Drop to add audio or video files";
-        SetDropZoneActive(true);
+        SetFileQueueWorkspaceActive(true);
+        e.Handled = true;
     }
 
-    private void DropZone_DragLeave(object sender, DragEventArgs e)
+    private void FileQueueWorkspace_DragLeave(object sender, DragEventArgs e)
     {
-        ResetDropZone();
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        SetFileQueueWorkspaceActive(false);
+        e.Handled = true;
     }
 
-    private async void DropZone_Drop(object sender, DragEventArgs e)
+    private async void FileQueueWorkspace_Drop(object sender, DragEventArgs e)
     {
-        ResetDropZone();
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        SetFileQueueWorkspaceActive(false);
+        e.AcceptedOperation = DataPackageOperation.Copy;
+        e.Handled = true;
         var items = await e.DataView.GetStorageItemsAsync().AsTask();
         AddFiles(items.OfType<StorageFile>().Select(file => file.Path));
     }
@@ -629,16 +640,10 @@ public sealed partial class MainPage : Page
         QueueList.Visibility = ViewModel.IsTranscribeWorkspaceEmpty ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    private void SetDropZoneActive(bool isActive)
+    private void SetFileQueueWorkspaceActive(bool isActive)
     {
-        DropZone.BorderBrush = GetBrush(isActive ? "AccentBrush" : "ControlBorderBrush");
-        DropZone.Background = GetBrush(isActive ? "AccentSubtleBrush" : "DropZoneBackgroundBrush");
-    }
-
-    private void ResetDropZone()
-    {
-        DropFeedback.Text = "Common audio and video formats";
-        SetDropZoneActive(false);
+        FileQueueWorkspace.BorderBrush = GetBrush(isActive ? "AccentBrush" : "ControlBorderBrush");
+        FileQueueWorkspace.Background = GetBrush(isActive ? "AccentSubtleBrush" : "FileQueueWorkspaceBackgroundBrush");
     }
 
     private static Style GetStyle(string key) => (Style)Application.Current.Resources[key];

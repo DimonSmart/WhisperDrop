@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using WhisperDrop.Models;
 
 namespace WhisperDrop.UI;
 
@@ -58,6 +59,27 @@ public sealed class StringToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
         string.IsNullOrWhiteSpace(value as string) ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+public sealed class SelectedModelDownloadStateToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not SelectedModelDownloadState state)
+        {
+            return Visibility.Collapsed;
+        }
+
+        return (parameter as string) switch
+        {
+            "DownloadAction" when state is SelectedModelDownloadState.NotDownloaded or SelectedModelDownloadState.Error => Visibility.Visible,
+            "DetailedStatus" when state is SelectedModelDownloadState.Downloading or SelectedModelDownloadState.Error => Visibility.Visible,
+            _ => Visibility.Collapsed
+        };
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();
