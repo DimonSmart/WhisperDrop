@@ -28,10 +28,10 @@ opened.
 
 | Document | Role | Area | Notes | Replaces |
 | --- | --- | --- | --- | --- |
-| IDD-0001 | Spec | Product overview and privacy | Local desktop transcription, supported platforms, privacy, distribution, and session-data boundaries. | — |
-| IDD-0002 | Spec | Transcription workspace | File queue, ordering, sequential transcription, language display, previews, and clipboard results. | — |
+| IDD-0001 | Spec | Product overview and privacy | Local desktop transcription, bundled local media decoding, supported platforms, privacy, distribution, and session-data boundaries. | — |
+| IDD-0002 | Spec | Transcription workspace | Audio/video input, media preparation, queue ordering, sequential transcription, language display, previews, and clipboard results. | — |
 | IDD-0003 | Spec | Recognition and models | Recognition choices on Transcribe; local model storage, inventory, sizes, explicit downloads, deletion, availability, and persistent settings. | — |
 | IDD-0004 | Spec | Visual system | Compact dark desktop presentation, semantic visual resources, Transcribe/Models navigation, queue hierarchy, and model-management styling. | — |
-| IDD-0005 | Spec | Release distribution | CI, tag-driven GitHub Releases, Windows/macOS artifacts, checksums, and Homebrew Cask publication. | — |
+| IDD-0005 | Spec | Release distribution | CI, tag-driven GitHub Releases, Windows/macOS artifacts, bundled native media/Whisper runtimes, checksums, and Homebrew Cask publication. | — |
 | IDD-0006 | Spec | About and application updates | Version display, GitHub update checks, release navigation, and safe Homebrew-based macOS self-update. | — |
 | IDD-0007 | Spec | AI transcript post-processing | Optional Agent Framework correction, raw-result preservation, OpenAI-compatible endpoints, chunking, structured validation, and AI failure semantics. | — |
