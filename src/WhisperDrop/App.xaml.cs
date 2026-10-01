@@ -35,6 +35,9 @@ public partial class App : Application
                 services.AddSingleton<IVadModelDownloader, VadModelDownloader>();
                 services.AddSingleton<IVadModelManager, VadModelManager>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
+                services.AddSingleton<TranscriptChunker>();
+                services.AddSingleton<ITranscriptEnhancementAgentFactory, OpenAiTranscriptEnhancementAgentFactory>();
+                services.AddSingleton<ITranscriptEnhancementService, TranscriptEnhancementService>();
                 services.AddSingleton<IApplicationVersionProvider>(_ => new ApplicationVersionProvider(typeof(App).Assembly));
                 services.AddSingleton<IUpdateCheckService, GitHubUpdateCheckService>();
                 services.AddSingleton<IProcessExecutor, ProcessExecutor>();
