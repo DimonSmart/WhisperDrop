@@ -28,6 +28,12 @@ public sealed class SettingsTests : IDisposable
         Assert.False(settings.SkipSilence);
         Assert.Equal(ProcessingDevice.Auto, settings.ProcessingDevice);
         Assert.Null(settings.CpuThreads);
+        Assert.False(settings.AiPostProcessing.Enabled);
+        Assert.Equal(AiProviderPreset.Ollama, settings.AiPostProcessing.Provider);
+        Assert.Equal("http://localhost:11434/v1/", settings.AiPostProcessing.Endpoint);
+        Assert.Equal("gpt-oss:20b", settings.AiPostProcessing.Model);
+        Assert.Equal(string.Empty, settings.AiPostProcessing.Instructions);
+        Assert.Null(settings.AiPostProcessing.ContextSize);
     }
 
     [Fact]
@@ -46,7 +52,16 @@ public sealed class SettingsTests : IDisposable
             VocabularyContext = "C#, .NET, WhisperDrop",
             SkipSilence = true,
             ProcessingDevice = ProcessingDevice.Cpu,
-            CpuThreads = 2
+            CpuThreads = 2,
+            AiPostProcessing = new AiPostProcessingSettings
+            {
+                Enabled = true,
+                Provider = AiProviderPreset.CustomOpenAiCompatible,
+                Endpoint = "https://example.com/v1",
+                Model = "local-model",
+                Instructions = "Preserve terminology.",
+                ContextSize = 16384
+            }
         });
 
         var loaded = store.Load();
@@ -58,6 +73,12 @@ public sealed class SettingsTests : IDisposable
         Assert.True(loaded.SkipSilence);
         Assert.Equal(ProcessingDevice.Cpu, loaded.ProcessingDevice);
         Assert.Equal(Environment.ProcessorCount >= 2 ? (int?)2 : null, loaded.CpuThreads);
+        Assert.True(loaded.AiPostProcessing.Enabled);
+        Assert.Equal(AiProviderPreset.CustomOpenAiCompatible, loaded.AiPostProcessing.Provider);
+        Assert.Equal("https://example.com/v1/", loaded.AiPostProcessing.Endpoint);
+        Assert.Equal("local-model", loaded.AiPostProcessing.Model);
+        Assert.Equal("Preserve terminology.", loaded.AiPostProcessing.Instructions);
+        Assert.Equal(16384, loaded.AiPostProcessing.ContextSize);
         Assert.DoesNotContain(Directory.EnumerateFiles(root), path => Path.GetFileName(path).Contains(".tmp", StringComparison.Ordinal));
     }
 
@@ -79,6 +100,8 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
         Assert.False(loaded.SkipSilence);
         Assert.Null(loaded.CpuThreads);
+        Assert.False(loaded.AiPostProcessing.Enabled);
+        Assert.Equal(AiProviderPreset.Ollama, loaded.AiPostProcessing.Provider);
     }
 
     [Fact]
