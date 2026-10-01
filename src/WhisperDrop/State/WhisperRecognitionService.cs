@@ -9,7 +9,26 @@ using WhisperDrop.Settings;
 
 namespace WhisperDrop.State;
 
-public sealed record RecognitionResult(string Transcript, string? DetectedLanguage);
+public sealed record RecognitionSegment(
+    int Id,
+    TimeSpan Start,
+    TimeSpan End,
+    string Text,
+    float? Probability,
+    float? MinProbability,
+    float? MaxProbability,
+    float? NoSpeechProbability);
+
+public sealed record RecognitionResult(
+    string Transcript,
+    string? DetectedLanguage,
+    IReadOnlyList<RecognitionSegment> Segments)
+{
+    public RecognitionResult(string transcript, string? detectedLanguage)
+        : this(transcript, detectedLanguage, [])
+    {
+    }
+}
 
 internal sealed record WhisperProcessorPlan(
     bool DetectLanguage,
@@ -217,6 +236,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
         var recognitionFactory = EnsureRecognitionFactory(modelPath, factoryOptions, device);
         var transcript = new StringBuilder();
+        var segments = new List<RecognitionSegment>();
         string? detectedLanguage = null;
 
         foreach (var region in regionPlans)
@@ -234,14 +254,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 region.Start,
                 region.Duration);
 
-            var chunk = await ProcessAsync(processor, audioPath, cancellationToken).ConfigureAwait(false);
+            var chunk = await ProcessAsync(processor, audioPath, cancellationToken, segments.Count).ConfigureAwait(false);
             transcript.Append(chunk.Transcript);
+            segments.AddRange(chunk.Segments);
             detectedLanguage ??= chunk.DetectedLanguage;
             progress.Report(0.1 + (0.9 * (region.ProgressOffset + region.ProgressWeight)));
         }
 
         progress.Report(1);
-        return new RecognitionResult(transcript.ToString(), detectedLanguage);
+        return new RecognitionResult(transcript.ToString(), detectedLanguage, segments);
     }
 
     private WhisperFactory EnsureRecognitionFactory(
@@ -324,6 +345,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             builder.WithDuration(length);
         }
 
+        builder.WithProbabilities();
         builder.WithProgressHandler(nativeProgress => progress(nativeProgress));
         return builder.Build();
     }
@@ -331,20 +353,34 @@ public sealed class WhisperRecognitionService : IRecognitionService
     private static async Task<RecognitionResult> ProcessAsync(
         WhisperProcessor processor,
         string audioPath,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int firstSegmentId = 0)
     {
         using var stream = File.OpenRead(audioPath);
         var transcript = new StringBuilder();
+        var segments = new List<RecognitionSegment>();
         string? detectedLanguage = null;
 
         await foreach (var segment in processor.ProcessAsync(stream, cancellationToken).ConfigureAwait(false))
         {
             transcript.Append(segment.Text);
+            segments.Add(CreateRecognitionSegment(segment, firstSegmentId + segments.Count));
             detectedLanguage ??= segment.Language;
         }
 
-        return new RecognitionResult(transcript.ToString(), detectedLanguage);
+        return new RecognitionResult(transcript.ToString(), detectedLanguage, segments);
     }
+
+    internal static RecognitionSegment CreateRecognitionSegment(SegmentData segment, int id) =>
+        new(
+            id,
+            segment.Start,
+            segment.End,
+            segment.Text,
+            segment.Probability,
+            segment.MinProbability,
+            segment.MaxProbability,
+            segment.NoSpeechProbability);
 
     public void UnloadModel()
     {
