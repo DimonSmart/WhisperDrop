@@ -7,6 +7,7 @@
     <ui:StatusToGlyphConverter x:Key="StatusToGlyphConverter" />
     <ui:StatusEqualsVisibilityConverter x:Key="StatusEqualsVisibilityConverter" />
     <ui:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    <ui:SelectedModelDownloadStateToVisibilityConverter x:Key="SelectedModelDownloadStateToVisibilityConverter" />
     <ui:ProgressTextToDoubleConverter x:Key="ProgressTextToDoubleConverter" />
     <ui:IndexToVisibilityConverter x:Key="IndexToVisibilityConverter" />
     <ui:IndexEqualsConverter x:Key="IndexEqualsConverter" />
