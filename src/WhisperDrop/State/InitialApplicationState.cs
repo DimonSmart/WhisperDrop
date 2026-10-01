@@ -23,6 +23,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
+    private readonly ITranscriptEnhancementService transcriptEnhancementService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
     private readonly IVadModelManager vadModelManager;
@@ -35,6 +36,9 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private double? selectedModelDownloadProgress;
     private bool isBatchActive;
     private string? transcriptionGuidance;
+    private string aiApiKey = string.Empty;
+    private string? aiConnectionStatus;
+    private bool isAiConnectionTesting;
 
     public InitialApplicationState(
         IUserSettingsStore settingsStore,
@@ -43,6 +47,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ISelectedModelAvailability availability,
         ISelectedModelDownloadManager? downloadManager = null,
         IRecognitionService? recognitionService = null,
+        ITranscriptEnhancementService? transcriptEnhancementService = null,
         ILocalModelInventory? localModelInventory = null,
         IVadModelManager? vadModelManager = null,
         IWhisperRuntimeSelector? runtimeSelector = null)
@@ -54,6 +59,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         this.runtimeSelector = runtimeSelector ?? new WhisperRuntimeSelector();
         this.vadModelManager = vadModelManager ?? new VadModelManager(new ApplicationPaths(), new VadModelDownloader());
         this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector, this.vadModelManager);
+        this.transcriptEnhancementService = transcriptEnhancementService ?? new UnavailableTranscriptEnhancementService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
         this.languageCatalog = languageCatalog;
 
@@ -76,6 +82,20 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             .. Enumerable.Range(1, Math.Max(1, Environment.ProcessorCount))
                 .Select(value => new CpuThreadsOption(value, value.ToString()))
         ];
+        AiProviderOptions =
+        [
+            new(AiProviderPreset.Ollama, "Ollama"),
+            new(AiProviderPreset.CustomOpenAiCompatible, "Custom OpenAI-compatible")
+        ];
+        AiContextSizeOptions =
+        [
+            new(null, "Auto"),
+            new(4096, "4096"),
+            new(8192, "8192"),
+            new(16384, "16384"),
+            new(32768, "32768")
+        ];
+        aiApiKey = settings.AiPostProcessing.Provider == AiProviderPreset.Ollama ? "ollama" : string.Empty;
 
         RefreshInstalledModels();
         ReevaluateSelectedModel();
@@ -98,6 +118,10 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public IReadOnlyList<ProcessingDeviceOption> ProcessingDeviceOptions { get; }
 
     public IReadOnlyList<CpuThreadsOption> CpuThreadOptions { get; }
+
+    public IReadOnlyList<AiProviderOption> AiProviderOptions { get; }
+
+    public IReadOnlyList<AiContextSizeOption> AiContextSizeOptions { get; }
 
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
 
@@ -185,6 +209,86 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         get => settings.CpuThreads;
         set => UpdateSettings(settings with { CpuThreads = value }, nameof(CpuThreads));
+    }
+
+    public bool AiPostProcessingEnabled
+    {
+        get => settings.AiPostProcessing.Enabled;
+        set => UpdateAiSettings(settings.AiPostProcessing with { Enabled = value }, nameof(AiPostProcessingEnabled));
+    }
+
+    public AiProviderPreset AiProvider
+    {
+        get => settings.AiPostProcessing.Provider;
+        set
+        {
+            var updated = settings.AiPostProcessing with { Provider = value };
+            if (value == AiProviderPreset.Ollama)
+            {
+                updated = updated with { Endpoint = "http://localhost:11434/v1/" };
+                if (string.IsNullOrWhiteSpace(aiApiKey))
+                {
+                    aiApiKey = "ollama";
+                    OnPropertyChanged(nameof(AiApiKey));
+                }
+            }
+            else if (aiApiKey == "ollama")
+            {
+                aiApiKey = string.Empty;
+                OnPropertyChanged(nameof(AiApiKey));
+            }
+
+            UpdateAiSettings(updated, nameof(AiProvider));
+        }
+    }
+
+    public string AiEndpoint
+    {
+        get => settings.AiPostProcessing.Endpoint;
+        set => UpdateAiSettings(settings.AiPostProcessing with { Endpoint = value ?? string.Empty }, nameof(AiEndpoint));
+    }
+
+    public string AiModel
+    {
+        get => settings.AiPostProcessing.Model;
+        set => UpdateAiSettings(settings.AiPostProcessing with { Model = value ?? string.Empty }, nameof(AiModel));
+    }
+
+    public string AiInstructions
+    {
+        get => settings.AiPostProcessing.Instructions;
+        set => UpdateAiSettings(settings.AiPostProcessing with { Instructions = value ?? string.Empty }, nameof(AiInstructions));
+    }
+
+    public int? AiContextSize
+    {
+        get => settings.AiPostProcessing.ContextSize;
+        set => UpdateAiSettings(settings.AiPostProcessing with { ContextSize = value }, nameof(AiContextSize));
+    }
+
+    public string AiApiKey
+    {
+        get => aiApiKey;
+        set => SetField(ref aiApiKey, value ?? string.Empty);
+    }
+
+    public string? AiRemoteEndpointWarning =>
+        AiPostProcessingOptions.IsLoopbackEndpoint(AiEndpoint)
+            ? null
+            : $"Transcript text will be sent to: {AiEndpoint}";
+
+    public bool HasAiRemoteEndpointWarning => AiRemoteEndpointWarning is not null;
+
+    public string? AiConnectionStatus
+    {
+        get => aiConnectionStatus;
+        private set => SetField(ref aiConnectionStatus, value);
+    }
+
+    public bool IsAiConnectionTesting
+    {
+        get => isAiConnectionTesting;
+        private set => SetField(ref isAiConnectionTesting, value);
     }
 
     public bool IsVadModelAvailable => vadModelManager.IsAvailable;
