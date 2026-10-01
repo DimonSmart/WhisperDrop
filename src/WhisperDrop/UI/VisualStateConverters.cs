@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
@@ -11,9 +12,9 @@ public sealed class StatusToBrushConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language) =>
         GetBrush((value as string) switch
         {
-            "Transcribing" => "AccentBrush",
+            "Transcribing" or "Improving" => "AccentBrush",
             "Completed" => "SuccessBrush",
-            "Error" => "ErrorBrush",
+            "Error" or "AI failed" => "ErrorBrush",
             _ => "MutedTextBrush"
         });
 
@@ -28,9 +29,9 @@ public sealed class StatusToGlyphConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language) =>
         (value as string) switch
         {
-            "Transcribing" => "\uE895",
+            "Transcribing" or "Improving" => "\uE895",
             "Completed" => "\uE8FB",
-            "Error" => "\uE783",
+            "Error" or "AI failed" => "\uE783",
             _ => "\uE917"
         };
 
@@ -40,10 +41,14 @@ public sealed class StatusToGlyphConverter : IValueConverter
 
 public sealed class StatusEqualsVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        string.Equals(value as string, parameter as string, StringComparison.Ordinal)
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var status = value as string;
+        var expected = (parameter as string)?.Split('|', StringSplitOptions.RemoveEmptyEntries) ?? [];
+        return expected.Any(item => string.Equals(status, item, StringComparison.Ordinal))
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();
