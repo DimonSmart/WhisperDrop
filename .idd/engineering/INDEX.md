@@ -4,7 +4,7 @@ This index is a compact discovery projection for current Engineering Rules. Full
 
 The `Rule` column contains stable `ENG-NNNN` identifiers only. Resolve each ID to exactly one current `.idd/engineering/ENG-NNNN.rule-*.md` file.
 
-Next ID: ENG-0006
+Next ID: ENG-0007
 
 | Rule | Applicability | Applies when | Summary |
 | --- | --- | --- | --- |
@@ -13,3 +13,4 @@ Next ID: ENG-0006
 | ENG-0003 | Conditional | Settings persistence, project structure, or Whisper integration verification | Use focused JSON settings persistence, minimal project structure, and a separate local-model integration check. |
 | ENG-0004 | Conditional | CI/CD, releases, versioning, About, or application updates | Treat Git tags as release versions, keep release packaging verified, and isolate GitHub/Homebrew/process update semantics behind services. |
 | ENG-0005 | Conditional | AI transcript post-processing or OpenAI-compatible integration | Use Agent Framework Chat Completions with deterministic chunking, typed validation, raw-result preservation, stateless chunks, and secret/content-safe handling. |
+| ENG-0006 | Conditional | Media input, decoding, normalization, or media runtime packaging | Decode media in-process with the pinned bundled FFmpeg runtime, normalize streamingly to PCM16 WAV, and keep FFmpeg isolated from recognition. |

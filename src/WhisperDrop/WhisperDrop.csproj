@@ -64,6 +64,27 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <ItemGroup>
+    <Content Include="../../THIRD-PARTY-NOTICES.md"
+             Link="THIRD-PARTY-NOTICES.md"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="RemoveBundledFfmpegCliFromOutput" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <_BundledFfmpegCli Include="$(TargetDir)ffmpeg/**/ffmpeg.exe;$(TargetDir)ffmpeg/**/ffprobe.exe;$(TargetDir)ffmpeg/**/ffmpeg;$(TargetDir)ffmpeg/**/ffprobe" />
+    </ItemGroup>
+    <Delete Files="@(_BundledFfmpegCli)" />
+  </Target>
+
+  <Target Name="RemoveBundledFfmpegCliFromPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_PublishedFfmpegCli Include="$(PublishDir)ffmpeg/**/ffmpeg.exe;$(PublishDir)ffmpeg/**/ffprobe.exe;$(PublishDir)ffmpeg/**/ffmpeg;$(PublishDir)ffmpeg/**/ffprobe" />
+    </ItemGroup>
+    <Delete Files="@(_PublishedFfmpegCli)" />
+  </Target>
+
   <Target Name="PrepareWindowsRuntimeAppIcon"
           DependsOnTargets="UnoResizetizeImages"
           Condition="'$(OS)' == 'Windows_NT'">
