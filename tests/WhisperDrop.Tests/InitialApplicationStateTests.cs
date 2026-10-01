@@ -42,11 +42,22 @@ public sealed class InitialApplicationStateTests
     [Theory]
     [InlineData("recording.wav", true)]
     [InlineData("recording.WAV", true)]
-    [InlineData("recording.mp3", false)]
+    [InlineData("recording.mp3", true)]
+    [InlineData("recording.M4A", true)]
+    [InlineData("recording.aac", true)]
+    [InlineData("recording.flac", true)]
+    [InlineData("recording.ogg", true)]
+    [InlineData("recording.opus", true)]
+    [InlineData("recording.mp4", true)]
+    [InlineData("recording.m4v", true)]
+    [InlineData("recording.mov", true)]
+    [InlineData("recording.mkv", true)]
+    [InlineData("recording.webm", true)]
+    [InlineData("recording.exe", false)]
     [InlineData("recording", false)]
-    public void Validates_supported_WAV_files(string path, bool expected)
+    public void Validates_supported_media_files(string path, bool expected)
     {
-        Assert.Equal(expected, InitialApplicationState.IsSupportedAudioFile(path));
+        Assert.Equal(expected, InitialApplicationState.IsSupportedMediaFile(path));
     }
 
     [Fact]
@@ -69,11 +80,11 @@ public sealed class InitialApplicationStateTests
     {
         var state = CreateState();
 
-        var result = state.AddFiles(["speech.mp3"]);
+        var result = state.AddFiles(["speech.exe"]);
 
         Assert.Equal(0, result.AddedCount);
         Assert.Single(result.UnsupportedFiles);
-        Assert.Equal("Only WAV files are supported. Unsupported files were not added.", state.UnsupportedFormatMessage);
+        Assert.Equal("Unsupported file format. Unsupported files were not added.", state.UnsupportedFormatMessage);
         Assert.Empty(state.QueueRows);
     }
 

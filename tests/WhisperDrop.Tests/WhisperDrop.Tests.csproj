@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,9 +13,12 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="8.0.0.1" />
+    <PackageReference Include="DevEnvy.FFmpeg.Binaries.LGPL" Version="8.0.1.4" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/WhisperDrop/Media/*.cs" Link="Media/%(Filename)%(Extension)" />
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionService.cs" Link="State/WhisperRecognitionService.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
@@ -36,5 +40,9 @@
     <Compile Include="../../src/WhisperDrop/Settings/JsonUserSettingsStore.cs" Link="Settings/JsonUserSettingsStore.cs" />
     <Compile Include="../../src/WhisperDrop/Updates/ApplicationUpdates.cs" Link="Updates/ApplicationUpdates.cs" />
     <Compile Include="../../src/WhisperDrop/Updates/ApplicationUpdateServices.cs" Link="Updates/ApplicationUpdateServices.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
