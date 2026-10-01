@@ -173,9 +173,46 @@ public sealed partial class MainPage : Page
 
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: TranscriptionQueueItem { Transcript: not null } item })
+        if (sender is Button { Tag: TranscriptionQueueItem { EffectiveTranscript: not null } item })
         {
-            CopyToClipboard(item.Transcript);
+            CopyToClipboard(item.EffectiveTranscript);
+        }
+    }
+
+    private void CopyRaw_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: TranscriptionQueueItem { RawTranscript: not null } item })
+        {
+            CopyToClipboard(item.RawTranscript);
+        }
+    }
+
+    private async void ImproveTranscript_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: TranscriptionQueueItem item })
+        {
+            return;
+        }
+
+        try
+        {
+            await ViewModel.RunAiPostProcessingAsync(item);
+        }
+        catch (OperationCanceledException)
+        {
+            // The queue row already exposes the cancelled AI state.
+        }
+    }
+
+    private async void TestAiConnection_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await ViewModel.TestAiConnectionAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // No user-visible error is needed for explicit cancellation.
         }
     }
 
