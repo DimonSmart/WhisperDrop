@@ -239,6 +239,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             }
 
             UpdateAiSettings(updated, nameof(AiProvider));
+            OnPropertyChanged(nameof(AiEndpoint));
         }
     }
 
