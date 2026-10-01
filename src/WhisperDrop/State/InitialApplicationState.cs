@@ -543,10 +543,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             return;
         }
 
+        var aiOptions = CreateAiOptionsSnapshot();
         TranscriptionGuidance = null;
         try
         {
-            await TranscribeItemAsync(item, modelPath, options, cancellationToken);
+            var completed = await TranscribeItemAsync(item, modelPath, options, cancellationToken);
+            if (completed && aiOptions.Enabled)
+            {
+                item.AiEnhancementState = AiEnhancementState.Pending;
+                await EnhanceItemAsync(item, aiOptions, cancellationToken);
+            }
         }
         catch (RecognitionConfigurationException exception)
         {
@@ -562,16 +568,23 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             return;
         }
 
+        var aiOptions = CreateAiOptionsSnapshot();
+        var batchItems = QueueRows.ToArray();
         TranscriptionGuidance = null;
         IsBatchActive = true;
         RefreshQueueActionState();
+
         try
         {
-            foreach (var item in QueueRows.ToArray())
+            foreach (var item in batchItems)
             {
                 try
                 {
-                    await TranscribeItemAsync(item, modelPath, options, cancellationToken);
+                    var completed = await TranscribeItemAsync(item, modelPath, options, cancellationToken);
+                    if (completed && aiOptions.Enabled)
+                    {
+                        item.AiEnhancementState = AiEnhancementState.Pending;
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -583,6 +596,20 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                     break;
                 }
             }
+
+            if (aiOptions.Enabled)
+            {
+                recognitionService.UnloadModel();
+                NotifyRuntimeStatusChanged();
+
+                foreach (var item in batchItems.Where(item =>
+                             item.TranscriptionState == TranscriptionState.Completed &&
+                             item.RecognitionResult is not null))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await EnhanceItemAsync(item, aiOptions, cancellationToken);
+                }
+            }
         }
         finally
         {
@@ -591,10 +618,61 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
+    public async Task RunAiPostProcessingAsync(
+        TranscriptionQueueItem item,
+        CancellationToken cancellationToken = default)
+    {
+        if (item.RecognitionResult is null ||
+            item.TranscriptionState != TranscriptionState.Completed)
+        {
+            return;
+        }
+
+        await EnhanceItemAsync(item, CreateAiOptionsSnapshot() with { Enabled = true }, cancellationToken);
+    }
+
+    public async Task TestAiConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        IsAiConnectionTesting = true;
+        AiConnectionStatus = "Testing…";
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+
+        try
+        {
+            await transcriptEnhancementService.TestConnectionAsync(
+                CreateAiOptionsSnapshot() with { Enabled = true },
+                timeout.Token);
+            AiConnectionStatus = "Connected.";
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            AiConnectionStatus = "AI server is not available.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (TranscriptEnhancementException exception)
+        {
+            AiConnectionStatus = exception.Message;
+        }
+        catch
+        {
+            AiConnectionStatus = "The configured AI endpoint or model could not be used.";
+        }
+        finally
+        {
+            IsAiConnectionTesting = false;
+        }
+    }
+
     public string GetCompletedTranscriptsForCopy() =>
         string.Join(
             Environment.NewLine + Environment.NewLine,
-            QueueRows.Where(row => row.CanCopy).Select(row => row.Transcript));
+            QueueRows
+                .Where(row => row.CanCopy)
+                .Select(row => row.EffectiveTranscript!));
 
     public static bool IsSupportedAudioFile(string filePath) =>
         string.Equals(Path.GetExtension(filePath), ".wav", StringComparison.OrdinalIgnoreCase);
@@ -620,6 +698,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             RefreshInstalledModels();
             ReevaluateSelectedModel();
         }
+    }
+
+    private void UpdateAiSettings(AiPostProcessingSettings updated, string propertyName)
+    {
+        UpdateSettings(settings with { AiPostProcessing = updated }, propertyName);
+        AiConnectionStatus = null;
+        OnPropertyChanged(nameof(AiRemoteEndpointWarning));
+        OnPropertyChanged(nameof(HasAiRemoteEndpointWarning));
     }
 
     private void RefreshInstalledModels()
@@ -732,17 +818,31 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         };
     }
 
-    private async Task TranscribeItemAsync(
+    private AiPostProcessingOptions CreateAiOptionsSnapshot() => new()
+    {
+        Enabled = settings.AiPostProcessing.Enabled,
+        Endpoint = settings.AiPostProcessing.Endpoint,
+        Model = settings.AiPostProcessing.Model,
+        Instructions = settings.AiPostProcessing.Instructions,
+        ContextSize = settings.AiPostProcessing.ContextSize,
+        ApiKey = aiApiKey
+    };
+
+    private async Task<bool> TranscribeItemAsync(
         TranscriptionQueueItem item,
         string modelPath,
         RecognitionOptions options,
         CancellationToken cancellationToken)
     {
-        item.Status = "Transcribing";
+        item.TranscriptionState = TranscriptionState.Transcribing;
+        item.AiEnhancementState = AiEnhancementState.NotRequested;
         item.Progress = "0%";
         item.ErrorMessage = null;
-        item.Transcript = null;
+        item.AiEnhancementError = null;
+        item.RecognitionResult = null;
+        item.ProcessedTranscript = null;
         RefreshQueueActionState();
+
         var progress = new Progress<double>(value =>
             item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
 
@@ -754,34 +854,37 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 item.FilePath,
                 progress,
                 cancellationToken);
-            item.Transcript = result.Transcript;
+
+            item.RecognitionResult = result;
             item.Language = options.LanguageCode == "auto"
                 ? result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)
                     ? displayName
                     : result.DetectedLanguage ?? "Auto"
                 : languageCatalog.Get(options.LanguageCode).DisplayName;
             item.Progress = "100%";
-            item.Status = "Completed";
+            item.TranscriptionState = TranscriptionState.Completed;
+            return true;
         }
         catch (OperationCanceledException)
         {
-            item.Status = "Pending";
+            item.TranscriptionState = TranscriptionState.Pending;
             item.Progress = "—";
-            item.Transcript = null;
+            item.RecognitionResult = null;
             throw;
         }
         catch (RecognitionConfigurationException exception)
         {
-            item.Status = "Error";
+            item.TranscriptionState = TranscriptionState.Error;
             item.Progress = "—";
             item.ErrorMessage = exception.Message;
             throw;
         }
         catch (Exception exception)
         {
-            item.Status = "Error";
+            item.TranscriptionState = TranscriptionState.Error;
             item.Progress = "—";
             item.ErrorMessage = exception.Message;
+            return false;
         }
         finally
         {
@@ -792,9 +895,66 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
+    private async Task EnhanceItemAsync(
+        TranscriptionQueueItem item,
+        AiPostProcessingOptions options,
+        CancellationToken cancellationToken)
+    {
+        if (item.RecognitionResult is not { } recognition)
+        {
+            return;
+        }
+
+        item.AiEnhancementState = AiEnhancementState.Improving;
+        item.AiEnhancementError = null;
+        item.Progress = "0%";
+        RefreshQueueActionState();
+
+        var progress = new Progress<double>(value =>
+            item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
+
+        try
+        {
+            var result = await transcriptEnhancementService.EnhanceAsync(
+                recognition,
+                options,
+                progress,
+                cancellationToken);
+
+            item.ProcessedTranscript = result.Transcript;
+            item.Progress = "100%";
+            item.AiEnhancementState = AiEnhancementState.Completed;
+        }
+        catch (OperationCanceledException)
+        {
+            item.Progress = "—";
+            item.AiEnhancementError = "AI processing was cancelled.";
+            item.AiEnhancementState = AiEnhancementState.Cancelled;
+            throw;
+        }
+        catch (TranscriptEnhancementException exception)
+        {
+            item.Progress = "—";
+            item.AiEnhancementError = exception.Message;
+            item.AiEnhancementState = AiEnhancementState.Failed;
+        }
+        catch
+        {
+            item.Progress = "—";
+            item.AiEnhancementError = "The transcript is available, but AI post-processing failed.";
+            item.AiEnhancementState = AiEnhancementState.Failed;
+        }
+        finally
+        {
+            item.NotifyActionState();
+            OnPropertyChanged(nameof(CanCopyAll));
+            RefreshQueueActionState();
+        }
+    }
+
     private void EnsureModelStorageCanChange()
     {
-        if (QueueRows.Any(row => row.Status == "Transcribing"))
+        if (QueueRows.Any(row => row.TranscriptionState == TranscriptionState.Transcribing))
         {
             throw new InvalidOperationException("Models cannot be deleted while transcription is running.");
         }
@@ -804,7 +964,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         foreach (var row in QueueRows)
         {
-            row.CanTranscribe = IsSelectedModelAvailable && !IsBatchActive && row.Status != "Transcribing";
+            row.CanTranscribe =
+                IsSelectedModelAvailable &&
+                !IsBatchActive &&
+                row.TranscriptionState != TranscriptionState.Transcribing &&
+                row.AiEnhancementState != AiEnhancementState.Improving;
+            row.CanEnhance =
+                !IsBatchActive &&
+                row.TranscriptionState == TranscriptionState.Completed &&
+                row.RecognitionResult is not null &&
+                row.AiEnhancementState != AiEnhancementState.Improving;
             row.NotifyActionState();
         }
 
