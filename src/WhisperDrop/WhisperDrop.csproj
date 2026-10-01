@@ -11,12 +11,15 @@
     <ApplicationVersion>1</ApplicationVersion>
     <PublishTrimmed>false</PublishTrimmed>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.23.0" />
     <PackageReference Include="OpenAI" Version="2.14.0" />
+    <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="8.0.0.1" />
+    <PackageReference Include="DevEnvy.FFmpeg.Binaries.LGPL" Version="8.0.1.4" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" GeneratePathProperty="true" />
     <PackageReference Include="Whisper.net.Runtime.Metal" Version="1.9.1" GeneratePathProperty="true" />
