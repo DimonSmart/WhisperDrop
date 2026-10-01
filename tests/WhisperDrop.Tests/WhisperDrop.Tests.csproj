@@ -44,5 +44,8 @@
 
   <ItemGroup>
     <None Include="Fixtures/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/WhisperDrop/Assets/Ffmpeg/win-x64/*.dll"
+          Link="ffmpeg/win-x64/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

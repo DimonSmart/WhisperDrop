@@ -25,6 +25,19 @@ public sealed class FfmpegRuntime : IFfmpegRuntime
     private const int ExpectedAvFormatMajor = 62;
     private const int ExpectedAvUtilMajor = 60;
     private const int ExpectedSwResampleMajor = 6;
+    private static readonly string[] WindowsLibraryLoadOrder =
+    [
+        "libwinpthread-1.dll",
+        "libgcc_s_seh-1.dll",
+        "libstdc++-6.dll",
+        "avutil-60.dll",
+        "swresample-6.dll",
+        "avcodec-62.dll",
+        "avformat-62.dll",
+        "swscale-9.dll",
+        "avfilter-11.dll",
+        "avdevice-62.dll"
+    ];
 
     private readonly object sync = new();
     private FfmpegRuntimeInfo? initialized;
@@ -47,6 +60,7 @@ public sealed class FfmpegRuntime : IFfmpegRuntime
 
             try
             {
+                PreloadWindowsLibraries(librariesPath);
                 DynamicallyLoadedBindings.LibrariesPath = librariesPath;
                 DynamicallyLoadedBindings.ThrowErrorIfFunctionNotFound = true;
                 DynamicallyLoadedBindings.Initialize();
@@ -131,6 +145,17 @@ public sealed class FfmpegRuntime : IFfmpegRuntime
         }
 
         return true;
+    }
+
+    private static void PreloadWindowsLibraries(string librariesPath)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        foreach (var library in WindowsLibraryLoadOrder)
+        {
+            NativeLibrary.Load(Path.Combine(librariesPath, library));
+        }
     }
 
     private static bool HasLibrary(string path, string library)

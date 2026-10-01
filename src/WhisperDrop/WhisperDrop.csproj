@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <WhisperMetalResource Include="$(PkgWhisper_net_Runtime_Metal)\build\ggml-metal.metal" />
+    <FfmpegWindowsRuntimeDependency Include="Assets\Ffmpeg\win-x64\*.dll" />
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-arm64\*.dll"><RuntimeIdentifier>win-arm64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x64\*.dll"><RuntimeIdentifier>win-x64</RuntimeIdentifier></WhisperRuntimeFile>
     <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x86\*.dll"><RuntimeIdentifier>win-x86</RuntimeIdentifier></WhisperRuntimeFile>
@@ -49,6 +50,9 @@
     <Copy SourceFiles="@(WhisperMetalResource)"
           DestinationFolder="$(OutDir)"
           SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)"
+          DestinationFiles="@(FfmpegWindowsRuntimeDependency->'$(OutDir)ffmpeg\win-x64\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyBundledWhisperRuntimeToPublishDirectory" AfterTargets="Publish">
@@ -62,6 +66,9 @@
     <Copy SourceFiles="@(WhisperMetalResource)"
           DestinationFolder="$(PublishDir)"
           SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)"
+          DestinationFiles="@(FfmpegWindowsRuntimeDependency->'$(PublishDir)ffmpeg\win-x64\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>
@@ -71,14 +78,14 @@
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <Target Name="RemoveBundledFfmpegCliFromOutput" AfterTargets="CopyFilesToOutputDirectory">
+  <Target Name="RemoveBundledFfmpegCliFromOutput" AfterTargets="CopyFFmpegBinaries">
     <ItemGroup>
       <_BundledFfmpegCli Include="$(TargetDir)ffmpeg/**/ffmpeg.exe;$(TargetDir)ffmpeg/**/ffprobe.exe;$(TargetDir)ffmpeg/**/ffmpeg;$(TargetDir)ffmpeg/**/ffprobe" />
     </ItemGroup>
     <Delete Files="@(_BundledFfmpegCli)" />
   </Target>
 
-  <Target Name="RemoveBundledFfmpegCliFromPublish" AfterTargets="Publish">
+  <Target Name="RemoveBundledFfmpegCliFromPublish" AfterTargets="PublishFFmpegBinaries">
     <ItemGroup>
       <_PublishedFfmpegCli Include="$(PublishDir)ffmpeg/**/ffmpeg.exe;$(PublishDir)ffmpeg/**/ffprobe.exe;$(PublishDir)ffmpeg/**/ffmpeg;$(PublishDir)ffmpeg/**/ffprobe" />
     </ItemGroup>
