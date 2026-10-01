@@ -18,6 +18,7 @@
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionService.cs" Link="State/WhisperRecognitionService.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
+    <Compile Include="../../src/WhisperDrop/State/TranscriptEnhancement.cs" Link="State/TranscriptEnhancement.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRuntimeSelector.cs" Link="State/WhisperRuntimeSelector.cs" />
     <Compile Include="../../src/WhisperDrop/State/VadModelManager.cs" Link="State/VadModelManager.cs" />
     <Compile Include="../../src/WhisperDrop/State/FileQueueAddResult.cs" Link="State/FileQueueAddResult.cs" />
@@ -27,6 +28,7 @@
     <Compile Include="../../src/WhisperDrop/Models/RecognitionLanguageCatalog.cs" Link="Models/RecognitionLanguageCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionSettingOptions.cs" Link="Models/RecognitionSettingOptions.cs" />
     <Compile Include="../../src/WhisperDrop/Models/TranscriptionQueueItem.cs" Link="Models/TranscriptionQueueItem.cs" />
+    <Compile Include="../../src/WhisperDrop/Models/RecognitionResult.cs" Link="Models/RecognitionResult.cs" />
     <Compile Include="../../src/WhisperDrop/Models/SelectedModelAvailability.cs" Link="Models/SelectedModelAvailability.cs" />
     <Compile Include="../../src/WhisperDrop/Models/SelectedModelDownload.cs" Link="Models/SelectedModelDownload.cs" />
     <Compile Include="../../src/WhisperDrop/Settings/ApplicationPaths.cs" Link="Settings/ApplicationPaths.cs" />
