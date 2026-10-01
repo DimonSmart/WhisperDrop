@@ -12,7 +12,7 @@ public sealed class StatusToBrushConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language) =>
         GetBrush((value as string) switch
         {
-            "Transcribing" or "Improving" => "AccentBrush",
+            "Preparing" or "Transcribing" or "Improving" => "AccentBrush",
             "Completed" => "SuccessBrush",
             "Error" or "AI failed" => "ErrorBrush",
             _ => "MutedTextBrush"
@@ -29,7 +29,7 @@ public sealed class StatusToGlyphConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language) =>
         (value as string) switch
         {
-            "Transcribing" or "Improving" => "\uE895",
+            "Preparing" or "Transcribing" or "Improving" => "\uE895",
             "Completed" => "\uE8FB",
             "Error" or "AI failed" => "\uE783",
             _ => "\uE917"
@@ -110,7 +110,7 @@ public sealed class IndexEqualsConverter : IValueConverter
 public sealed class QueueCountToLabelConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
-        $"Audio files ({(value is int count ? count : 0)})";
+        $"Files ({(value is int count ? count : 0)})";
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();

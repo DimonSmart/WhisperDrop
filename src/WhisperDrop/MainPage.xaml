@@ -233,17 +233,17 @@
                     <TextBlock
                         HorizontalAlignment="Center"
                         Style="{StaticResource SectionTitleTextStyle}"
-                        Text="Drop audio files here" />
+                        Text="Drop audio or video files here" />
                     <TextBlock
                         x:Name="DropFeedback"
                         HorizontalAlignment="Center"
                         Style="{StaticResource SecondaryTextStyle}"
-                        Text="WAV files only" />
+                        Text="Common audio and video formats" />
                     <Button
                         HorizontalAlignment="Center"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Click="AddFiles_Click"
-                        ToolTipService.ToolTip="Choose WAV files">
+                        ToolTipService.ToolTip="Choose audio or video files">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
                             <SymbolIcon Symbol="Add" />
                             <TextBlock Text="Add files" />
@@ -367,14 +367,15 @@
                                             <TextBlock
                                                 Style="{StaticResource CaptionTextStyle}"
                                                 Text="{Binding Progress}"
-                                                Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing|Improving}" />
+                                                Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Preparing|Transcribing|Improving}" />
                                         </StackPanel>
 
                                         <ProgressBar
                                             Height="3"
                                             Maximum="100"
+                                            IsIndeterminate="{Binding IsProgressIndeterminate}"
                                             Value="{Binding Progress, Converter={StaticResource ProgressTextToDoubleConverter}}"
-                                            Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing|Improving}" />
+                                            Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Preparing|Transcribing|Improving}" />
 
                                         <TextBlock
                                             MaxLines="2"

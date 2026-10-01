@@ -10,6 +10,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using WhisperDrop.Media;
 using WhisperDrop.Models;
 using WhisperDrop.State;
 using WhisperDrop.Updates;
@@ -43,7 +44,10 @@ public sealed partial class MainPage : Page
         {
             SuggestedStartLocation = PickerLocationId.ComputerFolder
         };
-        picker.FileTypeFilter.Add(".wav");
+        foreach (var extension in SupportedMediaFormats.Extensions)
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
         InitializeForMainWindow(picker);
         var files = await picker.PickMultipleFilesAsync().AsTask();
         AddFiles(files.Select(file => file.Path));
@@ -92,7 +96,7 @@ public sealed partial class MainPage : Page
         }
 
         e.AcceptedOperation = DataPackageOperation.Copy;
-        DropFeedback.Text = "Drop to add WAV files";
+        DropFeedback.Text = "Drop to add audio or video files";
         SetDropZoneActive(true);
     }
 
@@ -633,7 +637,7 @@ public sealed partial class MainPage : Page
 
     private void ResetDropZone()
     {
-        DropFeedback.Text = "WAV files only";
+        DropFeedback.Text = "Common audio and video formats";
         SetDropZoneActive(false);
     }
 
