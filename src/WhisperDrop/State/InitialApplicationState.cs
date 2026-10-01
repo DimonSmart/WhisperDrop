@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using WhisperDrop.Media;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
 
@@ -23,6 +24,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
+    private readonly IMediaPreparationService mediaPreparationService;
     private readonly ITranscriptEnhancementService transcriptEnhancementService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
@@ -50,7 +52,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ITranscriptEnhancementService? transcriptEnhancementService = null,
         ILocalModelInventory? localModelInventory = null,
         IVadModelManager? vadModelManager = null,
-        IWhisperRuntimeSelector? runtimeSelector = null)
+        IWhisperRuntimeSelector? runtimeSelector = null,
+        IMediaPreparationService? mediaPreparationService = null)
     {
         this.settingsStore = settingsStore;
         this.modelCatalog = modelCatalog;
@@ -59,6 +62,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         this.runtimeSelector = runtimeSelector ?? new WhisperRuntimeSelector();
         this.vadModelManager = vadModelManager ?? new VadModelManager(new ApplicationPaths(), new VadModelDownloader());
         this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector, this.vadModelManager);
+        this.mediaPreparationService = mediaPreparationService ?? new DirectMediaPreparationService();
         this.transcriptEnhancementService = transcriptEnhancementService ?? new UnavailableTranscriptEnhancementService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
         this.languageCatalog = languageCatalog;
@@ -494,7 +498,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         foreach (var filePath in filePaths)
         {
-            if (!IsSupportedAudioFile(filePath))
+            if (!IsSupportedMediaFile(filePath))
             {
                 unsupportedFiles.Add(filePath);
                 continue;
@@ -512,7 +516,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         UnsupportedFormatMessage = unsupportedFiles.Count == 0
             ? null
-            : "Only WAV files are supported. Unsupported files were not added.";
+            : "Unsupported file format. Unsupported files were not added.";
         return new FileQueueAddResult(addedCount, unsupportedFiles);
     }
 
@@ -559,6 +563,10 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             TranscriptionGuidance = exception.Message;
         }
+        catch (MediaPreparationException exception) when (exception.IsRuntimeFailure)
+        {
+            TranscriptionGuidance = exception.Message;
+        }
     }
 
     public async Task TranscribeAllAsync(CancellationToken cancellationToken = default)
@@ -592,6 +600,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                     throw;
                 }
                 catch (RecognitionConfigurationException exception)
+                {
+                    TranscriptionGuidance = exception.Message;
+                    break;
+                }
+                catch (MediaPreparationException exception) when (exception.IsRuntimeFailure)
                 {
                     TranscriptionGuidance = exception.Message;
                     break;
@@ -675,8 +688,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 .Where(row => row.CanCopy)
                 .Select(row => row.EffectiveTranscript!));
 
-    public static bool IsSupportedAudioFile(string filePath) =>
-        string.Equals(Path.GetExtension(filePath), ".wav", StringComparison.OrdinalIgnoreCase);
+    public static bool IsSupportedMediaFile(string filePath) =>
+        SupportedMediaFormats.IsSupported(filePath);
 
     private static StringComparer FilePathComparer =>
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
@@ -835,25 +848,42 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         RecognitionOptions options,
         CancellationToken cancellationToken)
     {
-        item.TranscriptionState = TranscriptionState.Transcribing;
+        item.TranscriptionState = TranscriptionState.Preparing;
         item.AiEnhancementState = AiEnhancementState.NotRequested;
-        item.Progress = "0%";
+        item.Progress = "—";
+        item.IsProgressIndeterminate = true;
         item.ErrorMessage = null;
         item.AiEnhancementError = null;
         item.RecognitionResult = null;
         item.ProcessedTranscript = null;
         RefreshQueueActionState();
 
-        var progress = new Progress<double>(value =>
-            item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
+        var preparationProgress = new Progress<double>(value =>
+        {
+            item.IsProgressIndeterminate = false;
+            item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%";
+        });
 
         try
         {
+            await using var prepared = await mediaPreparationService.PrepareAsync(
+                item.FilePath,
+                preparationProgress,
+                cancellationToken);
+
+            item.TranscriptionState = TranscriptionState.Transcribing;
+            item.Progress = "0%";
+            item.IsProgressIndeterminate = false;
+            RefreshQueueActionState();
+
+            var recognitionProgress = new Progress<double>(value =>
+                item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
+
             var result = await recognitionService.TranscribeAsync(
                 modelPath,
                 options,
-                item.FilePath,
-                progress,
+                prepared.AudioPath,
+                recognitionProgress,
                 cancellationToken);
 
             item.RecognitionResult = result;
@@ -870,13 +900,28 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             item.TranscriptionState = TranscriptionState.Pending;
             item.Progress = "—";
+            item.IsProgressIndeterminate = false;
             item.RecognitionResult = null;
+            item.ProcessedTranscript = null;
+            item.ErrorMessage = null;
             throw;
+        }
+        catch (MediaPreparationException exception)
+        {
+            item.TranscriptionState = TranscriptionState.Error;
+            item.Progress = "—";
+            item.IsProgressIndeterminate = false;
+            item.ErrorMessage = exception.Message;
+            if (exception.IsRuntimeFailure)
+                throw;
+
+            return false;
         }
         catch (RecognitionConfigurationException exception)
         {
             item.TranscriptionState = TranscriptionState.Error;
             item.Progress = "—";
+            item.IsProgressIndeterminate = false;
             item.ErrorMessage = exception.Message;
             throw;
         }
@@ -884,6 +929,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             item.TranscriptionState = TranscriptionState.Error;
             item.Progress = "—";
+            item.IsProgressIndeterminate = false;
             item.ErrorMessage = exception.Message;
             return false;
         }
@@ -908,6 +954,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         item.AiEnhancementState = AiEnhancementState.Improving;
         item.AiEnhancementError = null;
+        item.IsProgressIndeterminate = false;
         item.Progress = "0%";
         RefreshQueueActionState();
 
@@ -955,9 +1002,9 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     private void EnsureModelStorageCanChange()
     {
-        if (QueueRows.Any(row => row.TranscriptionState == TranscriptionState.Transcribing))
+        if (QueueRows.Any(row => row.IsProcessing))
         {
-            throw new InvalidOperationException("Models cannot be deleted while transcription is running.");
+            throw new InvalidOperationException("Models cannot be deleted while media processing is running.");
         }
     }
 
@@ -968,7 +1015,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             row.CanTranscribe =
                 IsSelectedModelAvailable &&
                 !IsBatchActive &&
-                row.TranscriptionState != TranscriptionState.Transcribing &&
+                !row.IsProcessing &&
                 row.AiEnhancementState != AiEnhancementState.Improving;
             row.CanEnhance =
                 !IsBatchActive &&

@@ -8,6 +8,7 @@ namespace WhisperDrop.Models;
 public enum TranscriptionState
 {
     Pending,
+    Preparing,
     Transcribing,
     Completed,
     Error
@@ -33,6 +34,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private string? processedTranscript;
     private string? errorMessage;
     private string? aiEnhancementError;
+    private bool isProgressIndeterminate;
     private bool canTranscribe;
     private bool canEnhance;
 
@@ -74,6 +76,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
 
     public string Status => TranscriptionState switch
     {
+        TranscriptionState.Preparing => "Preparing",
         TranscriptionState.Transcribing => "Transcribing",
         TranscriptionState.Error => "Error",
         TranscriptionState.Completed when AiEnhancementState == AiEnhancementState.Pending => "Waiting for AI",
@@ -89,6 +92,15 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         get => progress;
         internal set => Set(ref progress, value);
     }
+
+    public bool IsProgressIndeterminate
+    {
+        get => isProgressIndeterminate;
+        internal set => Set(ref isProgressIndeterminate, value);
+    }
+
+    public bool IsProcessing =>
+        TranscriptionState is TranscriptionState.Preparing or TranscriptionState.Transcribing;
 
     public string Language
     {
@@ -173,6 +185,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private void NotifyDerivedState()
     {
         OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(IsProcessing));
         NotifyActionState();
     }
 
