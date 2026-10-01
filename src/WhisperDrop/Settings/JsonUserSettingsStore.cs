@@ -70,6 +70,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         var options = new JsonSerializerOptions { WriteIndented = true };
         options.Converters.Add(new LenientEnumConverter<TranscriptionTask>());
         options.Converters.Add(new LenientEnumConverter<ProcessingDevice>());
+        options.Converters.Add(new LenientEnumConverter<AiProviderPreset>());
         return options;
     }
 
@@ -86,6 +87,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         int? cpuThreads = settings?.CpuThreads is int threads && threads >= 1 && threads <= Environment.ProcessorCount
             ? threads
             : null;
+        var aiPostProcessing = NormalizeAiPostProcessing(settings?.AiPostProcessing);
 
         return new UserSettings
         {
@@ -96,8 +98,46 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             VocabularyContext = settings?.VocabularyContext ?? string.Empty,
             SkipSilence = settings?.SkipSilence ?? false,
             ProcessingDevice = processingDevice,
-            CpuThreads = cpuThreads
+            CpuThreads = cpuThreads,
+            AiPostProcessing = aiPostProcessing
         };
+    }
+
+    private static AiPostProcessingSettings NormalizeAiPostProcessing(AiPostProcessingSettings? settings)
+    {
+        var provider = settings is not null && Enum.IsDefined(typeof(AiProviderPreset), settings.Provider)
+            ? settings.Provider
+            : AiProviderPreset.Ollama;
+        var endpoint = NormalizeEndpoint(settings?.Endpoint);
+        var model = string.IsNullOrWhiteSpace(settings?.Model) ? "gpt-oss:20b" : settings.Model.Trim();
+        var contextSize = settings?.ContextSize is > 0 ? settings.ContextSize : null;
+
+        return new AiPostProcessingSettings
+        {
+            Enabled = settings?.Enabled ?? false,
+            Provider = provider,
+            Endpoint = endpoint,
+            Model = model,
+            Instructions = settings?.Instructions ?? string.Empty,
+            ContextSize = contextSize
+        };
+    }
+
+    private static string NormalizeEndpoint(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "http://localhost:11434/v1/";
+        }
+
+        var trimmed = value.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return uri.AbsoluteUri.TrimEnd('/') + "/";
+        }
+
+        return trimmed;
     }
 
     private sealed class LenientEnumConverter<TEnum> : JsonConverter<TEnum>
