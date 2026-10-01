@@ -48,6 +48,8 @@ public sealed class FfmpegRuntime : IFfmpegRuntime
             try
             {
                 DynamicallyLoadedBindings.LibrariesPath = librariesPath;
+                DynamicallyLoadedBindings.Initialize();
+
                 var avCodec = ffmpeg.avcodec_version();
                 var avFormat = ffmpeg.avformat_version();
                 var avUtil = ffmpeg.avutil_version();
