@@ -367,14 +367,14 @@
                                             <TextBlock
                                                 Style="{StaticResource CaptionTextStyle}"
                                                 Text="{Binding Progress}"
-                                                Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing}" />
+                                                Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing|Improving}" />
                                         </StackPanel>
 
                                         <ProgressBar
                                             Height="3"
                                             Maximum="100"
                                             Value="{Binding Progress, Converter={StaticResource ProgressTextToDoubleConverter}}"
-                                            Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing}" />
+                                            Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Transcribing|Improving}" />
 
                                         <TextBlock
                                             MaxLines="2"
@@ -392,6 +392,14 @@
                                             TextTrimming="CharacterEllipsis"
                                             TextWrapping="Wrap"
                                             Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+                                        <TextBlock
+                                            MaxLines="2"
+                                            Foreground="{StaticResource ErrorBrush}"
+                                            Style="{StaticResource CaptionTextStyle}"
+                                            Text="{Binding AiEnhancementError}"
+                                            TextTrimming="CharacterEllipsis"
+                                            TextWrapping="Wrap"
+                                            Visibility="{Binding AiEnhancementError, Converter={StaticResource StringToVisibilityConverter}}" />
                                     </StackPanel>
 
                                     <StackPanel
@@ -412,16 +420,31 @@
                                             </StackPanel>
                                         </Button>
                                         <Button
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="ImproveTranscript_Click"
+                                            Content="{Binding AiActionLabel}"
+                                            IsEnabled="{Binding CanEnhance}"
+                                            Tag="{Binding}"
+                                            ToolTipService.ToolTip="Improve the raw Whisper transcript with the configured AI model" />
+                                        <Button
                                             Style="{StaticResource SubtleButtonStyle}"
                                             Click="Copy_Click"
                                             IsEnabled="{Binding CanCopy}"
                                             Tag="{Binding}"
-                                            ToolTipService.ToolTip="Copy transcript">
+                                            ToolTipService.ToolTip="Copy effective transcript">
                                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
                                                 <SymbolIcon Symbol="Copy" />
                                                 <TextBlock Text="Copy" />
                                             </StackPanel>
                                         </Button>
+                                        <Button
+                                            Style="{StaticResource SubtleButtonStyle}"
+                                            Click="CopyRaw_Click"
+                                            Content="Copy raw"
+                                            IsEnabled="{Binding CanCopyRaw}"
+                                            Tag="{Binding}"
+                                            Visibility="{Binding ProcessedTranscript, Converter={StaticResource StringToVisibilityConverter}}"
+                                            ToolTipService.ToolTip="Copy the unchanged Whisper transcript" />
                                         <Button
                                             Style="{StaticResource DangerIconButtonStyle}"
                                             Click="RemoveFile_Click"
@@ -560,6 +583,104 @@
                         Click="DeleteAllModels_Click"
                         Content="Delete all…"
                         IsEnabled="{x:Bind ViewModel.HasInstalledModels, Mode=OneWay}" />
+                </StackPanel>
+
+                <Border Height="1" Background="{StaticResource ControlBorderBrush}" Margin="0,8,0,4" />
+
+                <StackPanel Spacing="{StaticResource SpacingSm}">
+                    <TextBlock
+                        Style="{StaticResource SectionTitleTextStyle}"
+                        Text="AI post-processing" />
+                    <CheckBox
+                        Content="Improve transcript with AI"
+                        IsChecked="{x:Bind ViewModel.AiPostProcessingEnabled, Mode=TwoWay}" />
+
+                    <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Provider" />
+                            <ComboBox
+                                Style="{StaticResource SettingsComboBoxStyle}"
+                                DisplayMemberPath="DisplayName"
+                                ItemsSource="{x:Bind ViewModel.AiProviderOptions}"
+                                SelectedValue="{x:Bind ViewModel.AiProvider, Mode=TwoWay}"
+                                SelectedValuePath="Value" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Model" />
+                            <TextBox
+                                Style="{StaticResource SettingsTextBoxStyle}"
+                                Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Endpoint" />
+                        <TextBox
+                            Style="{StaticResource SettingsTextBoxStyle}"
+                            Text="{x:Bind ViewModel.AiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock
+                            Foreground="{StaticResource WarningBrush}"
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay}"
+                            TextWrapping="Wrap"
+                            Visibility="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    </StackPanel>
+
+                    <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="API key" />
+                            <PasswordBox
+                                Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay}"
+                                PlaceholderText="Required by custom endpoints" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Text="Not saved between application launches." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Context size" />
+                            <ComboBox
+                                Style="{StaticResource SettingsComboBoxStyle}"
+                                DisplayMemberPath="DisplayName"
+                                ItemsSource="{x:Bind ViewModel.AiContextSizeOptions}"
+                                SelectedValue="{x:Bind ViewModel.AiContextSize, Mode=TwoWay}"
+                                SelectedValuePath="Value" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Text="Used only for chunk planning." />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="{StaticResource SpacingXs}">
+                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Post-processing instructions" />
+                        <TextBox
+                            MinHeight="100"
+                            AcceptsReturn="True"
+                            TextWrapping="Wrap"
+                            Style="{StaticResource SettingsTextBoxStyle}"
+                            PlaceholderText="Terminology, known recognition errors, paragraph or Markdown preferences..."
+                            Text="{x:Bind ViewModel.AiInstructions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
+                        <Button
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="TestAiConnection_Click"
+                            Content="Test connection"
+                            IsEnabled="{x:Bind ViewModel.IsAiConnectionTesting, Mode=OneWay, Converter={StaticResource InverseBooleanConverter}}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource SecondaryTextStyle}"
+                            Text="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
