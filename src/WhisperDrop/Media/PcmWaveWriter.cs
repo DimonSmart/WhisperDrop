@@ -9,8 +9,8 @@ internal sealed class PcmWaveWriter : IDisposable
 {
     private const int HeaderSize = 44;
     private const int SampleRate = 16000;
-    private const short ChannelCount = 1;
-    private const short BitsPerSample = 16;
+    private const ushort ChannelCount = 1;
+    private const ushort BitsPerSample = 16;
 
     private readonly FileStream stream;
     private bool completed;
