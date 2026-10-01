@@ -14,13 +14,12 @@
 
     <x:Double x:Key="ControlHeightCompact">32</x:Double>
     <x:Double x:Key="ControlHeightDefault">36</x:Double>
-    <x:Double x:Key="DropZoneMinHeight">142</x:Double>
     <x:Double x:Key="FileQueueRowMinHeight">76</x:Double>
 
     <Thickness x:Key="PagePadding">18,14,18,16</Thickness>
     <Thickness x:Key="CompactControlPadding">12,5</Thickness>
     <Thickness x:Key="IconButtonPadding">7</Thickness>
     <Thickness x:Key="CardPadding">12</Thickness>
-    <Thickness x:Key="DropZonePadding">16,14</Thickness>
+    <Thickness x:Key="FileQueueWorkspacePadding">8</Thickness>
     <Thickness x:Key="FileQueueRowMargin">0,0,0,8</Thickness>
 </ResourceDictionary>

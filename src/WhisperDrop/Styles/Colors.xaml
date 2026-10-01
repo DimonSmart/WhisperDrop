@@ -6,7 +6,7 @@
     <Color x:Key="SurfaceColor">#151B23</Color>
     <Color x:Key="SurfaceHoverColor">#1B2430</Color>
     <Color x:Key="ElevatedSurfaceColor">#1A222D</Color>
-    <Color x:Key="DropZoneSurfaceColor">#111821</Color>
+    <Color x:Key="FileQueueWorkspaceSurfaceColor">#111821</Color>
     <Color x:Key="AccentSubtleColor">#182A43</Color>
 
     <Color x:Key="PrimaryTextColor">#F3F6FA</Color>
@@ -28,7 +28,7 @@
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource SurfaceColor}" />
     <SolidColorBrush x:Key="CardHoverBackgroundBrush" Color="{StaticResource SurfaceHoverColor}" />
     <SolidColorBrush x:Key="ElevatedSurfaceBrush" Color="{StaticResource ElevatedSurfaceColor}" />
-    <SolidColorBrush x:Key="DropZoneBackgroundBrush" Color="{StaticResource DropZoneSurfaceColor}" />
+    <SolidColorBrush x:Key="FileQueueWorkspaceBackgroundBrush" Color="{StaticResource FileQueueWorkspaceSurfaceColor}" />
     <SolidColorBrush x:Key="AccentSubtleBrush" Color="{StaticResource AccentSubtleColor}" />
 
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" />
