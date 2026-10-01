@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
+using WhisperDrop.Media;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
 using WhisperDrop.State;
@@ -34,6 +35,8 @@ public partial class App : Application
                 services.AddSingleton<IWhisperRuntimeSelector, WhisperRuntimeSelector>();
                 services.AddSingleton<IVadModelDownloader, VadModelDownloader>();
                 services.AddSingleton<IVadModelManager, VadModelManager>();
+                services.AddSingleton<IFfmpegRuntime, FfmpegRuntime>();
+                services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
                 services.AddSingleton<TranscriptChunker>();
                 services.AddSingleton<ITranscriptEnhancementAgentFactory, OpenAiTranscriptEnhancementAgentFactory>();
