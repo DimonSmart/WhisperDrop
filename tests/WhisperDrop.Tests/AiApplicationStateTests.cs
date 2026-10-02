@@ -120,6 +120,27 @@ public sealed class AiApplicationStateTests
     }
 
     [Fact]
+    public async Task AI_input_copy_contains_actual_prompt_guidance_and_raw_segment_data()
+    {
+        var recognition = new FakeRecognitionService();
+        var state = CreateState(recognition, new FakeEnhancementService());
+        state.AiInstructions = "Prefer the product spelling AcmeDB.";
+        state.AddFiles(["recording.wav"]);
+
+        await state.TranscribeAsync(state.QueueRows[0]);
+
+        var input = state.GetAiInputForCopy(state.QueueRows[0]);
+
+        Assert.Contains("===== SYSTEM INSTRUCTIONS =====", input);
+        Assert.Contains("===== USER REQUEST 1/1 =====", input);
+        Assert.Contains("Prefer the product spelling AcmeDB.", input);
+        Assert.Contains("recording.wav raw", input);
+        Assert.Contains("\"segmentsToCorrect\"", input);
+        Assert.Contains("видна", input);
+        Assert.Contains("probability", input);
+    }
+
+    [Fact]
     public void Remote_endpoint_warning_is_shown_only_for_non_loopback_addresses()
     {
         var state = CreateState(new FakeRecognitionService(), new FakeEnhancementService());

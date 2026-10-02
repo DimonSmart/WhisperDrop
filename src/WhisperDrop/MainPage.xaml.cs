@@ -86,6 +86,12 @@ public sealed partial class MainPage : Page
         ViewModel.SelectedTabIndex = InitialApplicationState.ModelsTabIndex;
     }
 
+    private void AiNav_Click(object sender, RoutedEventArgs e)
+    {
+        AiNavButton.IsChecked = true;
+        ViewModel.SelectedTabIndex = InitialApplicationState.AiTabIndex;
+    }
+
     private void FileQueueWorkspace_DragOver(object sender, DragEventArgs e)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
@@ -199,6 +205,20 @@ public sealed partial class MainPage : Page
         if (sender is Button { Tag: TranscriptionQueueItem { RawTranscript: not null } item })
         {
             CopyToClipboard(item.RawTranscript);
+        }
+    }
+
+    private void CopyAiInput_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: TranscriptionQueueItem item })
+        {
+            return;
+        }
+
+        var input = ViewModel.GetAiInputForCopy(item);
+        if (!string.IsNullOrEmpty(input))
+        {
+            CopyToClipboard(input);
         }
     }
 

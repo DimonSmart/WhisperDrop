@@ -169,6 +169,8 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
 
     public bool CanCopyRaw => RawTranscript is not null && ProcessedTranscript is not null;
 
+    public bool CanCopyAiInput => RecognitionResult?.Segments.Count > 0;
+
     public bool HasProcessedTranscript => ProcessedTranscript is not null;
 
     public string AiActionLabel => ProcessedTranscript is null ? "Run AI" : "Improve again";
@@ -177,6 +179,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(CanCopy));
         OnPropertyChanged(nameof(CanCopyRaw));
+        OnPropertyChanged(nameof(CanCopyAiInput));
         OnPropertyChanged(nameof(CanEnhance));
         OnPropertyChanged(nameof(CanTranscribe));
         OnPropertyChanged(nameof(AiActionLabel));

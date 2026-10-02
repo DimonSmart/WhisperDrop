@@ -17,6 +17,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 {
     public const int TranscribeTabIndex = 0;
     public const int ModelsTabIndex = 1;
+    public const int AiTabIndex = 2;
     public const int SettingsTabIndex = ModelsTabIndex;
 
     private readonly IUserSettingsStore settingsStore;
@@ -126,6 +127,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public IReadOnlyList<AiProviderOption> AiProviderOptions { get; }
 
     public IReadOnlyList<AiContextSizeOption> AiContextSizeOptions { get; }
+
+    public string AiBuiltInRecognitionHints => TranscriptEnhancementPromptBuilder.BuiltInRecognitionHints;
 
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
 
@@ -687,6 +690,17 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             QueueRows
                 .Where(row => row.CanCopy)
                 .Select(row => row.EffectiveTranscript!));
+
+    public string GetAiInputForCopy(TranscriptionQueueItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return item.RecognitionResult is { } recognition
+            ? TranscriptEnhancementPromptBuilder.BuildDebugInput(
+                recognition,
+                CreateAiOptionsSnapshot() with { Enabled = true })
+            : string.Empty;
+    }
 
     public static bool IsSupportedMediaFile(string filePath) =>
         SupportedMediaFormats.IsSupported(filePath);

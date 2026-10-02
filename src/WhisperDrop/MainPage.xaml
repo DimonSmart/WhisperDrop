@@ -25,6 +25,12 @@
                     Content="Models"
                     IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=1}"
                     Click="ModelsNav_Click" />
+                <ToggleButton
+                    x:Name="AiNavButton"
+                    Style="{StaticResource NavigationTabButtonStyle}"
+                    Content="AI"
+                    IsChecked="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexEqualsConverter}, ConverterParameter=2}"
+                    Click="AiNav_Click" />
             </StackPanel>
 
             <Button
@@ -500,6 +506,17 @@
                                             ToolTipService.ToolTip="Improve the raw Whisper transcript with the configured AI model" />
                                         <Button
                                             Style="{StaticResource SubtleButtonStyle}"
+                                            Click="CopyAiInput_Click"
+                                            IsEnabled="{Binding CanCopyAiInput}"
+                                            Tag="{Binding}"
+                                            ToolTipService.ToolTip="Copy the system instructions and all chunk prompts sent to the AI model">
+                                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">
+                                                <SymbolIcon Symbol="Copy" />
+                                                <TextBlock Text="AI input" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button
+                                            Style="{StaticResource SubtleButtonStyle}"
                                             Click="Copy_Click"
                                             IsEnabled="{Binding CanCopy}"
                                             Tag="{Binding}"
@@ -658,106 +675,132 @@
                         IsEnabled="{x:Bind ViewModel.HasInstalledModels, Mode=OneWay}" />
                 </StackPanel>
 
-                <Border Height="1" Background="{StaticResource ControlBorderBrush}" Margin="0,8,0,4" />
+            </StackPanel>
+        </ScrollViewer>
 
-                <StackPanel Spacing="{StaticResource SpacingSm}">
+        <ScrollViewer
+            Grid.Row="1"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            Visibility="{x:Bind ViewModel.SelectedTabIndex, Mode=OneWay, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=2}">
+            <StackPanel
+                MaxWidth="720"
+                HorizontalAlignment="Left"
+                Spacing="{StaticResource SpacingMd}">
+                <TextBlock
+                    Style="{StaticResource SectionTitleTextStyle}"
+                    Text="AI post-processing" />
+                <CheckBox
+                    Content="Improve transcript with AI"
+                    IsChecked="{x:Bind ViewModel.AiPostProcessingEnabled, Mode=TwoWay}" />
+
+                <StackPanel Spacing="{StaticResource SpacingXs}">
                     <TextBlock
-                        Style="{StaticResource SectionTitleTextStyle}"
-                        Text="AI post-processing" />
-                    <CheckBox
-                        Content="Improve transcript with AI"
-                        IsChecked="{x:Bind ViewModel.AiPostProcessingEnabled, Mode=TwoWay}" />
+                        Style="{StaticResource SettingsLabelTextStyle}"
+                        Text="Recognition corrections / instructions" />
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Text="Editable instructions added to every AI correction request. Use this for terminology, recurring recognition mistakes, and preferred formatting."
+                        TextWrapping="Wrap" />
+                    <TextBox
+                        MinHeight="120"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        Style="{StaticResource SettingsTextBoxStyle}"
+                        PlaceholderText="For example: AcmeDB is a product name. Whisper sometimes recognizes it as “Acme DB”. Keep speaker wording and use short paragraphs."
+                        Text="{x:Bind ViewModel.AiInstructions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
 
-                    <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                <StackPanel Spacing="{StaticResource SpacingXs}">
+                    <TextBlock
+                        Style="{StaticResource SettingsLabelTextStyle}"
+                        Text="Built-in recognition guidance" />
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Text="{x:Bind ViewModel.AiBuiltInRecognitionHints, Mode=OneWay}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Expander Header="Technical settings">
+                    <StackPanel
+                        Padding="0,8,0,0"
+                        Spacing="{StaticResource SpacingSm}">
+                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Provider" />
+                                <ComboBox
+                                    Style="{StaticResource SettingsComboBoxStyle}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.AiProviderOptions}"
+                                    SelectedValue="{x:Bind ViewModel.AiProvider, Mode=TwoWay}"
+                                    SelectedValuePath="Value" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Model" />
+                                <TextBox
+                                    Style="{StaticResource SettingsTextBoxStyle}"
+                                    Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Grid>
+
                         <StackPanel Spacing="{StaticResource SpacingXs}">
-                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Provider" />
-                            <ComboBox
-                                Style="{StaticResource SettingsComboBoxStyle}"
-                                DisplayMemberPath="DisplayName"
-                                ItemsSource="{x:Bind ViewModel.AiProviderOptions}"
-                                SelectedValue="{x:Bind ViewModel.AiProvider, Mode=TwoWay}"
-                                SelectedValuePath="Value" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Model" />
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Endpoint" />
                             <TextBox
                                 Style="{StaticResource SettingsTextBoxStyle}"
-                                Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Endpoint" />
-                        <TextBox
-                            Style="{StaticResource SettingsTextBoxStyle}"
-                            Text="{x:Bind ViewModel.AiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock
-                            Foreground="{StaticResource WarningBrush}"
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay}"
-                            TextWrapping="Wrap"
-                            Visibility="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-                    </StackPanel>
-
-                    <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="{StaticResource SpacingXs}">
-                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="API key" />
-                            <PasswordBox
-                                Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay}"
-                                PlaceholderText="Required by custom endpoints" />
+                                Text="{x:Bind ViewModel.AiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock
+                                Foreground="{StaticResource WarningBrush}"
                                 Style="{StaticResource CaptionTextStyle}"
-                                Text="Not saved between application launches." />
+                                Text="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{x:Bind ViewModel.AiRemoteEndpointWarning, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
-                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Context size" />
-                            <ComboBox
-                                Style="{StaticResource SettingsComboBoxStyle}"
-                                DisplayMemberPath="DisplayName"
-                                ItemsSource="{x:Bind ViewModel.AiContextSizeOptions}"
-                                SelectedValue="{x:Bind ViewModel.AiContextSize, Mode=TwoWay}"
-                                SelectedValuePath="Value" />
+
+                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="API key" />
+                                <PasswordBox
+                                    Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay}"
+                                    PlaceholderText="Required by custom endpoints" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextStyle}"
+                                    Text="Not saved between application launches." />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Context size" />
+                                <ComboBox
+                                    Style="{StaticResource SettingsComboBoxStyle}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.AiContextSizeOptions}"
+                                    SelectedValue="{x:Bind ViewModel.AiContextSize, Mode=TwoWay}"
+                                    SelectedValuePath="Value" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextStyle}"
+                                    Text="Used only for chunk planning." />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
+                            <Button
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="TestAiConnection_Click"
+                                Content="Test connection" />
                             <TextBlock
-                                Style="{StaticResource CaptionTextStyle}"
-                                Text="Used only for chunk planning." />
+                                VerticalAlignment="Center"
+                                Style="{StaticResource SecondaryTextStyle}"
+                                Text="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                         </StackPanel>
-                    </Grid>
-
-                    <StackPanel Spacing="{StaticResource SpacingXs}">
-                        <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Post-processing instructions" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="Built-in recognition hint — Russian: Whisper may recognize «видна» as «и на». In context, «на фотографиях и на поломка» may mean «на фотографиях видна поломка». The model checks context before applying this correction."
-                            TextWrapping="Wrap" />
-                        <TextBox
-                            MinHeight="100"
-                            AcceptsReturn="True"
-                            TextWrapping="Wrap"
-                            Style="{StaticResource SettingsTextBoxStyle}"
-                            PlaceholderText="Terminology, known recognition errors, paragraph or Markdown preferences..."
-                            Text="{x:Bind ViewModel.AiInstructions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
-                        <Button
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Click="TestAiConnection_Click"
-                            Content="Test connection" />
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Style="{StaticResource SecondaryTextStyle}"
-                            Text="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay}"
-                            Visibility="{x:Bind ViewModel.AiConnectionStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-                    </StackPanel>
-                </StackPanel>
+                </Expander>
             </StackPanel>
         </ScrollViewer>
     </Grid>
