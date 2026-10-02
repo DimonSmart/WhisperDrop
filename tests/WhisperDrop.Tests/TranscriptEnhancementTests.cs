@@ -155,6 +155,27 @@ public sealed class TranscriptEnhancementTests
         await Assert.ThrowsAsync<TranscriptEnhancementException>(() =>
             service.EnhanceAsync(recognition, new AiPostProcessingOptions()));
         Assert.Equal("raw", recognition.Transcript);
+        Assert.Equal(3, factory.AgentCalls);
+    }
+
+    [Fact]
+    public async Task Service_retries_invalid_response_with_repair_instruction()
+    {
+        var attempts = 0;
+        var factory = new FakeAgentFactory(chunk =>
+            ++attempts == 1
+                ? throw new TranscriptEnhancementException("missing segment")
+                : new TranscriptChunkResult(
+                    [new CorrectedSegment(chunk.Segments[0].Id, "Corrected.", false)]));
+        var service = new TranscriptEnhancementService(factory, new TranscriptChunker());
+        var recognition = new RecognitionResult("raw", "en", [Segment(0, "raw")]);
+
+        var result = await service.EnhanceAsync(recognition, new AiPostProcessingOptions());
+
+        Assert.Equal("Corrected.", result.Transcript);
+        Assert.Equal(2, factory.AgentCalls);
+        Assert.Equal("missing segment", factory.LastRetryFeedback);
+        Assert.Equal("en", factory.LastDetectedLanguage);
     }
 
     private static RecognitionSegment Segment(int id, string text) =>
@@ -175,6 +196,10 @@ public sealed class TranscriptEnhancementTests
 
         public int AgentCalls { get; private set; }
 
+        public string? LastRetryFeedback { get; private set; }
+
+        public string? LastDetectedLanguage { get; private set; }
+
         public ITranscriptEnhancementAgent Create(AiPostProcessingOptions options)
         {
             CreateCount++;
@@ -188,11 +213,15 @@ public sealed class TranscriptEnhancementTests
         {
             public Task<TranscriptChunkResult> CorrectAsync(
                 TranscriptChunk chunk,
+                string? detectedLanguage,
                 string userInstructions,
+                string? previousResponseError,
                 CancellationToken cancellationToken)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 owner.AgentCalls++;
+                owner.LastRetryFeedback = previousResponseError;
+                owner.LastDetectedLanguage = detectedLanguage;
                 return Task.FromResult(responseFactory(chunk));
             }
 

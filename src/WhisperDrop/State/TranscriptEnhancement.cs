@@ -74,7 +74,9 @@ public interface ITranscriptEnhancementAgent
 {
     Task<TranscriptChunkResult> CorrectAsync(
         TranscriptChunk chunk,
+        string? detectedLanguage,
         string userInstructions,
+        string? previousResponseError,
         CancellationToken cancellationToken);
 
     Task TestConnectionAsync(CancellationToken cancellationToken);
@@ -217,11 +219,12 @@ public sealed class TranscriptChunker
     }
 
     private static int EstimateSegmentTokens(RecognitionSegment segment) =>
-        Math.Max(1, EstimateTokens(segment.Text) + 12);
+        Math.Max(1, EstimateTokens(segment.Text) + 24);
 }
 
 public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
 {
+    private const int MaximumChunkAttempts = 3;
     private readonly ITranscriptEnhancementAgentFactory agentFactory;
     private readonly TranscriptChunker chunker;
 
@@ -270,12 +273,39 @@ public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var chunk = chunks[index];
-            var response = await agent.CorrectAsync(
-                chunk,
-                options.Instructions,
-                cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<CorrectedSegment>? validated = null;
+            string? previousResponseError = null;
+            for (var attempt = 1; attempt <= MaximumChunkAttempts; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var response = await agent.CorrectAsync(
+                        chunk,
+                        recognition.DetectedLanguage,
+                        options.Instructions,
+                        previousResponseError,
+                        cancellationToken).ConfigureAwait(false);
+                    validated = ValidateChunkResult(chunk, response);
+                    break;
+                }
+                catch (TranscriptEnhancementException exception) when (attempt < MaximumChunkAttempts)
+                {
+                    previousResponseError = exception.Message;
+                }
+                catch (System.Text.Json.JsonException exception) when (attempt < MaximumChunkAttempts)
+                {
+                    previousResponseError = $"The response was not valid JSON: {exception.Message}";
+                }
+            }
 
-            foreach (var segment in ValidateChunkResult(chunk, response))
+            if (validated is null)
+            {
+                throw new TranscriptEnhancementException(
+                    $"The AI model failed to return a valid structured response after {MaximumChunkAttempts} attempts.");
+            }
+
+            foreach (var segment in validated)
             {
                 corrected.Add(segment.Id, segment);
             }
