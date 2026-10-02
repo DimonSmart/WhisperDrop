@@ -733,6 +733,10 @@
 
                     <StackPanel Spacing="{StaticResource SpacingXs}">
                         <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Post-processing instructions" />
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Text="Built-in recognition hint — Russian: Whisper may recognize «видна» as «и на». In context, «на фотографиях и на поломка» may mean «на фотографиях видна поломка». The model checks context before applying this correction."
+                            TextWrapping="Wrap" />
                         <TextBox
                             MinHeight="100"
                             AcceptsReturn="True"
@@ -740,13 +744,6 @@
                             Style="{StaticResource SettingsTextBoxStyle}"
                             PlaceholderText="Terminology, known recognition errors, paragraph or Markdown preferences..."
                             Text="{x:Bind ViewModel.AiInstructions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock
-                            Style="{StaticResource SettingsLabelTextStyle}"
-                            Text="Built-in recognition hint" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Text="Russian example: Whisper may recognize «видна» as «и на». In context, «на фотографиях и на поломка» may mean «на фотографиях видна поломка». The model checks context before applying this correction."
-                            TextWrapping="Wrap" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSm}">
