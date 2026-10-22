@@ -395,7 +395,7 @@
                     CanDragItems="{x:Bind ViewModel.CanReorderQueue, Mode=OneWay}"
                     CanReorderItems="{x:Bind ViewModel.CanReorderQueue, Mode=OneWay}"
                     DragItemsCompleted="QueueList_DragItemsCompleted"
-                    ItemContainerStyle="{StaticResource FileQueueListItemStyle}"
+                    ItemContainerStyle="{StaticResource SelectableFileQueueListItemStyle}"
                     ItemsSource="{x:Bind ViewModel.QueueRows}">
                     <ListView.ItemTemplate>
                         <DataTemplate>

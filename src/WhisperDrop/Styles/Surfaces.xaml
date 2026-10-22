@@ -44,6 +44,62 @@
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
+    <!-- Queue selection follows the rounded card, rather than the ListViewItem's default rectangular highlight. -->
+    <Style x:Key="SelectableFileQueueListItemStyle"
+           TargetType="ListViewItem"
+           BasedOn="{StaticResource FileQueueListItemStyle}">
+        <Setter Property="UseSystemFocusVisuals" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Grid Background="Transparent">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver" />
+                                <VisualState x:Name="Pressed" />
+                                <VisualState x:Name="Disabled" />
+                                <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Target="SelectionOutline.BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PointerOverSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="SelectionOutline.BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="PressedSelected">
+                                    <VisualState.Setters>
+                                        <Setter Target="SelectionOutline.BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedDisabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="SelectionOutline.BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+
+                        <ContentPresenter
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <Border
+                            x:Name="SelectionOutline"
+                            Margin="{StaticResource FileQueueRowMargin}"
+                            BorderBrush="Transparent"
+                            BorderThickness="2"
+                            CornerRadius="{StaticResource CornerRadiusMedium}"
+                            IsHitTestVisible="False" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SettingsTextBoxStyle" TargetType="TextBox">
         <Setter Property="MinHeight" Value="{StaticResource ControlHeightDefault}" />
         <Setter Property="Background" Value="{StaticResource ElevatedSurfaceBrush}" />
