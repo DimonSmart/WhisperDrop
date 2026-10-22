@@ -12,7 +12,7 @@ public static class Program
 
         if (OperatingSystem.IsWindows())
         {
-            builder.UseWin32();
+            builder.UseWin32(options => options.RenderingBackend(Win32RenderingBackend.Vulkan));
         }
         else if (OperatingSystem.IsMacOS())
         {

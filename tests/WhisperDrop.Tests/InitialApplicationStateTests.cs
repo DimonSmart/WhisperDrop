@@ -164,6 +164,14 @@ public sealed class InitialApplicationStateTests
         }
     }
 
+    [Fact]
+    public void Model_option_shows_approximate_size_in_download_selector()
+    {
+        var option = new RecognitionModelOption("base", "Base", "142 MB", false, null);
+
+        Assert.Equal("Base · 142 MB", option.DownloadDisplayName);
+    }
+
     private static InitialApplicationState CreateState()
     {
         var paths = new ApplicationPaths(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));

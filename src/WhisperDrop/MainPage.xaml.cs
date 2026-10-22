@@ -449,7 +449,7 @@ public sealed partial class MainPage : Page
         {
             MinWidth = 380,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            DisplayMemberPath = "DisplayName",
+            DisplayMemberPath = "DownloadDisplayName",
             ItemsSource = ViewModel.ModelOptions,
             Style = GetStyle("SettingsComboBoxStyle")
         };
