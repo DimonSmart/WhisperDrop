@@ -192,6 +192,31 @@ public sealed partial class MainPage : Page
         return await ShowVadModelDownloadDialogAsync();
     }
 
+    private async void PreviewTranscript_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: TranscriptionQueueItem item } || !item.CanPreviewTranscript)
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = $"Transcript preview — {item.FileName}",
+            CloseButtonText = "Close",
+            Content = new TextBox
+            {
+                Text = item.GetPreviewTranscript(),
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 620,
+                Height = 400
+            }
+        };
+        await dialog.ShowAsync();
+    }
+
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: TranscriptionQueueItem { EffectiveTranscript: not null } item })

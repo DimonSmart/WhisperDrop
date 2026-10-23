@@ -870,6 +870,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         item.AiEnhancementError = null;
         item.RecognitionResult = null;
         item.ProcessedTranscript = null;
+        item.ResetPartialTranscript();
         RefreshQueueActionState();
 
         var preparationProgress = new Progress<double>(value =>
@@ -892,13 +893,15 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
             var recognitionProgress = new Progress<double>(value =>
                 item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
+            var recognizedSegments = new Progress<string>(item.AppendRecognizedSegment);
 
             var result = await recognitionService.TranscribeAsync(
                 modelPath,
                 options,
                 prepared.AudioPath,
                 recognitionProgress,
-                cancellationToken);
+                cancellationToken,
+                recognizedSegments);
 
             item.RecognitionResult = result;
             item.Language = options.LanguageCode == "auto"

@@ -59,7 +59,8 @@ public interface IRecognitionService : IDisposable
         RecognitionOptions options,
         string audioPath,
         IProgress<double>? progress = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IProgress<string>? recognizedSegments = null);
 
     void UnloadModel();
 }
@@ -96,7 +97,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
         RecognitionOptions options,
         string audioPath,
         IProgress<double>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<string>? recognizedSegments = null)
     {
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -125,6 +127,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                         options,
                         audioPath,
                         reporter,
+                        recognizedSegments,
                         cancellationToken).ConfigureAwait(false)
                     : await TranscribeWholeFileAsync(
                         modelPath,
@@ -133,6 +136,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                         options,
                         audioPath,
                         reporter,
+                        recognizedSegments,
                         cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -171,6 +175,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         RecognitionOptions options,
         string audioPath,
         MonotonicProgressReporter progress,
+        IProgress<string>? recognizedSegments,
         CancellationToken cancellationToken)
     {
         var recognitionFactory = EnsureRecognitionFactory(modelPath, factoryOptions, device);
@@ -179,7 +184,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             options,
             nativeProgress => progress.Report(nativeProgress / 100d));
 
-        var result = await ProcessAsync(processor, audioPath, cancellationToken).ConfigureAwait(false);
+        var result = await ProcessAsync(processor, audioPath, cancellationToken, recognizedSegments: recognizedSegments).ConfigureAwait(false);
         progress.Report(1);
         return result;
     }
@@ -191,6 +196,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         RecognitionOptions options,
         string audioPath,
         MonotonicProgressReporter progress,
+        IProgress<string>? recognizedSegments,
         CancellationToken cancellationToken)
     {
         var voiceFactory = EnsureVadFactory(factoryOptions, device);
@@ -234,7 +240,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 region.Start,
                 region.Duration);
 
-            var chunk = await ProcessAsync(processor, audioPath, cancellationToken, segments.Count).ConfigureAwait(false);
+            var chunk = await ProcessAsync(processor, audioPath, cancellationToken, segments.Count, recognizedSegments).ConfigureAwait(false);
             transcript.Append(chunk.Transcript);
             segments.AddRange(chunk.Segments);
             detectedLanguage ??= chunk.DetectedLanguage;
@@ -334,7 +340,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
         WhisperProcessor processor,
         string audioPath,
         CancellationToken cancellationToken,
-        int firstSegmentId = 0)
+        int firstSegmentId = 0,
+        IProgress<string>? recognizedSegments = null)
     {
         using var stream = File.OpenRead(audioPath);
         var transcript = new StringBuilder();
@@ -344,6 +351,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         await foreach (var segment in processor.ProcessAsync(stream, cancellationToken).ConfigureAwait(false))
         {
             transcript.Append(segment.Text);
+            recognizedSegments?.Report(segment.Text);
             segments.Add(CreateRecognitionSegment(segment, firstSegmentId + segments.Count));
             detectedLanguage ??= segment.Language;
         }

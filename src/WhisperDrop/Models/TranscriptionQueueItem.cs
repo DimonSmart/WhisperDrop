@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace WhisperDrop.Models;
 
@@ -31,6 +32,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private string progress = "—";
     private string language = "Auto";
     private RecognitionResult? recognitionResult;
+    private readonly StringBuilder partialTranscript = new();
     private string? processedTranscript;
     private string? errorMessage;
     private string? aiEnhancementError;
@@ -165,6 +167,27 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         internal set => Set(ref canEnhance, value);
     }
 
+    public bool CanPreviewTranscript => EffectiveTranscript is not null || partialTranscript.Length > 0;
+
+    public string GetPreviewTranscript() => EffectiveTranscript ?? partialTranscript.ToString();
+
+    internal void ResetPartialTranscript()
+    {
+        partialTranscript.Clear();
+        OnPropertyChanged(nameof(CanPreviewTranscript));
+    }
+
+    internal void AppendRecognizedSegment(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        partialTranscript.Append(text);
+        OnPropertyChanged(nameof(CanPreviewTranscript));
+    }
+
     public bool CanCopy => EffectiveTranscript is not null;
 
     public bool CanCopyRaw => RawTranscript is not null && ProcessedTranscript is not null;
@@ -198,6 +221,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(EffectiveTranscript));
         OnPropertyChanged(nameof(Transcript));
         OnPropertyChanged(nameof(Preview));
+        OnPropertyChanged(nameof(CanPreviewTranscript));
         OnPropertyChanged(nameof(HasProcessedTranscript));
         NotifyActionState();
     }
