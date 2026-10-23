@@ -202,6 +202,38 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
+    public double WhisperMaxContextTokens
+    {
+        get => settings.WhisperMaxContextTokens;
+        set
+        {
+            if (!double.IsFinite(value))
+            {
+                return;
+            }
+
+            var tokens = (int)Math.Clamp(Math.Round(value), WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens);
+            UpdateSettings(settings with { WhisperMaxContextTokens = tokens }, nameof(WhisperMaxContextTokens));
+        }
+    }
+
+    public bool WhisperNoContext
+    {
+        get => settings.WhisperNoContext;
+        set
+        {
+            if (settings.WhisperNoContext == value)
+            {
+                return;
+            }
+
+            UpdateSettings(settings with { WhisperNoContext = value }, nameof(WhisperNoContext));
+            OnPropertyChanged(nameof(IsWhisperContextEnabled));
+        }
+    }
+
+    public bool IsWhisperContextEnabled => !WhisperNoContext;
+
     public ProcessingDevice ProcessingDevice
     {
         get => settings.ProcessingDevice;
@@ -841,6 +873,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             Task = settings.Task,
             Prompt = settings.VocabularyContext,
             SkipSilence = settings.SkipSilence,
+            WhisperMaxContextTokens = settings.WhisperMaxContextTokens,
+            WhisperNoContext = settings.WhisperNoContext,
             ProcessingDevice = effectiveDevice,
             CpuThreads = settings.CpuThreads
         };

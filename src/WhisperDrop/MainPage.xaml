@@ -218,6 +218,37 @@
                             Content="Skip silence"
                             IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
                             Click="SkipSilence_Click" />
+                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Previous text context (tokens)" />
+                                <NumberBox
+                                    Width="160"
+                                    HorizontalAlignment="Left"
+                                    Minimum="1"
+                                    Maximum="224"
+                                    SmallChange="1"
+                                    SpinButtonPlacementMode="Compact"
+                                    Value="{x:Bind ViewModel.WhisperMaxContextTokens, Mode=TwoWay}"
+                                    IsEnabled="{x:Bind ViewModel.IsWhisperContextEnabled, Mode=OneWay}" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextStyle}"
+                                    Text="1–224 tokens; default 224." />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                                <CheckBox
+                                    Content="Disable previous text context"
+                                    IsChecked="{x:Bind ViewModel.WhisperNoContext, Mode=OneWay}"
+                                    Click="WhisperNoContext_Click" />
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextStyle}"
+                                    Text="May help prevent repeated phrases. Vocabulary hints still apply."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
                         <StackPanel Spacing="{StaticResource SpacingXs}">
                             <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
                             <TextBox

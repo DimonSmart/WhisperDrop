@@ -97,6 +97,10 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             Task = task,
             VocabularyContext = settings?.VocabularyContext ?? string.Empty,
             SkipSilence = settings?.SkipSilence ?? false,
+            WhisperMaxContextTokens = settings?.WhisperMaxContextTokens is int tokens && tokens >= WhisperContextLimits.MinTokens
+                ? Math.Min(tokens, WhisperContextLimits.MaxTokens)
+                : WhisperContextLimits.DefaultTokens,
+            WhisperNoContext = settings?.WhisperNoContext ?? false,
             ProcessingDevice = processingDevice,
             CpuThreads = cpuThreads,
             AiPostProcessing = aiPostProcessing

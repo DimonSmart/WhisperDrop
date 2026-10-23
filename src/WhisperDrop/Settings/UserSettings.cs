@@ -48,9 +48,21 @@ public sealed record UserSettings
 
     public bool SkipSilence { get; init; }
 
+    public int WhisperMaxContextTokens { get; init; } = WhisperContextLimits.DefaultTokens;
+
+    public bool WhisperNoContext { get; init; }
+
     public ProcessingDevice ProcessingDevice { get; init; } = ProcessingDevice.Auto;
 
     public int? CpuThreads { get; init; }
 
     public AiPostProcessingSettings AiPostProcessing { get; init; } = new();
+}
+
+/// <summary>Whisper.cpp uses at most half of its 448-token decoder text context for previous text.</summary>
+public static class WhisperContextLimits
+{
+    public const int MinTokens = 1;
+    public const int MaxTokens = 224;
+    public const int DefaultTokens = MaxTokens;
 }

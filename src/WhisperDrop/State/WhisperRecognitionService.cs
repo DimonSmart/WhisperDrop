@@ -16,6 +16,8 @@ internal sealed record WhisperProcessorPlan(
     bool Translate,
     string? Prompt,
     int? Threads,
+    int? MaxContextTokens,
+    bool NoContext,
     TimeSpan? Offset,
     TimeSpan? Duration);
 
@@ -321,6 +323,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
             builder.WithThreads(threads);
         }
 
+        if (plan.NoContext)
+        {
+            builder.WithNoContext();
+        }
+        else if (plan.MaxContextTokens is int tokens)
+        {
+            builder.WithMaxLastTextTokens(tokens);
+        }
+
         if (plan.Offset is TimeSpan start)
         {
             builder.WithOffset(start);
@@ -399,6 +410,10 @@ public sealed class WhisperRecognitionService : IRecognitionService
             options.Task == TranscriptionTask.TranslateToEnglish,
             string.IsNullOrWhiteSpace(options.Prompt) ? null : options.Prompt,
             options.CpuThreads,
+            options.WhisperNoContext
+                ? null
+                : Math.Clamp(options.WhisperMaxContextTokens, WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens),
+            options.WhisperNoContext,
             offset,
             duration);
     }

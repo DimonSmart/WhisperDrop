@@ -104,6 +104,8 @@ public sealed class TranscriptionWorkspaceTests
             {
                 state.RecognitionLanguageCode = "es";
                 state.VocabularyContext = "changed";
+                state.WhisperMaxContextTokens = 24;
+                state.WhisperNoContext = true;
             }
         };
 
@@ -112,6 +114,8 @@ public sealed class TranscriptionWorkspaceTests
         Assert.Equal(3, recognition.Options.Count);
         Assert.All(recognition.Options, option => Assert.Equal("en", option.LanguageCode));
         Assert.All(recognition.Options, option => Assert.Equal(string.Empty, option.Prompt));
+        Assert.All(recognition.Options, option => Assert.Equal(224, option.WhisperMaxContextTokens));
+        Assert.All(recognition.Options, option => Assert.False(option.WhisperNoContext));
     }
 
     [Fact]
@@ -124,6 +128,8 @@ public sealed class TranscriptionWorkspaceTests
         state.VocabularyContext = "C#, .NET, WhisperDrop";
         state.CpuThreads = 1;
         state.ProcessingDevice = ProcessingDevice.Cpu;
+        state.WhisperMaxContextTokens = 64;
+        state.WhisperNoContext = true;
         state.AddFiles(["recording.wav"]);
 
         await state.TranscribeAsync(state.QueueRows[0]);
@@ -134,6 +140,8 @@ public sealed class TranscriptionWorkspaceTests
         Assert.Equal("C#, .NET, WhisperDrop", options.Prompt);
         Assert.Equal(1, options.CpuThreads);
         Assert.Equal(ProcessingDevice.Cpu, options.ProcessingDevice);
+        Assert.Equal(64, options.WhisperMaxContextTokens);
+        Assert.True(options.WhisperNoContext);
     }
 
     [Fact]
@@ -177,7 +185,8 @@ public sealed class TranscriptionWorkspaceTests
                 LanguageCode = "es",
                 Task = TranscriptionTask.TranslateToEnglish,
                 Prompt = " C#, .NET ",
-                CpuThreads = 3
+                CpuThreads = 3,
+                WhisperMaxContextTokens = 64
             },
             TimeSpan.FromSeconds(2),
             TimeSpan.FromSeconds(5));
@@ -187,6 +196,8 @@ public sealed class TranscriptionWorkspaceTests
         Assert.True(explicitPlan.Translate);
         Assert.Equal(" C#, .NET ", explicitPlan.Prompt);
         Assert.Equal(3, explicitPlan.Threads);
+        Assert.Equal(64, explicitPlan.MaxContextTokens);
+        Assert.False(explicitPlan.NoContext);
         Assert.Equal(TimeSpan.FromSeconds(2), explicitPlan.Offset);
         Assert.Equal(TimeSpan.FromSeconds(5), explicitPlan.Duration);
 
@@ -198,6 +209,17 @@ public sealed class TranscriptionWorkspaceTests
         Assert.False(autoPlan.Translate);
         Assert.Null(autoPlan.Prompt);
         Assert.Null(autoPlan.Threads);
+        Assert.Equal(224, autoPlan.MaxContextTokens);
+        Assert.False(autoPlan.NoContext);
+
+        var disabledPlan = WhisperRecognitionService.CreateProcessorPlan(
+            new RecognitionOptions { WhisperNoContext = true, WhisperMaxContextTokens = 32 });
+        Assert.True(disabledPlan.NoContext);
+        Assert.Null(disabledPlan.MaxContextTokens);
+
+        var cappedPlan = WhisperRecognitionService.CreateProcessorPlan(
+            new RecognitionOptions { WhisperMaxContextTokens = 10000 });
+        Assert.Equal(224, cappedPlan.MaxContextTokens);
     }
 
     [Fact]

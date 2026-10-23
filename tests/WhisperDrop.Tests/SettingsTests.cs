@@ -26,6 +26,8 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(TranscriptionTask.Transcribe, settings.Task);
         Assert.Equal(string.Empty, settings.VocabularyContext);
         Assert.False(settings.SkipSilence);
+        Assert.Equal(224, settings.WhisperMaxContextTokens);
+        Assert.False(settings.WhisperNoContext);
         Assert.Equal(ProcessingDevice.Auto, settings.ProcessingDevice);
         Assert.Null(settings.CpuThreads);
         Assert.False(settings.AiPostProcessing.Enabled);
@@ -51,6 +53,8 @@ public sealed class SettingsTests : IDisposable
             Task = TranscriptionTask.TranslateToEnglish,
             VocabularyContext = "C#, .NET, WhisperDrop",
             SkipSilence = true,
+            WhisperMaxContextTokens = 64,
+            WhisperNoContext = true,
             ProcessingDevice = ProcessingDevice.Cpu,
             CpuThreads = 2,
             AiPostProcessing = new AiPostProcessingSettings
@@ -71,6 +75,8 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(TranscriptionTask.TranslateToEnglish, loaded.Task);
         Assert.Equal("C#, .NET, WhisperDrop", loaded.VocabularyContext);
         Assert.True(loaded.SkipSilence);
+        Assert.Equal(64, loaded.WhisperMaxContextTokens);
+        Assert.True(loaded.WhisperNoContext);
         Assert.Equal(ProcessingDevice.Cpu, loaded.ProcessingDevice);
         Assert.Equal(Environment.ProcessorCount >= 2 ? (int?)2 : null, loaded.CpuThreads);
         Assert.True(loaded.AiPostProcessing.Enabled);
@@ -99,6 +105,8 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(TranscriptionTask.Transcribe, loaded.Task);
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
         Assert.False(loaded.SkipSilence);
+        Assert.Equal(224, loaded.WhisperMaxContextTokens);
+        Assert.False(loaded.WhisperNoContext);
         Assert.Null(loaded.CpuThreads);
         Assert.False(loaded.AiPostProcessing.Enabled);
         Assert.Equal(AiProviderPreset.Ollama, loaded.AiPostProcessing.Provider);
@@ -120,6 +128,25 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(TranscriptionTask.Transcribe, loaded.Task);
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
         Assert.Null(loaded.CpuThreads);
+    }
+
+    [Theory]
+    [InlineData(-1, 224)]
+    [InlineData(0, 224)]
+    [InlineData(1, 1)]
+    [InlineData(64, 64)]
+    [InlineData(224, 224)]
+    [InlineData(225, 224)]
+    [InlineData(int.MaxValue, 224)]
+    public void Context_history_size_is_normalized_to_supported_limits(int input, int expected)
+    {
+        var paths = new ApplicationPaths(root);
+        var store = new JsonUserSettingsStore(paths);
+        store.Save(new UserSettings { WhisperMaxContextTokens = input, WhisperNoContext = true });
+
+        var loaded = store.Load();
+        Assert.Equal(expected, loaded.WhisperMaxContextTokens);
+        Assert.True(loaded.WhisperNoContext);
     }
 
     [Fact]

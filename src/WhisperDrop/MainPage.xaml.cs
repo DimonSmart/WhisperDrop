@@ -182,6 +182,14 @@ public sealed partial class MainPage : Page
         checkBox.IsChecked = ViewModel.SkipSilence;
     }
 
+    private void WhisperNoContext_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox)
+        {
+            ViewModel.WhisperNoContext = checkBox.IsChecked == true;
+        }
+    }
+
     private async Task<bool> EnsureVadModelForCurrentSettingsAsync()
     {
         if (!ViewModel.SkipSilence || ViewModel.IsVadModelAvailable)
