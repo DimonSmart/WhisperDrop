@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -202,19 +203,34 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
-    public double WhisperMaxContextTokens
+    public int WhisperMaxContextTokens
     {
         get => settings.WhisperMaxContextTokens;
         set
         {
-            if (!double.IsFinite(value))
+            var tokens = Math.Clamp(value, WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens);
+            if (settings.WhisperMaxContextTokens == tokens)
             {
                 return;
             }
 
-            var tokens = (int)Math.Clamp(Math.Round(value), WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens);
             UpdateSettings(settings with { WhisperMaxContextTokens = tokens }, nameof(WhisperMaxContextTokens));
+            OnPropertyChanged(nameof(WhisperMaxContextTokensText));
         }
+    }
+
+    public string WhisperMaxContextTokensText =>
+        settings.WhisperMaxContextTokens.ToString(CultureInfo.InvariantCulture);
+
+    public bool TrySetWhisperMaxContextTokens(string? text)
+    {
+        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tokens))
+        {
+            return false;
+        }
+
+        WhisperMaxContextTokens = tokens;
+        return true;
     }
 
     public bool WhisperNoContext

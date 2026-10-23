@@ -119,6 +119,29 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
+    public void Context_token_text_input_accepts_integers_clamps_bounds_and_restores_invalid_values()
+    {
+        var state = CreateAvailableState(new FakeRecognitionService());
+
+        Assert.Equal("224", state.WhisperMaxContextTokensText);
+        Assert.True(state.TrySetWhisperMaxContextTokens(" 64 "));
+        Assert.Equal(64, state.WhisperMaxContextTokens);
+        Assert.Equal("64", state.WhisperMaxContextTokensText);
+
+        Assert.True(state.TrySetWhisperMaxContextTokens("0"));
+        Assert.Equal(1, state.WhisperMaxContextTokens);
+
+        Assert.True(state.TrySetWhisperMaxContextTokens("999"));
+        Assert.Equal(224, state.WhisperMaxContextTokens);
+
+        Assert.False(state.TrySetWhisperMaxContextTokens("abc"));
+        Assert.False(state.TrySetWhisperMaxContextTokens("3.5"));
+        Assert.False(state.TrySetWhisperMaxContextTokens(""));
+        Assert.False(state.TrySetWhisperMaxContextTokens("99999999999999999999"));
+        Assert.Equal("224", state.WhisperMaxContextTokensText);
+    }
+
+    [Fact]
     public async Task Single_transcription_passes_task_prompt_threads_and_device_as_one_snapshot()
     {
         var recognition = new FakeRecognitionService();
