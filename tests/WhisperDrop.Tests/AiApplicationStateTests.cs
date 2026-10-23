@@ -136,7 +136,7 @@ public sealed class AiApplicationStateTests
         Assert.Contains("Prefer the product spelling AcmeDB.", input);
         Assert.Contains("recording.wav raw", input);
         Assert.Contains("\"segmentsToCorrect\"", input);
-        Assert.Contains("видна", input);
+        Assert.Contains("Examples of context-sensitive recognition corrections:", input);
         Assert.Contains("probability", input);
     }
 
