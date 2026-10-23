@@ -95,11 +95,8 @@
                                 <Setter Target="TaskPanel.(Grid.Row)" Value="0" />
                                 <Setter Target="TaskPanel.(Grid.Column)" Value="3" />
                                 <Setter Target="TaskPanel.(Grid.ColumnSpan)" Value="1" />
-                                <Setter Target="SkipSilenceCheckBox.(Grid.Row)" Value="1" />
-                                <Setter Target="SkipSilenceCheckBox.(Grid.Column)" Value="0" />
-                                <Setter Target="SkipSilenceCheckBox.(Grid.ColumnSpan)" Value="2" />
                                 <Setter Target="AdvancedSettingsExpander.(Grid.Row)" Value="1" />
-                                <Setter Target="AdvancedSettingsExpander.(Grid.Column)" Value="2" />
+                                <Setter Target="AdvancedSettingsExpander.(Grid.Column)" Value="0" />
                                 <Setter Target="AdvancedSettingsExpander.(Grid.ColumnSpan)" Value="2" />
                             </VisualState.Setters>
                         </VisualState>
@@ -209,23 +206,18 @@
                         SelectedValuePath="Value" />
                 </StackPanel>
 
-                <CheckBox
-                    x:Name="SkipSilenceCheckBox"
-                    Grid.Row="2"
-                    Grid.Column="0"
-                    Grid.ColumnSpan="4"
-                    VerticalAlignment="Top"
-                    Content="Skip silence"
-                    IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
-                    Click="SkipSilence_Click" />
-
                 <Expander
                     x:Name="AdvancedSettingsExpander"
-                    Grid.Row="3"
+                    Grid.Row="2"
                     Grid.Column="0"
                     Grid.ColumnSpan="4"
                     Header="Advanced">
                     <StackPanel Padding="0,8,0,0" Spacing="{StaticResource SpacingSm}">
+                        <CheckBox
+                            x:Name="SkipSilenceCheckBox"
+                            Content="Skip silence"
+                            IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
+                            Click="SkipSilence_Click" />
                         <StackPanel Spacing="{StaticResource SpacingXs}">
                             <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
                             <TextBox
@@ -515,6 +507,13 @@
                                                 <TextBlock Text="AI input" />
                                             </StackPanel>
                                         </Button>
+                                        <Button
+                                            Style="{StaticResource SubtleButtonStyle}"
+                                            Click="PreviewTranscript_Click"
+                                            Content="Preview"
+                                            IsEnabled="{Binding CanPreviewTranscript}"
+                                            Tag="{Binding}"
+                                            ToolTipService.ToolTip="Open a read-only snapshot of the recognized text" />
                                         <Button
                                             Style="{StaticResource SubtleButtonStyle}"
                                             Click="Copy_Click"

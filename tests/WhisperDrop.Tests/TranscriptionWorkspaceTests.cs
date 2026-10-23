@@ -14,6 +14,35 @@ namespace WhisperDrop.Tests;
 public sealed class TranscriptionWorkspaceTests
 {
     [Fact]
+    public void Partial_transcript_preview_is_available_after_first_segment_and_captured_as_a_snapshot()
+    {
+        var item = new TranscriptionQueueItem("long.wav");
+        var notifications = new List<string?>();
+        item.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+
+        Assert.False(item.CanPreviewTranscript);
+        item.AppendRecognizedSegment("Hello");
+        Assert.True(item.CanPreviewTranscript);
+        Assert.Contains(nameof(item.CanPreviewTranscript), notifications);
+
+        var snapshot = item.GetPreviewTranscript();
+        item.AppendRecognizedSegment(" world");
+        Assert.Equal("Hello", snapshot);
+        Assert.Equal("Hello world", item.GetPreviewTranscript());
+
+        item.RecognitionResult = new RecognitionResult("Final transcript", "en");
+        Assert.Equal("Final transcript", item.GetPreviewTranscript());
+        item.ProcessedTranscript = "Improved transcript";
+        Assert.Equal("Improved transcript", item.GetPreviewTranscript());
+
+        item.RecognitionResult = null;
+        item.ProcessedTranscript = null;
+        item.ResetPartialTranscript();
+        Assert.False(item.CanPreviewTranscript);
+        Assert.Equal(string.Empty, item.GetPreviewTranscript());
+    }
+
+    [Fact]
     public async Task Batch_uses_visual_order_and_continues_after_an_error()
     {
         var recognition = new FakeRecognitionService("second.wav");
@@ -325,7 +354,8 @@ public sealed class TranscriptionWorkspaceTests
             RecognitionOptions options,
             string audioPath,
             IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            IProgress<string>? recognizedSegments = null)
         {
             Paths.Add(audioPath);
             Options.Add(options);

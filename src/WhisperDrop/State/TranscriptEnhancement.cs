@@ -118,9 +118,10 @@ Do not call tools or return Markdown, commentary, or text outside the JSON objec
 """;
 
     public const string BuiltInRecognitionHints = """
-Типовые ошибки распознавания:
-- В русском слове "видна" распознаватель может ошибочно выделить "и на". Например, "на фотографиях и на поломка" может означать "на фотографиях видна поломка".
-- Если такая последовательность встречается в связном контексте, проверьте это исправление; не заменяйте "и на" без учёта смысла предложения.
+Examples of context-sensitive recognition corrections:
+- In a software discussion, "see sharp" may refer to "C#", and "dot net" may refer to ".NET".
+- Restore conventional spelling of names, acronyms, and technical terms only when the surrounding context supports it.
+- Correct clearly misheard or split words, but do not insert terminology that was not spoken or guess when the meaning is ambiguous.
 """;
 
     private const string ChunkResultSchema = """

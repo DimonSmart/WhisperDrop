@@ -188,7 +188,8 @@ public sealed class AiApplicationStateTests
             RecognitionOptions options,
             string audioPath,
             IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            IProgress<string>? recognizedSegments = null)
         {
             CallCount++;
             var text = $"{Path.GetFileName(audioPath)} raw";

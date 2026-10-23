@@ -145,7 +145,8 @@ public sealed class MediaPreparationStateTests
             RecognitionOptions options,
             string audioPath,
             IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            IProgress<string>? recognizedSegments = null)
         {
             Paths.Add(audioPath);
             progress?.Report(1);
