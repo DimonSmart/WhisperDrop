@@ -182,15 +182,6 @@ public sealed partial class MainPage : Page
         checkBox.IsChecked = ViewModel.SkipSilence;
     }
 
-    private void WhisperMaxContextTokens_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is TextBox textBox)
-        {
-            ViewModel.TrySetWhisperMaxContextTokens(textBox.Text);
-            textBox.Text = ViewModel.WhisperMaxContextTokensText;
-        }
-    }
-
     private void WhisperNoContext_Click(object sender, RoutedEventArgs e)
     {
         if (sender is CheckBox checkBox)

@@ -2,6 +2,7 @@
     x:Class="WhisperDrop.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     RequestedTheme="Dark"
     Background="{StaticResource AppBackgroundBrush}">
 
@@ -225,13 +226,18 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
                                 <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Previous text context (tokens)" />
-                                <TextBox
-                                    Width="160"
+                                <muxc:NumberBox
+                                    Width="200"
                                     HorizontalAlignment="Left"
-                                    Style="{StaticResource SettingsTextBoxStyle}"
-                                    InputScope="Number"
-                                    Text="{x:Bind ViewModel.WhisperMaxContextTokensText, Mode=OneWay}"
-                                    LostFocus="WhisperMaxContextTokens_LostFocus"
+                                    Minimum="1"
+                                    Maximum="224"
+                                    SmallChange="1"
+                                    SpinButtonPlacementMode="Inline"
+                                    ValidationMode="InvalidInputOverwritten"
+                                    Foreground="{StaticResource PrimaryTextBrush}"
+                                    Background="{StaticResource ElevatedSurfaceBrush}"
+                                    BorderBrush="{StaticResource StrongControlBorderBrush}"
+                                    Value="{x:Bind ViewModel.WhisperMaxContextTokensValue, Mode=TwoWay}"
                                     IsEnabled="{x:Bind ViewModel.IsWhisperContextEnabled, Mode=OneWay}" />
                                 <TextBlock
                                     Style="{StaticResource CaptionTextStyle}"

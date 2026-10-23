@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -215,22 +214,24 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             }
 
             UpdateSettings(settings with { WhisperMaxContextTokens = tokens }, nameof(WhisperMaxContextTokens));
-            OnPropertyChanged(nameof(WhisperMaxContextTokensText));
+            OnPropertyChanged(nameof(WhisperMaxContextTokensValue));
         }
     }
 
-    public string WhisperMaxContextTokensText =>
-        settings.WhisperMaxContextTokens.ToString(CultureInfo.InvariantCulture);
-
-    public bool TrySetWhisperMaxContextTokens(string? text)
+    // NumberBox.Value is a double; recognition settings use whole-number tokens.
+    public double WhisperMaxContextTokensValue
     {
-        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tokens))
+        get => WhisperMaxContextTokens;
+        set
         {
-            return false;
+            if (double.IsFinite(value))
+            {
+                WhisperMaxContextTokens = (int)Math.Clamp(
+                    Math.Round(value),
+                    WhisperContextLimits.MinTokens,
+                    WhisperContextLimits.MaxTokens);
+            }
         }
-
-        WhisperMaxContextTokens = tokens;
-        return true;
     }
 
     public bool WhisperNoContext

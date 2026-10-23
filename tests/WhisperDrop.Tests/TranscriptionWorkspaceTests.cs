@@ -119,26 +119,26 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
-    public void Context_token_text_input_accepts_integers_clamps_bounds_and_restores_invalid_values()
+    public void Context_token_numberbox_value_clamps_bounds_and_ignores_non_finite_values()
     {
         var state = CreateAvailableState(new FakeRecognitionService());
 
-        Assert.Equal("224", state.WhisperMaxContextTokensText);
-        Assert.True(state.TrySetWhisperMaxContextTokens(" 64 "));
+        Assert.Equal(224d, state.WhisperMaxContextTokensValue);
+        state.WhisperMaxContextTokensValue = 64;
         Assert.Equal(64, state.WhisperMaxContextTokens);
-        Assert.Equal("64", state.WhisperMaxContextTokensText);
 
-        Assert.True(state.TrySetWhisperMaxContextTokens("0"));
+        state.WhisperMaxContextTokensValue = 0;
         Assert.Equal(1, state.WhisperMaxContextTokens);
 
-        Assert.True(state.TrySetWhisperMaxContextTokens("999"));
+        state.WhisperMaxContextTokensValue = 999;
         Assert.Equal(224, state.WhisperMaxContextTokens);
 
-        Assert.False(state.TrySetWhisperMaxContextTokens("abc"));
-        Assert.False(state.TrySetWhisperMaxContextTokens("3.5"));
-        Assert.False(state.TrySetWhisperMaxContextTokens(""));
-        Assert.False(state.TrySetWhisperMaxContextTokens("99999999999999999999"));
-        Assert.Equal("224", state.WhisperMaxContextTokensText);
+        state.WhisperMaxContextTokensValue = double.NaN;
+        state.WhisperMaxContextTokensValue = double.PositiveInfinity;
+        Assert.Equal(224d, state.WhisperMaxContextTokensValue);
+
+        state.WhisperMaxContextTokensValue = 64.4;
+        Assert.Equal(64, state.WhisperMaxContextTokens);
     }
 
     [Fact]
