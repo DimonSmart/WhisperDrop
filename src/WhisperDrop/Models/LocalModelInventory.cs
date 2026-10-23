@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -17,9 +18,9 @@ public sealed record LocalModelInfo(
     public static string FormatBytes(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024L * 1024) return $"{bytes / 1024d:0.#} KB";
-        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024d * 1024):0.#} MB";
-        return $"{bytes / (1024d * 1024 * 1024):0.##} GB";
+        if (bytes < 1024L * 1024) return $"{(bytes / 1024d).ToString("0.#", CultureInfo.InvariantCulture)} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{(bytes / (1024d * 1024)).ToString("0.#", CultureInfo.InvariantCulture)} MB";
+        return $"{(bytes / (1024d * 1024 * 1024)).ToString("0.##", CultureInfo.InvariantCulture)} GB";
     }
 }
 
