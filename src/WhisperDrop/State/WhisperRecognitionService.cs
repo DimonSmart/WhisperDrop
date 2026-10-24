@@ -408,10 +408,10 @@ public sealed class WhisperRecognitionService : IRecognitionService
         CancellationToken cancellationToken,
         WhisperExperiment experiment)
     {
-        var voiceFactory = EnsureVadFactory(factoryOptions, device);
-        var vadBuilder = voiceFactory.CreateBuilder()
-            .WithUseGpu(device != ProcessingDevice.Cpu);
-        using var vadProcessor = vadBuilder.Build();
+        var voiceFactory = EnsureVadFactory();
+        // Silero VAD is small; keep its native tensors on CPU even when Whisper uses Metal.
+        // On whisper.cpp 1.8.5 forcing VAD onto Metal can abort the entire process.
+        using var vadProcessor = BuildCpuVadProcessor(voiceFactory);
         using var vadStream = File.OpenRead(audioPath);
         var speechRegions = await vadProcessor.DetectSpeechAsync(vadStream, cancellationToken).ConfigureAwait(false);
         progress.Report(0.1);
@@ -480,9 +480,12 @@ public sealed class WhisperRecognitionService : IRecognitionService
         return factory;
     }
 
-    private WhisperVadFactory EnsureVadFactory(
-        WhisperFactoryOptions factoryOptions,
-        ProcessingDevice device)
+    internal static WhisperVadProcessor BuildCpuVadProcessor(WhisperVadFactory voiceFactory) =>
+        voiceFactory.CreateBuilder()
+            .WithUseGpu(false)
+            .Build();
+
+    private WhisperVadFactory EnsureVadFactory()
     {
         if (vadFactory is not null &&
             string.Equals(vadFactoryModelPath, vadModelManager.ModelPath, StringComparison.Ordinal))
@@ -491,7 +494,12 @@ public sealed class WhisperRecognitionService : IRecognitionService
         }
 
         vadFactory?.Dispose();
-        vadFactory = WhisperVadFactory.FromPath(vadModelManager.ModelPath, factoryOptions);
+        // VAD has its own model/context. Never inherit the main ASR model's GPU options.
+        // In Whisper.net 1.9.1 the builder controls native VAD GPU selection;
+        // set both factory and builder options explicitly for forward compatibility.
+        var vadOptions = WhisperFactoryOptions.Default;
+        vadOptions.UseGpu = false;
+        vadFactory = WhisperVadFactory.FromPath(vadModelManager.ModelPath, vadOptions);
         vadFactoryModelPath = vadModelManager.ModelPath;
         runtimeSelector.MarkInitialized();
         return vadFactory;
