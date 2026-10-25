@@ -214,11 +214,6 @@
                     Grid.ColumnSpan="4"
                     Header="Advanced">
                     <StackPanel Padding="0,8,0,0" Spacing="{StaticResource SpacingSm}">
-                        <CheckBox
-                            x:Name="SkipSilenceCheckBox"
-                            Content="Skip silence"
-                            IsChecked="{x:Bind ViewModel.SkipSilence, Mode=OneWay}"
-                            Click="SkipSilence_Click" />
                         <Grid ColumnSpacing="{StaticResource SpacingMd}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -490,6 +485,14 @@
                                             TextWrapping="Wrap"
                                             Visibility="{Binding Preview, Converter={StaticResource StringToVisibilityConverter}}" />
 
+                                        <TextBlock
+                                            MaxLines="2"
+                                            Foreground="{StaticResource WarningBrush}"
+                                            Style="{StaticResource CaptionTextStyle}"
+                                            Text="{Binding RecognitionWarning}"
+                                            TextTrimming="CharacterEllipsis"
+                                            TextWrapping="Wrap"
+                                            Visibility="{Binding RecognitionWarning, Converter={StaticResource StringToVisibilityConverter}}" />
                                         <TextBlock
                                             MaxLines="2"
                                             Foreground="{StaticResource ErrorBrush}"
