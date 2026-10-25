@@ -324,13 +324,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 $"kept={greedy.Confirmed.Count} segments; switching to Beam Search for " +
                 $"{(double)repairLength / SamplesPerSecond:0.0}s");
 
+            // Keep the short repair candidate uncommitted until its pass succeeds.
+            // A failed Beam pass must not leave partial preview/output before fallback.
             RecognitionPass repaired;
             try
             {
                 repaired = await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(safeSample, repairLength), beamSearch: true, detectLoop: false,
                     value => ReportPassProgress(safeSample, repairLength, value),
-                    part => Append(part, safeSample), cancellationToken).ConfigureAwait(false);
+                    _ => { }, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -340,11 +342,20 @@ public sealed class WhisperRecognitionService : IRecognitionService
             {
                 Log($"Beam Search error near {(double)safeSample / SamplesPerSecond:0.0}s: {exception}");
                 warning = true;
-                // Still try to preserve this interval using a bounded greedy pass.
+                // Try this region once more without Beam, still bounded to 45 seconds.
                 repaired = await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
                     value => ReportPassProgress(safeSample, repairLength, value),
-                    part => Append(part, safeSample), cancellationToken).ConfigureAwait(false);
+                    _ => { }, cancellationToken).ConfigureAwait(false);
+            }
+            foreach (var part in repaired.Confirmed)
+            {
+                Append(part, safeSample);
+            }
+            if (repaired.Confirmed.Count == 0)
+            {
+                warning = true;
+                Log($"No segments found in repair region; skipping to the end of the {repairLength / SamplesPerSecond:0}s window");
             }
 
             var repairText = string.Concat(System.Linq.Enumerable.Select(repaired.Confirmed, part => part.Segment.Text));
