@@ -355,7 +355,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 Log($"Beam Search returned {remainingLoops} repeated words; retaining its bounded output with warning");
             }
 
-            var advancedBy = ChooseAdvance(repairLength, repaired.Confirmed);
+            var advancedBy = ChooseAdvance(repairLength,
+                repaired.Confirmed.Count > 0 ? repaired.Confirmed[^1].Segment.End : null);
             cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
             Log($"repair #{repairCount}: beamSegments={repaired.Confirmed.Count} " +
                 $"resume={(double)cursorSample / SamplesPerSecond:0.00}s elapsed={clock.Elapsed:c}");
@@ -468,16 +469,16 @@ public sealed class WhisperRecognitionService : IRecognitionService
     internal static int ToSample(TimeSpan offset) =>
         (int)Math.Max(0, Math.Round(offset.TotalSeconds * SamplesPerSecond));
 
-    private static int ChooseAdvance(int windowSamples, IReadOnlyList<RecognizedPart> segments)
+    internal static int ChooseAdvance(int windowSamples, TimeSpan? lastSegmentEnd)
     {
-        if (segments.Count == 0)
+        if (lastSegmentEnd is null)
         {
             return windowSamples;
         }
 
-        var lastEnd = ToSample(segments[^1].Segment.End);
+        var lastEnd = ToSample(lastSegmentEnd.Value);
         // Use the last recognized segment boundary rather than blindly skipping
-        // silent or unfinished speech at the end of the repair window.
+        // unfinished speech at the end of the repair window.
         return lastEnd > SamplesPerSecond
             ? Math.Clamp(lastEnd, 1, windowSamples)
             : windowSamples;
