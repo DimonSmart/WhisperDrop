@@ -25,7 +25,6 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("auto", settings.RecognitionLanguageCode);
         Assert.Equal(TranscriptionTask.Transcribe, settings.Task);
         Assert.Equal(string.Empty, settings.VocabularyContext);
-        Assert.False(settings.SkipSilence);
         Assert.Equal(224, settings.WhisperMaxContextTokens);
         Assert.False(settings.WhisperNoContext);
         Assert.Equal(ProcessingDevice.Auto, settings.ProcessingDevice);
@@ -52,7 +51,6 @@ public sealed class SettingsTests : IDisposable
             RecognitionLanguageCode = "es",
             Task = TranscriptionTask.TranslateToEnglish,
             VocabularyContext = "C#, .NET, WhisperDrop",
-            SkipSilence = true,
             WhisperMaxContextTokens = 64,
             WhisperNoContext = true,
             ProcessingDevice = ProcessingDevice.Cpu,
@@ -74,7 +72,6 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("es", loaded.RecognitionLanguageCode);
         Assert.Equal(TranscriptionTask.TranslateToEnglish, loaded.Task);
         Assert.Equal("C#, .NET, WhisperDrop", loaded.VocabularyContext);
-        Assert.True(loaded.SkipSilence);
         Assert.Equal(64, loaded.WhisperMaxContextTokens);
         Assert.True(loaded.WhisperNoContext);
         Assert.Equal(ProcessingDevice.Cpu, loaded.ProcessingDevice);
@@ -104,7 +101,6 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("es", loaded.RecognitionLanguageCode);
         Assert.Equal(TranscriptionTask.Transcribe, loaded.Task);
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
-        Assert.False(loaded.SkipSilence);
         Assert.Equal(224, loaded.WhisperMaxContextTokens);
         Assert.False(loaded.WhisperNoContext);
         Assert.Null(loaded.CpuThreads);
@@ -147,40 +143,6 @@ public sealed class SettingsTests : IDisposable
         var loaded = store.Load();
         Assert.Equal(expected, loaded.WhisperMaxContextTokens);
         Assert.True(loaded.WhisperNoContext);
-    }
-
-    [Fact]
-    public async Task Vad_download_is_atomic_and_failed_download_leaves_no_installed_model()
-    {
-        var paths = new ApplicationPaths(root);
-        var manager = new VadModelManager(paths, new TestVadDownloader("vad"));
-
-        await manager.DownloadAsync();
-
-        Assert.True(manager.IsAvailable);
-        Assert.Equal("vad", File.ReadAllText(paths.VadModelPath));
-        Assert.False(File.Exists(paths.VadModelPath + ".download"));
-
-        File.Delete(paths.VadModelPath);
-        var failing = new VadModelManager(paths, new TestVadDownloader(exception: new IOException("network failed")));
-        await Assert.ThrowsAsync<IOException>(() => failing.DownloadAsync());
-        Assert.False(failing.IsAvailable);
-        Assert.False(File.Exists(paths.VadModelPath + ".download"));
-    }
-
-    [Fact]
-    public async Task Cancelled_vad_download_leaves_no_partial_model()
-    {
-        var paths = new ApplicationPaths(root);
-        var manager = new VadModelManager(paths, new TestVadDownloader("vad"));
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => manager.DownloadAsync(cancellationToken: cancellation.Token));
-
-        Assert.False(manager.IsAvailable);
-        Assert.False(File.Exists(paths.VadModelPath + ".download"));
     }
 
     [Fact]
@@ -336,29 +298,6 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(SelectedModelDownloadState.Error, state.SelectedModelDownloadState);
         Assert.True(state.CanDownloadSelectedModel);
         Assert.Contains("Download failed", state.SelectedModelStatus);
-    }
-
-    private sealed class TestVadDownloader : IVadModelDownloader
-    {
-        private readonly string content;
-        private readonly Exception? exception;
-
-        public TestVadDownloader(string content = "", Exception? exception = null)
-        {
-            this.content = content;
-            this.exception = exception;
-        }
-
-        public Task<Stream> OpenModelStreamAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (exception is not null)
-            {
-                throw exception;
-            }
-
-            return Task.FromResult<Stream>(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)));
-        }
     }
 
     private sealed class TestDownloader : ISelectedModelDownloader
