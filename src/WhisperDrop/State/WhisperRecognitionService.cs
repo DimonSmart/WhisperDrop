@@ -155,7 +155,11 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
     private sealed record RecognizedPart(RecognitionSegment Segment, string? Language);
 
-    private sealed record RecognitionPass(IReadOnlyList<RecognizedPart> Confirmed, bool LoopDetected);
+    private sealed record RecognitionPass(
+        IReadOnlyList<RecognizedPart> Confirmed,
+        bool LoopDetected,
+        TimeSpan? DetectedAt = null,
+        string? LoopExcerpt = null);
 
 
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -320,9 +324,12 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 break;
             }
 
-            Log($"loop detected #{repairCount} at ~{(double)safeSample / SamplesPerSecond:0.00}s; " +
-                $"kept={greedy.Confirmed.Count} segments; switching to Beam Search for " +
-                $"{(double)repairLength / SamplesPerSecond:0.0}s");
+            Log($"loop detected #{repairCount} at native audio " +
+                $"{(passStart / (double)SamplesPerSecond + (greedy.DetectedAt?.TotalSeconds ?? 0)):0.00}s; " +
+                $"rewind to safe {(double)safeSample / SamplesPerSecond:0.00}s; " +
+                $"kept={greedy.Confirmed.Count} segments; Beam Search window " +
+                $"{(double)repairLength / SamplesPerSecond:0.0}s; " +
+                $"excerpt=\"{greedy.LoopExcerpt}\"");
 
             // Keep the short repair candidate uncommitted until its pass succeeds.
             // A failed Beam pass must not leave partial preview/output before fallback.
@@ -348,14 +355,22 @@ public sealed class WhisperRecognitionService : IRecognitionService
                     value => ReportPassProgress(safeSample, repairLength, value),
                     _ => { }, cancellationToken).ConfigureAwait(false);
             }
-            foreach (var part in repaired.Confirmed)
-            {
-                Append(part, safeSample);
-            }
             if (repaired.Confirmed.Count == 0)
             {
                 warning = true;
-                Log($"No segments found in repair region; skipping to the end of the {repairLength / SamplesPerSecond:0}s window");
+                Log($"Beam Search returned no speech for repair #{repairCount}; retrying bounded region with greedy decoding");
+                repaired = await RunPassAsync(recognitionFactory, options,
+                    samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
+                    value => ReportPassProgress(safeSample, repairLength, value),
+                    _ => { }, cancellationToken).ConfigureAwait(false);
+                if (repaired.Confirmed.Count == 0)
+                {
+                    Log($"Both repair decoders returned no segments for this {repairLength / SamplesPerSecond:0}s window");
+                }
+            }
+            foreach (var part in repaired.Confirmed)
+            {
+                Append(part, safeSample);
             }
 
             var repairText = string.Concat(System.Linq.Enumerable.Select(repaired.Confirmed, part => part.Segment.Text));
@@ -416,6 +431,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
         var pending = new Queue<RecognizedPart>();
         var recent = new StringBuilder();
         var loopDetected = false;
+        TimeSpan? detectedAt = null;
+        string? loopExcerpt = null;
 
         void OnSegment(SegmentData segment)
         {
@@ -431,6 +448,9 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 if (WhisperRepetitionGuard.CountRepeatedTokens(recent.ToString()) > 0)
                 {
                     loopDetected = true;
+                    detectedAt = segment.End;
+                    loopExcerpt = Regex.Replace(
+                        WhisperRepetitionGuard.Tail(recent.ToString(), 150), @"\s+", " ").Trim();
                     stop.Cancel();
                     return;
                 }
@@ -474,7 +494,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             }
         }
 
-        return new RecognitionPass(confirmed, loopDetected);
+        return new RecognitionPass(confirmed, loopDetected, detectedAt, loopExcerpt);
     }
 
     internal static int ToSample(TimeSpan offset) =>
