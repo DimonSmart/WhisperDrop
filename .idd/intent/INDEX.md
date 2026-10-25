@@ -35,3 +35,4 @@ opened.
 | IDD-0005 | Spec | Release distribution | CI, tag-driven GitHub Releases, Windows/macOS artifacts, bundled native media/Whisper runtimes, checksums, and Homebrew Cask publication. | — |
 | IDD-0006 | Spec | About and application updates | Version display, GitHub update checks, release navigation, and safe Homebrew-based macOS self-update. | — |
 | IDD-0007 | Spec | AI transcript post-processing | Optional Agent Framework correction, raw-result preservation, OpenAI-compatible endpoints, chunking, structured validation, and AI failure semantics. | — |
+| IDD-0008 | ADR | Whisper decoding and repetition fallback | Experimental evidence, fixed strict thresholds, no VAD, one conditional Beam Search retry, and remaining risks. | — |
