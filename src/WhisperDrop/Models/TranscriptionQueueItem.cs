@@ -134,6 +134,8 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         }
     }
 
+    public string? RecognitionWarning => RecognitionResult?.QualityWarning;
+
     public string? RawTranscript => RecognitionResult?.Transcript;
 
     public string? EffectiveTranscript => ProcessedTranscript ?? RawTranscript;
@@ -218,6 +220,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private void NotifyTranscriptState()
     {
         OnPropertyChanged(nameof(RawTranscript));
+        OnPropertyChanged(nameof(RecognitionWarning));
         OnPropertyChanged(nameof(EffectiveTranscript));
         OnPropertyChanged(nameof(Transcript));
         OnPropertyChanged(nameof(Preview));
