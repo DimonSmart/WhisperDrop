@@ -33,8 +33,6 @@ public partial class App : Application
                 services.AddSingleton<ISelectedModelDownloader, SelectedModelDownloader>();
                 services.AddSingleton<ISelectedModelDownloadManager, SelectedModelDownloadManager>();
                 services.AddSingleton<IWhisperRuntimeSelector, WhisperRuntimeSelector>();
-                services.AddSingleton<IVadModelDownloader, VadModelDownloader>();
-                services.AddSingleton<IVadModelManager, VadModelManager>();
                 services.AddSingleton<IFfmpegRuntime, FfmpegRuntime>();
                 services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
