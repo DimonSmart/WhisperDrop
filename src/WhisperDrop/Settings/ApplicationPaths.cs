@@ -9,9 +9,6 @@ public interface IApplicationPaths
 
     string DefaultModelsFolder { get; }
 
-    string VadModelsFolder { get; }
-
-    string VadModelPath { get; }
 }
 
 public sealed class ApplicationPaths : IApplicationPaths
@@ -32,7 +29,4 @@ public sealed class ApplicationPaths : IApplicationPaths
 
     public string DefaultModelsFolder => Path.Combine(applicationDataFolder, "Models");
 
-    public string VadModelsFolder => Path.Combine(applicationDataFolder, "Vad");
-
-    public string VadModelPath => Path.Combine(VadModelsFolder, "ggml-silero-v6.2.0.bin");
 }
