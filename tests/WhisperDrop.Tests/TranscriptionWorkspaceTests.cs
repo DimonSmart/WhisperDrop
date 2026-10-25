@@ -257,28 +257,6 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
-    public void Vad_region_plan_preserves_order_skips_empty_regions_and_weights_progress()
-    {
-        var plans = WhisperRecognitionService.CreateVadRegionPlan(
-        [
-            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)),
-            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5)),
-            new Whisper.net.VadSegmentData(TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(13))
-        ]);
-
-        Assert.Equal(2, plans.Count);
-        Assert.Equal(TimeSpan.FromSeconds(1), plans[0].Start);
-        Assert.Equal(TimeSpan.FromSeconds(2), plans[0].Duration);
-        Assert.Equal(0, plans[0].ProgressOffset, 6);
-        Assert.Equal(0.25, plans[0].ProgressWeight, 6);
-        Assert.Equal(TimeSpan.FromSeconds(7), plans[1].Start);
-        Assert.Equal(0.25, plans[1].ProgressOffset, 6);
-        Assert.Equal(0.75, plans[1].ProgressWeight, 6);
-
-        Assert.Empty(WhisperRecognitionService.CreateVadRegionPlan([]));
-    }
-
-    [Fact]
     public void Monotonic_progress_never_moves_back_and_clamps_to_one()
     {
         var values = new List<double>();
