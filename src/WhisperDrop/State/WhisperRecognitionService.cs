@@ -18,9 +18,7 @@ internal sealed record WhisperProcessorPlan(
     string? Prompt,
     int? Threads,
     int? MaxContextTokens,
-    bool NoContext,
-    TimeSpan? Offset,
-    TimeSpan? Duration);
+    bool NoContext);
 
 internal sealed class MonotonicProgressReporter
 {
@@ -395,10 +393,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         gate.Dispose();
     }
 
-    internal static WhisperProcessorPlan CreateProcessorPlan(
-        RecognitionOptions options,
-        TimeSpan? offset = null,
-        TimeSpan? duration = null)
+    internal static WhisperProcessorPlan CreateProcessorPlan(RecognitionOptions options)
     {
         var detectLanguage = string.Equals(options.LanguageCode, "auto", StringComparison.OrdinalIgnoreCase);
         return new WhisperProcessorPlan(
@@ -410,9 +405,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             options.WhisperNoContext
                 ? null
                 : Math.Clamp(options.WhisperMaxContextTokens, WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens),
-            options.WhisperNoContext,
-            offset,
-            duration);
+            options.WhisperNoContext);
     }
 
     internal static bool RequiresRecognitionFactoryReload(
