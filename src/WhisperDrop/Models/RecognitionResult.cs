@@ -18,6 +18,8 @@ public sealed record RecognitionResult(
     string? DetectedLanguage,
     IReadOnlyList<RecognitionSegment> Segments)
 {
+    public string? QualityWarning { get; init; }
+
     public RecognitionResult(string transcript, string? detectedLanguage)
         : this(transcript, detectedLanguage, [])
     {
