@@ -46,8 +46,6 @@ public sealed record UserSettings
 
     public string VocabularyContext { get; init; } = string.Empty;
 
-    public bool SkipSilence { get; init; }
-
     public int WhisperMaxContextTokens { get; init; } = WhisperContextLimits.DefaultTokens;
 
     public bool WhisperNoContext { get; init; }
