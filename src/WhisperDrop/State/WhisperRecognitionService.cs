@@ -83,8 +83,8 @@ internal static class WhisperRepetitionGuard
         for (var i = 0; i < words.Length;)
         {
             var blockSize = 0;
-            // Require at least three successive occurrences of 3–10 words.
-            for (var size = 3; size <= 10 && i + 3 * size <= words.Length; size++)
+            // Require at least three successive occurrences of 3–32 words.
+            for (var size = 3; size <= 32 && i + 3 * size <= words.Length; size++)
             {
                 var identical = true;
                 for (var j = 0; j < size && identical; j++)
