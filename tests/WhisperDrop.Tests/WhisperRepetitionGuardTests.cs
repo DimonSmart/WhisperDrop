@@ -26,32 +26,40 @@ public sealed class WhisperRepetitionGuardTests
     }
 
     [Fact]
-    public void Retry_is_preferred_when_it_fixes_a_loop_and_keeps_meaningful_text()
+    public void Detection_works_incrementally_across_short_native_segments()
     {
-        var original = "Comenzamos a las ocho y llegamos a Cazorla. " +
-            string.Concat(System.Linq.Enumerable.Repeat("[HABLANDO EN INGLÉS] ", 50)) +
-            "Por la tarde visitaremos el río.";
-        var retry = "Comenzamos a las ocho y llegamos a Cazorla. " +
-            "Now we will talk about the trip. Por la tarde visitaremos el río.";
-
-        Assert.True(WhisperRepetitionGuard.PreferRetry(original, retry));
+        var partial = "";
+        partial += "Tenemos actividades y luego la tirolina.";
+        Assert.Equal(0, WhisperRepetitionGuard.CountRepeatedTokens(partial));
+        partial += " Es una tirolina.";
+        Assert.Equal(0, WhisperRepetitionGuard.CountRepeatedTokens(partial));
+        partial += " Es una tirolina.";
+        Assert.Equal(0, WhisperRepetitionGuard.CountRepeatedTokens(partial));
+        partial += " Es una tirolina.";
+        Assert.True(WhisperRepetitionGuard.CountRepeatedTokens(partial) > 0);
     }
 
     [Fact]
-    public void Empty_or_truncated_retry_is_not_selected_just_for_lack_of_loops()
+    public void Tail_limits_work_to_recent_text_only()
     {
-        var original = "Una explicación completa sobre todas las actividades previstas. " +
-            "Luego hablaremos de los horarios y del presupuesto. " +
-            "Y seguiremos contando todos los detalles. " +
-            "Una frase repetida tres veces. Una frase repetida tres veces. Una frase repetida tres veces.";
-        Assert.False(WhisperRepetitionGuard.PreferRetry(original, "Una explicación completa."));
-        Assert.False(WhisperRepetitionGuard.PreferRetry(original, ""));
+        var text = new string('x', 6000) + " Repetir tres palabras. Repetir tres palabras. Repetir tres palabras.";
+        var tail = WhisperRepetitionGuard.Tail(text);
+        Assert.Equal(4096, tail.Length);
+        Assert.True(WhisperRepetitionGuard.CountRepeatedTokens(tail) > 0);
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 16000)]
+    [InlineData(2.5, 40000)]
+    public void Audio_offsets_are_converted_to_samples(double seconds, int expected) =>
+        Assert.Equal(expected, WhisperRecognitionService.ToSample(System.TimeSpan.FromSeconds(seconds)));
+
     [Fact]
-    public void Equal_or_worse_retry_does_not_replace_original()
+    public void Local_repair_continues_from_last_recognized_segment_boundary()
     {
-        var original = "Una frase repetida varias veces. Una frase repetida varias veces. Una frase repetida varias veces.";
-        Assert.False(WhisperRepetitionGuard.PreferRetry(original, original));
+        Assert.Equal(560000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(35)));
+        Assert.Equal(720000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(0)));
+        Assert.Equal(720000, WhisperRecognitionService.ChooseAdvance(720000, null));
     }
 }
