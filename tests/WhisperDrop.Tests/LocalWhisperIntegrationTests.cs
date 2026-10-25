@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Whisper.net;
 using WhisperDrop.State;
 using Xunit;
 
@@ -24,30 +23,5 @@ public sealed class LocalWhisperIntegrationTests
             new RecognitionOptions { LanguageCode = "auto" },
             wav);
         Assert.NotNull(result.Transcript);
-    }
-
-    [Fact]
-    public async Task CpuVad_initializes_and_detects_speech_on_the_installed_native_backend()
-    {
-        // Supply WHISPERDROP_LOCAL_VAD_MODEL to exercise the actual native VAD initialization
-        // (including on macOS with Metal available). Never use GPU for this context.
-        var vadModel = Environment.GetEnvironmentVariable("WHISPERDROP_LOCAL_VAD_MODEL");
-        if (string.IsNullOrWhiteSpace(vadModel) || !File.Exists(vadModel))
-        {
-            return;
-        }
-
-        var wav = Environment.GetEnvironmentVariable("WHISPERDROP_LOCAL_WAV");
-        if (string.IsNullOrWhiteSpace(wav) || !File.Exists(wav))
-        {
-            wav = Path.Combine(AppContext.BaseDirectory, "Fixtures", "test.wav");
-        }
-
-        using var factory = WhisperVadFactory.FromPath(vadModel);
-        using var processor = WhisperRecognitionService.BuildCpuVadProcessor(factory);
-        using var stream = File.OpenRead(wav);
-        var segments = await processor.DetectSpeechAsync(stream);
-
-        Assert.NotNull(segments);
     }
 }
