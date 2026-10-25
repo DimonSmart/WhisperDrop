@@ -9,6 +9,7 @@ public sealed class WhisperRepetitionGuardTests
     [InlineData("[HABLANDO EN INGLÉS] [HABLANDO EN INGLÉS] [HABLANDO EN INGLÉS]")]
     [InlineData("Habitualmente suele ser entre las ocho. Habitualmente suele ser entre las ocho. Habitualmente suele ser entre las ocho.")]
     [InlineData("Vamos a Cazorla en junio. Vamos a Cazorla en junio. Vamos a Cazorla en junio.")]
+    [InlineData("Y ahora mismo voy a traducirlo en inglés pero creo que es un poco difícil. Y ahora mismo voy a traducirlo en inglés pero creo que es un poco difícil. Y ahora mismo voy a traducirlo en inglés pero creo que es un poco difícil.")]
     public void Three_identical_word_groups_trigger_retry(string text)
     {
         Assert.True(WhisperRepetitionGuard.CountRepeatedTokens(text) >= 6);
