@@ -29,7 +29,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ITranscriptEnhancementService transcriptEnhancementService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
-    private readonly IVadModelManager vadModelManager;
     private readonly IWhisperRuntimeSelector runtimeSelector;
     private UserSettings settings;
     private int selectedTabIndex = TranscribeTabIndex;
@@ -52,7 +51,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         IRecognitionService? recognitionService = null,
         ITranscriptEnhancementService? transcriptEnhancementService = null,
         ILocalModelInventory? localModelInventory = null,
-        IVadModelManager? vadModelManager = null,
         IWhisperRuntimeSelector? runtimeSelector = null,
         IMediaPreparationService? mediaPreparationService = null)
     {
@@ -61,8 +59,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         this.availability = availability;
         this.downloadManager = downloadManager ?? new SelectedModelDownloadManager(modelCatalog, availability, new SelectedModelDownloader());
         this.runtimeSelector = runtimeSelector ?? new WhisperRuntimeSelector();
-        this.vadModelManager = vadModelManager ?? new VadModelManager(new ApplicationPaths(), new VadModelDownloader());
-        this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector, this.vadModelManager);
+        this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector);
         this.mediaPreparationService = mediaPreparationService ?? new DirectMediaPreparationService();
         this.transcriptEnhancementService = transcriptEnhancementService ?? new UnavailableTranscriptEnhancementService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
@@ -186,20 +183,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         get => settings.VocabularyContext;
         set => UpdateSettings(settings with { VocabularyContext = value ?? string.Empty }, nameof(VocabularyContext));
-    }
-
-    public bool SkipSilence
-    {
-        get => settings.SkipSilence;
-        set
-        {
-            if (value && !vadModelManager.IsAvailable)
-            {
-                return;
-            }
-
-            UpdateSettings(settings with { SkipSilence = value }, nameof(SkipSilence));
-        }
     }
 
     public int WhisperMaxContextTokens
@@ -348,8 +331,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         private set => SetField(ref isAiConnectionTesting, value);
     }
 
-    public bool IsVadModelAvailable => vadModelManager.IsAvailable;
-
     public string? ProcessingDeviceRestartMessage =>
         runtimeSelector.RequiresRestart(settings.ProcessingDevice)
             ? "Restart required to change processing device."
@@ -429,14 +410,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     }
 
     public bool IsModelDownloaded(string modelId) => availability.IsAvailable(ModelsFolder, modelId);
-
-    public async Task DownloadVadModelAsync(
-        IProgress<double>? progress = null,
-        CancellationToken cancellationToken = default)
-    {
-        await vadModelManager.DownloadAsync(progress, cancellationToken);
-        OnPropertyChanged(nameof(IsVadModelAvailable));
-    }
 
     public async Task DownloadModelAsync(
         string modelId,
@@ -868,12 +841,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             return false;
         }
 
-        if (options.SkipSilence && !vadModelManager.IsAvailable)
-        {
-            guidance = "Voice detection model is missing.";
-            return false;
-        }
-
         modelPath = availability.GetModelPath(ModelsFolder, SelectedModelId);
         return true;
     }
@@ -889,7 +856,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             LanguageCode = settings.RecognitionLanguageCode,
             Task = settings.Task,
             Prompt = settings.VocabularyContext,
-            SkipSilence = settings.SkipSilence,
             WhisperMaxContextTokens = settings.WhisperMaxContextTokens,
             WhisperNoContext = settings.WhisperNoContext,
             ProcessingDevice = effectiveDevice,
