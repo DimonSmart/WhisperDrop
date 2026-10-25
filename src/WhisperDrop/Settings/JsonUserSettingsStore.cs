@@ -96,7 +96,6 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             RecognitionLanguageCode = string.IsNullOrWhiteSpace(settings?.RecognitionLanguageCode) ? "auto" : settings.RecognitionLanguageCode,
             Task = task,
             VocabularyContext = settings?.VocabularyContext ?? string.Empty,
-            SkipSilence = settings?.SkipSilence ?? false,
             WhisperMaxContextTokens = settings?.WhisperMaxContextTokens is int tokens && tokens >= WhisperContextLimits.MinTokens
                 ? Math.Min(tokens, WhisperContextLimits.MaxTokens)
                 : WhisperContextLimits.DefaultTokens,
