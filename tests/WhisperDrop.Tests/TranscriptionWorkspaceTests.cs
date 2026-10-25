@@ -200,7 +200,7 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
-    public void Processor_plan_maps_language_task_prompt_threads_and_chunk_bounds()
+    public void Processor_plan_maps_language_task_prompt_and_threads()
     {
         var explicitPlan = WhisperRecognitionService.CreateProcessorPlan(
             new RecognitionOptions
@@ -210,9 +210,7 @@ public sealed class TranscriptionWorkspaceTests
                 Prompt = " C#, .NET ",
                 CpuThreads = 3,
                 WhisperMaxContextTokens = 64
-            },
-            TimeSpan.FromSeconds(2),
-            TimeSpan.FromSeconds(5));
+            });
 
         Assert.False(explicitPlan.DetectLanguage);
         Assert.Equal("es", explicitPlan.LanguageCode);
@@ -221,8 +219,6 @@ public sealed class TranscriptionWorkspaceTests
         Assert.Equal(3, explicitPlan.Threads);
         Assert.Equal(64, explicitPlan.MaxContextTokens);
         Assert.False(explicitPlan.NoContext);
-        Assert.Equal(TimeSpan.FromSeconds(2), explicitPlan.Offset);
-        Assert.Equal(TimeSpan.FromSeconds(5), explicitPlan.Duration);
 
         var autoPlan = WhisperRecognitionService.CreateProcessorPlan(
             new RecognitionOptions { LanguageCode = "auto", Prompt = "   " });
