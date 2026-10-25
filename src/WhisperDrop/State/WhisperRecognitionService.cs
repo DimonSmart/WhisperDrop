@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Whisper.net;
+using Whisper.net.Wave;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
 
@@ -134,27 +136,27 @@ internal static class WhisperRepetitionGuard
         return repeated;
     }
 
-    internal static bool PreferRetry(string original, string retry)
-    {
-        var originalRepeated = CountRepeatedTokens(original);
-        var retryRepeated = CountRepeatedTokens(retry);
-        if (originalRepeated == 0 || retryRepeated >= originalRepeated)
-        {
-            return false;
-        }
 
-        // Never choose a short/empty retry simply because it contains no repetition.
-        var originalUsefulWords = CountWords(original) - originalRepeated;
-        var retryUsefulWords = CountWords(retry) - retryRepeated;
-        return retryUsefulWords >= Math.Max(1, originalUsefulWords * 0.7);
-    }
+    // Limit native-callback work to recent text; most suspicious loops are local.
+    internal static string Tail(string text, int maxCharacters = 4096) =>
+        text.Length <= maxCharacters ? text : text[^maxCharacters..];
+
 }
 
-/// <summary>Owns one loaded Whisper model; transcribes once, retrying only obvious loops.</summary>
+/// <summary>Owns one Whisper model; stops active decoding at obvious loops and repairs only local audio.</summary>
 public sealed class WhisperRecognitionService : IRecognitionService
 {
     private const float EntropyThreshold = 1.8f;
     private const float LogProbabilityThreshold = -0.8f;
+    private const int SamplesPerSecond = 16000; // The media preparation contract is 16 kHz mono WAV.
+    private static readonly TimeSpan RepairWindow = TimeSpan.FromSeconds(45);
+    private const int PendingSegmentLookbehind = 3;
+    private const int MaxLocalRepairs = 5;
+
+    private sealed record RecognizedPart(RecognitionSegment Segment, string? Language);
+
+    private sealed record RecognitionPass(IReadOnlyList<RecognizedPart> Confirmed, bool LoopDetected);
+
 
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly IWhisperRuntimeSelector runtimeSelector;
@@ -194,7 +196,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             reporter.Report(0);
 
             return await Task.Run(
-                () => TranscribeWithFallbackAsync(
+                () => TranscribeWithLocalRepairAsync(
                     modelPath, factoryOptions, device, options, audioPath,
                     reporter, recognizedSegments, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
@@ -224,7 +226,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         }
     }
 
-    private async Task<RecognitionResult> TranscribeWithFallbackAsync(
+    private async Task<RecognitionResult> TranscribeWithLocalRepairAsync(
         string modelPath,
         WhisperFactoryOptions factoryOptions,
         ProcessingDevice device,
@@ -234,51 +236,252 @@ public sealed class WhisperRecognitionService : IRecognitionService
         IProgress<string>? recognizedSegments,
         CancellationToken cancellationToken)
     {
+        var clock = Stopwatch.StartNew();
         var recognitionFactory = EnsureRecognitionFactory(modelPath, factoryOptions, device);
-        using var primary = BuildProcessor(recognitionFactory, options,
-            value => progress.Report(0.9 * value / 100d), beamSearch: false);
-        var original = await ProcessAsync(primary, audioPath, cancellationToken, recognizedSegments).ConfigureAwait(false);
-        var originalRepeated = WhisperRepetitionGuard.CountRepeatedTokens(original.Transcript);
-        if (originalRepeated == 0)
-        {
-            progress.Report(1);
-            return original;
-        }
+        using var stream = File.OpenRead(audioPath);
+        // Decode once. Never repeatedly read the whole WAV when recovering a local region.
+        var samples = await new WaveParser(stream).GetAvgSamplesAsync(cancellationToken).ConfigureAwait(false);
+        var total = TimeSpan.FromSeconds((double)samples.Length / SamplesPerSecond);
+        var transcript = new StringBuilder();
+        var segments = new List<RecognitionSegment>();
+        string? detectedLanguage = null;
+        var repairCount = 0;
+        var warning = false;
+        var cursorSample = 0;
 
-        // Retry at most once. If native Beam Search fails, preserve the primary result.
-        // Do not stream the second attempt into the preview until it is selected:
-        // otherwise the live preview would contain both unrelated transcripts.
-        RecognitionResult? retry = null;
-        try
+        void Log(string message) => Console.Error.WriteLine($"[WhisperDrop] {message}");
+        void Append(IReadOnlyList<RecognizedPart> parts, int baseSample)
         {
-            using var alternate = BuildProcessor(recognitionFactory, options,
-                value => progress.Report(0.9 + 0.1 * value / 100d), beamSearch: true);
-            retry = await ProcessAsync(alternate, audioPath, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            // Decoding failure should not discard an otherwise usable first transcript.
-            System.Diagnostics.Debug.WriteLine($"Whisper Beam Search retry failed: {exception}");
-        }
-
-        var selected = retry is not null &&
-            WhisperRepetitionGuard.PreferRetry(original.Transcript, retry.Transcript)
-                ? retry : original;
-        var remaining = WhisperRepetitionGuard.CountRepeatedTokens(selected.Transcript);
-        if (remaining > 0)
-        {
-            selected = selected with
+            var shift = TimeSpan.FromSeconds((double)baseSample / SamplesPerSecond);
+            foreach (var part in parts)
             {
-                QualityWarning = "Whisper detected repeated phrases that could not be resolved automatically. Please check the transcript."
-            };
+                var seg = part.Segment with
+                {
+                    Id = segments.Count,
+                    Start = part.Segment.Start + shift,
+                    End = part.Segment.End + shift
+                };
+                segments.Add(seg);
+                transcript.Append(seg.Text);
+                recognizedSegments?.Report(seg.Text);
+                detectedLanguage ??= part.Language;
+            }
+        }
+
+        void ReportPassProgress(int startSample, int passSamples, int percentage)
+        {
+            if (samples.Length == 0)
+            {
+                return;
+            }
+
+            var position = (startSample + passSamples * Math.Clamp(percentage, 0, 100) / 100.0) / samples.Length;
+            progress.Report(position * 0.95); // Reserve 5% for any recovery/finalization.
+        }
+
+        Log($"start duration={total:c} samples={samples.Length} model={Path.GetFileName(modelPath)} " +
+            $"device={device} entropy={EntropyThreshold} logprob={LogProbabilityThreshold} " +
+            $"repairWindow={RepairWindow.TotalSeconds:0}s");
+
+        while (cursorSample < samples.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var passStart = cursorSample;
+            var passSamples = samples.Length - passStart;
+
+            var greedy = await RunPassAsync(recognitionFactory, options,
+                samples.AsMemory(passStart), beamSearch: false, detectLoop: true,
+                value => ReportPassProgress(passStart, passSamples, value),
+                cancellationToken).ConfigureAwait(false);
+
+            Append(greedy.Confirmed, passStart);
+            if (!greedy.LoopDetected)
+            {
+                Log($"completed after {repairCount} local repair(s), segments={segments.Count} " +
+                    $"characters={transcript.Length} elapsed={clock.Elapsed:c}");
+                break;
+            }
+
+            // These confirmed segments precede the rolling lookbehind; discard the
+            // suspicious pending segments and restart exactly at the last safe end.
+            var safeRelativeEnd = greedy.Confirmed.Count == 0
+                ? TimeSpan.Zero
+                : greedy.Confirmed[^1].Segment.End;
+            var safeSample = Math.Clamp(passStart + ToSample(safeRelativeEnd),
+                passStart, samples.Length);
+            if (safeSample >= samples.Length)
+            {
+                // A pathological timestamp must not hide unfinished speech.
+                safeSample = passStart;
+                warning = true;
+            }
+
+            repairCount++;
+            var repairLength = Math.Min(samples.Length - safeSample, ToSample(RepairWindow));
+            if (repairLength <= 0)
+            {
+                warning = true;
+                break;
+            }
+
+            Log($"loop detected #{repairCount} at ~{(double)safeSample / SamplesPerSecond:0.00}s; " +
+                $"kept={greedy.Confirmed.Count} segments; switching to Beam Search for " +
+                $"{(double)repairLength / SamplesPerSecond:0.0}s");
+
+            RecognitionPass repaired;
+            try
+            {
+                repaired = await RunPassAsync(recognitionFactory, options,
+                    samples.AsMemory(safeSample, repairLength), beamSearch: true, detectLoop: false,
+                    value => ReportPassProgress(safeSample, repairLength, value),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                Log($"Beam Search error near {(double)safeSample / SamplesPerSecond:0.0}s: {exception}");
+                warning = true;
+                // Still try to preserve this interval using a bounded greedy pass.
+                repaired = await RunPassAsync(recognitionFactory, options,
+                    samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
+                    value => ReportPassProgress(safeSample, repairLength, value),
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            var repairText = string.Concat(System.Linq.Enumerable.Select(repaired.Confirmed, part => part.Segment.Text));
+            var remainingLoops = WhisperRepetitionGuard.CountRepeatedTokens(repairText);
+            if (remainingLoops != 0)
+            {
+                warning = true;
+                Log($"Beam Search returned {remainingLoops} repeated words; retaining its bounded output with warning");
+            }
+
+            Append(repaired.Confirmed, safeSample);
+            var advancedBy = ChooseAdvance(repairLength, repaired.Confirmed);
+            cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
+            Log($"repair #{repairCount}: beamSegments={repaired.Confirmed.Count} " +
+                $"resume={(double)cursorSample / SamplesPerSecond:0.00}s elapsed={clock.Elapsed:c}");
+
+            if (repairCount >= MaxLocalRepairs && cursorSample < samples.Length)
+            {
+                // Avoid infinite repair loops on pathological recordings: a single
+                // Beam pass for the remaining suffix, never restarting from file start.
+                Log($"repair limit {MaxLocalRepairs} reached; decoding remaining suffix with Beam Search");
+                warning = true;
+                var tailStart = cursorSample;
+                var tail = await RunPassAsync(recognitionFactory, options,
+                    samples.AsMemory(tailStart), beamSearch: true, detectLoop: false,
+                    value => ReportPassProgress(tailStart, samples.Length - tailStart, value),
+                    cancellationToken).ConfigureAwait(false);
+                Append(tail.Confirmed, tailStart);
+                break;
+            }
         }
 
         progress.Report(1);
-        return selected;
+        Log($"done segments={segments.Count} characters={transcript.Length} " +
+            $"repairs={repairCount} warning={warning} elapsed={clock.Elapsed:c}");
+        return new RecognitionResult(transcript.ToString(), detectedLanguage, segments)
+        {
+            QualityWarning = warning
+                ? "Whisper recovered from repeated speech, but parts of the transcript may need review."
+                : null
+        };
+    }
+
+    // A native segment callback runs on Whisper's decode thread. We cancel the *internal*
+    // token as soon as three repeated word groups appear; public user cancellation is separate.
+    // DisposeAsync waits for the native worker before a new processor is created.
+    private static async Task<RecognitionPass> RunPassAsync(
+        WhisperFactory recognitionFactory,
+        RecognitionOptions options,
+        ReadOnlyMemory<float> audio,
+        bool beamSearch,
+        bool detectLoop,
+        Action<int> progress,
+        CancellationToken cancellationToken)
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var confirmed = new List<RecognizedPart>();
+        var pending = new Queue<RecognizedPart>();
+        var recent = new StringBuilder();
+        var loopDetected = false;
+
+        void OnSegment(SegmentData segment)
+        {
+            var part = new RecognizedPart(CreateRecognitionSegment(segment, 0), segment.Language);
+            pending.Enqueue(part);
+            if (detectLoop)
+            {
+                recent.Append(segment.Text);
+                if (recent.Length > 4096)
+                {
+                    recent.Remove(0, recent.Length - 4096);
+                }
+                if (WhisperRepetitionGuard.CountRepeatedTokens(recent.ToString()) > 0)
+                {
+                    loopDetected = true;
+                    stop.Cancel();
+                    return;
+                }
+            }
+
+            if (pending.Count > (detectLoop ? PendingSegmentLookbehind : 0))
+            {
+                confirmed.Add(pending.Dequeue());
+            }
+        }
+
+        await using var processor = BuildProcessor(recognitionFactory, options,
+            progress, beamSearch, OnSegment);
+        try
+        {
+            // The enumerator is drained for native completion; the callback captures
+            // segments immediately (without async buffering latency).
+            await foreach (var _ in processor.ProcessAsync(audio, stop.Token).ConfigureAwait(false))
+            {
+            }
+        }
+        catch (OperationCanceledException) when (loopDetected && !cancellationToken.IsCancellationRequested)
+        {
+            // Expected early native abort after a detected repeated sequence.
+        }
+        catch (WhisperProcessingException) when (loopDetected && !cancellationToken.IsCancellationRequested)
+        {
+            // Some native backends report an aborted pass as a processing error.
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!loopDetected)
+        {
+            while (pending.Count > 0)
+            {
+                confirmed.Add(pending.Dequeue());
+            }
+        }
+
+        return new RecognitionPass(confirmed, loopDetected);
+    }
+
+    internal static int ToSample(TimeSpan offset) =>
+        (int)Math.Max(0, Math.Round(offset.TotalSeconds * SamplesPerSecond));
+
+    private static int ChooseAdvance(int windowSamples, IReadOnlyList<RecognizedPart> segments)
+    {
+        if (segments.Count == 0)
+        {
+            return windowSamples;
+        }
+
+        var lastEnd = ToSample(segments[^1].Segment.End);
+        // Use the last recognized segment boundary rather than blindly skipping
+        // silent or unfinished speech at the end of the repair window.
+        return lastEnd > SamplesPerSecond
+            ? Math.Clamp(lastEnd, 1, windowSamples)
+            : windowSamples;
     }
 
     private WhisperFactory EnsureRecognitionFactory(
@@ -304,7 +507,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
         WhisperFactory recognitionFactory,
         RecognitionOptions options,
         Action<int> progress,
-        bool beamSearch)
+        bool beamSearch,
+        OnSegmentEventHandler onSegment)
     {
         var plan = CreateProcessorPlan(options);
         var builder = recognitionFactory.CreateBuilder();
@@ -349,30 +553,9 @@ public sealed class WhisperRecognitionService : IRecognitionService
         }
 
         builder.WithProbabilities();
+        builder.WithSegmentEventHandler(onSegment);
         builder.WithProgressHandler(value => progress(value));
         return builder.Build();
-    }
-
-    private static async Task<RecognitionResult> ProcessAsync(
-        WhisperProcessor processor,
-        string audioPath,
-        CancellationToken cancellationToken,
-        IProgress<string>? recognizedSegments = null)
-    {
-        using var stream = File.OpenRead(audioPath);
-        var transcript = new StringBuilder();
-        var segments = new List<RecognitionSegment>();
-        string? detectedLanguage = null;
-
-        await foreach (var segment in processor.ProcessAsync(stream, cancellationToken).ConfigureAwait(false))
-        {
-            transcript.Append(segment.Text);
-            recognizedSegments?.Report(segment.Text);
-            segments.Add(CreateRecognitionSegment(segment, segments.Count));
-            detectedLanguage ??= segment.Language;
-        }
-
-        return new RecognitionResult(transcript.ToString(), detectedLanguage, segments);
     }
 
     internal static RecognitionSegment CreateRecognitionSegment(SegmentData segment, int id) =>
