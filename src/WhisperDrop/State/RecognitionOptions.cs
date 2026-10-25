@@ -10,8 +10,6 @@ public sealed record RecognitionOptions
 
     public string? Prompt { get; init; }
 
-    public bool SkipSilence { get; init; }
-
     public int WhisperMaxContextTokens { get; init; } = WhisperContextLimits.DefaultTokens;
 
     public bool WhisperNoContext { get; init; }
