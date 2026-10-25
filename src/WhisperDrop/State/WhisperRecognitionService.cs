@@ -250,22 +250,19 @@ public sealed class WhisperRecognitionService : IRecognitionService
         var cursorSample = 0;
 
         void Log(string message) => Console.Error.WriteLine($"[WhisperDrop] {message}");
-        void Append(IReadOnlyList<RecognizedPart> parts, int baseSample)
+        void Append(RecognizedPart part, int baseSample)
         {
             var shift = TimeSpan.FromSeconds((double)baseSample / SamplesPerSecond);
-            foreach (var part in parts)
+            var seg = part.Segment with
             {
-                var seg = part.Segment with
-                {
-                    Id = segments.Count,
-                    Start = part.Segment.Start + shift,
-                    End = part.Segment.End + shift
-                };
-                segments.Add(seg);
-                transcript.Append(seg.Text);
-                recognizedSegments?.Report(seg.Text);
-                detectedLanguage ??= part.Language;
-            }
+                Id = segments.Count,
+                Start = part.Segment.Start + shift,
+                End = part.Segment.End + shift
+            };
+            segments.Add(seg);
+            transcript.Append(seg.Text);
+            recognizedSegments?.Report(seg.Text);
+            detectedLanguage ??= part.Language;
         }
 
         void ReportPassProgress(int startSample, int passSamples, int percentage)
@@ -292,9 +289,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
             var greedy = await RunPassAsync(recognitionFactory, options,
                 samples.AsMemory(passStart), beamSearch: false, detectLoop: true,
                 value => ReportPassProgress(passStart, passSamples, value),
-                cancellationToken).ConfigureAwait(false);
+                part => Append(part, passStart), cancellationToken).ConfigureAwait(false);
 
-            Append(greedy.Confirmed, passStart);
             if (!greedy.LoopDetected)
             {
                 Log($"completed after {repairCount} local repair(s), segments={segments.Count} " +
@@ -334,7 +330,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 repaired = await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(safeSample, repairLength), beamSearch: true, detectLoop: false,
                     value => ReportPassProgress(safeSample, repairLength, value),
-                    cancellationToken).ConfigureAwait(false);
+                    part => Append(part, safeSample), cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -348,7 +344,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 repaired = await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
                     value => ReportPassProgress(safeSample, repairLength, value),
-                    cancellationToken).ConfigureAwait(false);
+                    part => Append(part, safeSample), cancellationToken).ConfigureAwait(false);
             }
 
             var repairText = string.Concat(System.Linq.Enumerable.Select(repaired.Confirmed, part => part.Segment.Text));
@@ -359,7 +355,6 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 Log($"Beam Search returned {remainingLoops} repeated words; retaining its bounded output with warning");
             }
 
-            Append(repaired.Confirmed, safeSample);
             var advancedBy = ChooseAdvance(repairLength, repaired.Confirmed);
             cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
             Log($"repair #{repairCount}: beamSegments={repaired.Confirmed.Count} " +
@@ -375,8 +370,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 var tail = await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(tailStart), beamSearch: true, detectLoop: false,
                     value => ReportPassProgress(tailStart, samples.Length - tailStart, value),
-                    cancellationToken).ConfigureAwait(false);
-                Append(tail.Confirmed, tailStart);
+                    part => Append(part, tailStart), cancellationToken).ConfigureAwait(false);
                 break;
             }
         }
@@ -402,6 +396,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         bool beamSearch,
         bool detectLoop,
         Action<int> progress,
+        Action<RecognizedPart> onConfirmed,
         CancellationToken cancellationToken)
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -431,7 +426,9 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
             if (pending.Count > (detectLoop ? PendingSegmentLookbehind : 0))
             {
-                confirmed.Add(pending.Dequeue());
+                var safe = pending.Dequeue();
+                confirmed.Add(safe);
+                onConfirmed(safe);
             }
         }
 
@@ -459,7 +456,9 @@ public sealed class WhisperRecognitionService : IRecognitionService
         {
             while (pending.Count > 0)
             {
-                confirmed.Add(pending.Dequeue());
+                var safe = pending.Dequeue();
+                confirmed.Add(safe);
+                onConfirmed(safe);
             }
         }
 
