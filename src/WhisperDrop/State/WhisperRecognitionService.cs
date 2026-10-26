@@ -123,12 +123,24 @@ internal static class WhisperRepetitionGuard
         // Real silence is possible; this is a reason to try a shorter decode,
         // not evidence that actual speech exists.
         return CountRepeatedTokens(text) > 0 ||
-            markers >= 2 && words < 8 ||
+            HasMarkerLoop(text) ||
+            markers > 0 && words < 8 ||
             seconds >= 10 && words < 6;
     }
 
-    internal static bool HasMarkerLoop(string text) =>
-        MarkerCount(text) >= 3 && MeaningfulWords(text) <= 12;
+    internal static bool HasMarkerLoop(string text)
+    {
+        var matches = NonSpeechMarker.Matches(text);
+        for (var i = 1; i < matches.Count; i++)
+        {
+            var previousEnd = matches[i - 1].Index + matches[i - 1].Length;
+            if (string.IsNullOrWhiteSpace(text.Substring(previousEnd, matches[i].Index - previousEnd)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
     internal static int RepairScore(string text) =>
         MeaningfulWords(text) - CountRepeatedTokens(text) * 2 - MarkerCount(text) * 3;
@@ -658,17 +670,17 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
     internal static int ChooseAdvance(int windowSamples, TimeSpan? lastSegmentEnd)
     {
-        if (lastSegmentEnd is null)
+        if (windowSamples <= 0)
         {
-            return windowSamples;
+            return 0;
         }
 
-        var lastEnd = ToSample(lastSegmentEnd.Value);
-        // Use the last recognized segment boundary rather than blindly skipping
-        // unfinished speech at the end of the repair window.
-        return lastEnd > SamplesPerSecond
+        // A tiny/absent timestamp is not evidence that the remaining window
+        // contained no speech. Never skip the entire window on that basis.
+        var lastEnd = lastSegmentEnd is null ? 0 : ToSample(lastSegmentEnd.Value);
+        return lastEnd > 0
             ? Math.Clamp(lastEnd, 1, windowSamples)
-            : windowSamples;
+            : Math.Min(windowSamples, SamplesPerSecond * 8);
     }
 
     private static double AudioRmsDb(ReadOnlySpan<float> audio)
