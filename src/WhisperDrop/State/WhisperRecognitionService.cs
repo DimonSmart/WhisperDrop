@@ -101,7 +101,17 @@ internal sealed class RecognitionDiagnostics : IDisposable
         }
     }
 
-    public void Dispose() => writer?.Dispose();
+    public void Dispose()
+    {
+        try
+        {
+            writer?.Dispose();
+        }
+        catch (IOException exception)
+        {
+            Console.Error.WriteLine($"[WhisperDrop] Could not finalize diagnostic file: {exception.Message}");
+        }
+    }
 }
 
 internal static class WhisperRepetitionGuard
@@ -125,7 +135,7 @@ internal static class WhisperRepetitionGuard
         return CountRepeatedTokens(text) > 0 ||
             HasMarkerLoop(text) ||
             markers > 0 && words < 8 ||
-            seconds >= 10 && words < 6;
+            seconds >= 10 && words < Math.Max(6, seconds * 0.5);
     }
 
     internal static bool HasMarkerLoop(string text)
