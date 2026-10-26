@@ -100,7 +100,7 @@ public sealed class WhisperGapRecoveryTests
     [Fact]
     public void Short_sparse_segment_is_preserved_without_substantial_agreed_improvement()
     {
-        const string baseline = "Después vamos todos caminando por el río, que es muy bonito.";
+        const string baseline = "Después vamos todos caminando por el río, que es muy bonito y tiene muchas piedras pequeñas y algunas plantas.";
         var same = WhisperGapRecovery.Assess("greedy",
             [Segment(0, 22, baseline)], 22);
         var second = WhisperGapRecovery.Assess("beam",
