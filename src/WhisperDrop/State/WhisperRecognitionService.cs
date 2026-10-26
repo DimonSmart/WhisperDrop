@@ -585,7 +585,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
         return new RecognitionResult(transcript.ToString(), detectedLanguage, segments)
         {
             QualityWarning = warning
-                ? "Whisper recovered from repeated speech, but parts of the transcript may need review."
+                ? "Whisper detected uncertain speech or repeated phrases. Some content may be missing; please review the transcript."
                 : null
         };
     }
