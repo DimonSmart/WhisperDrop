@@ -59,7 +59,44 @@ public sealed class WhisperRepetitionGuardTests
     public void Local_repair_continues_from_last_recognized_segment_boundary()
     {
         Assert.Equal(560000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(35)));
-        Assert.Equal(720000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(0)));
-        Assert.Equal(720000, WhisperRecognitionService.ChooseAdvance(720000, null));
+        Assert.Equal(128000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(0)));
+        Assert.Equal(128000, WhisperRecognitionService.ChooseAdvance(720000, null));
+        Assert.Equal(8000, WhisperRecognitionService.ChooseAdvance(720000, System.TimeSpan.FromSeconds(0.5)));
     }
+    [Theory]
+    [InlineData("[MÚSICA] [MÚSICA]")]
+    [InlineData("[SPEAKING SPANISH] [SPEAKING SPANISH]")]
+    [InlineData("[MUSIC] [MUSIC]")]
+    public void Consecutive_nonspeech_markers_are_an_early_loop_signal(string text)
+    {
+        Assert.True(WhisperRepetitionGuard.HasMarkerLoop(text));
+        Assert.True(WhisperRepetitionGuard.IsSuspiciousRepair(text, 25));
+        Assert.Equal(0, WhisperRepetitionGuard.MeaningfulWords(text));
+    }
+
+    [Fact]
+    public void Valid_repair_is_preferred_to_marker_only_beam_output()
+    {
+        var markers = "[MÚSICA] [MÚSICA] [MÚSICA]";
+        var recovered = "Al llegar al campamento vamos a repartir las cabañas y después explicaremos todas las actividades.";
+        Assert.True(WhisperRepetitionGuard.PreferShortRecovery(markers, recovered, 25));
+        Assert.False(WhisperRepetitionGuard.IsSuspiciousRepair(recovered, 25));
+    }
+
+    [Fact]
+    public void Normal_speech_does_not_trigger_sparse_repair()
+    {
+        const string speech = "El autobús sale a las ocho de la mañana, después paramos en Granada y finalmente llegamos al camping.";
+        Assert.False(WhisperRepetitionGuard.IsSuspiciousRepair(speech, 25));
+        Assert.False(WhisperRepetitionGuard.HasMarkerLoop("[MÚSICA] Después volvemos a hablar [MÚSICA]"));
+    }
+
+    [Fact]
+    public void Too_little_recognized_speech_is_suspicious_but_not_proof_of_loss()
+    {
+        Assert.True(WhisperRepetitionGuard.IsSuspiciousRepair("Hola.", 25));
+        Assert.True(WhisperRepetitionGuard.IsSuspiciousRepair("", 25));
+        Assert.False(WhisperRepetitionGuard.IsSuspiciousRepair("Hola.", 2));
+    }
+
 }
