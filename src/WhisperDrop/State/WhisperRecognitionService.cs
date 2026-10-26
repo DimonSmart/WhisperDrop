@@ -732,6 +732,28 @@ public sealed class WhisperRecognitionService : IRecognitionService
             }
         }
 
+        // Examine gaps and unusually sparse long segments only after the primary
+        // decoder is finished. This keeps streaming behavior and loop repair unchanged.
+        var gapReview = await ReviewPossibleMissingSpeechAsync(
+            recognitionFactory, options, samples, segments, progress, Log, cancellationToken)
+            .ConfigureAwait(false);
+        if (gapReview.Recovered > 0)
+        {
+            segments.Clear();
+            segments.AddRange(gapReview.Segments);
+            transcript.Clear();
+            foreach (var segment in segments)
+            {
+                transcript.Append(segment.Text);
+            }
+            // Do not append out-of-order candidate text to the incremental preview;
+            // RecognitionResult below contains the rebuilt chronologically sorted result.
+        }
+        if (gapReview.Unresolved > 0)
+        {
+            warning = true;
+        }
+
         progress.Report(1);
         var overallCoverage = WhisperTimingDiagnostics.AnalyzeCoverage(segments, total.TotalSeconds);
         Log($"timeline-summary audio={total.TotalSeconds:0.00}s " +
@@ -921,6 +943,187 @@ public sealed class WhisperRecognitionService : IRecognitionService
         }
 
         return new RecognitionPass(parts, LoopDetected: false);
+    }
+
+
+    private sealed record GapReviewResult(
+        IReadOnlyList<RecognitionSegment> Segments,
+        int Recovered,
+        int Unresolved,
+        int Skipped);
+
+    // A second, bounded phase after normal streaming completes. Never cancels normal
+    // speech or rewinds the main decoder: it only studies suspicious timestamp gaps.
+    private static async Task<GapReviewResult> ReviewPossibleMissingSpeechAsync(
+        WhisperFactory recognitionFactory,
+        RecognitionOptions options,
+        ReadOnlyMemory<float> samples,
+        IReadOnlyList<RecognitionSegment> original,
+        MonotonicProgressReporter progress,
+        Action<string> log,
+        CancellationToken cancellationToken)
+    {
+        var probes = WhisperGapRecovery.FindProbes(
+            original, samples.Length / (double)SamplesPerSecond);
+        log($"gap-review start probes={probes.Count} max=8 decoders=greedy,beam,split-greedy");
+        if (probes.Count == 0)
+        {
+            return new(original, 0, 0, 0);
+        }
+
+        var recovered = 0;
+        var unresolved = 0;
+        var skipped = 0;
+        var additions = new Dictionary<int, IReadOnlyList<RecognitionSegment>>();
+        var replacements = new Dictionary<int, IReadOnlyList<RecognitionSegment>>();
+
+        for (var p = 0; p < probes.Count; p++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var probe = probes[p];
+            var first = Math.Clamp(ToSample(probe.Start), 0, samples.Length);
+            var last = Math.Clamp(ToSample(probe.End), first, samples.Length);
+            var length = last - first;
+            if (length < SamplesPerSecond)
+            {
+                skipped++;
+                log($"gap-review #{p + 1} SKIPPED reason=invalid-window kind={probe.Kind}");
+                continue;
+            }
+
+            var audio = samples.Slice(first, length);
+            var signal = WhisperGapRecovery.MeasureSignal(audio.Span);
+            log($"gap-review #{p + 1} kind={probe.Kind} audio=[{probe.Start.TotalSeconds:0.00}," +
+                $"{probe.End.TotalSeconds:0.00}]s duration={probe.DurationSeconds:0.00}s " +
+                $"rms={signal.RmsDb:0.0}dB peak={signal.PeakDb:0.0}dB " +
+                $"soundFraction={signal.ActiveFraction:0.00} signalPresent={signal.HasSubstantialSound}");
+
+            if (!signal.HasSubstantialSound)
+            {
+                skipped++;
+                log($"gap-review #{p + 1} SKIPPED reason=low-acoustic-energy " +
+                    "(sound detection is not speech verification)");
+                continue;
+            }
+
+            // Candidate passes never report text to the UI: insertion/replacement is
+            // provisional until independently decoded transcripts agree.
+            var candidates = new List<GapDecodeCandidate>(3);
+            foreach (var decoder in new[] { "greedy", "beam", "split-greedy" })
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var clock = Stopwatch.StartNew();
+                    RecognitionPass pass;
+                    if (decoder == "split-greedy")
+                    {
+                        pass = await RunShortRecoveryAsync(recognitionFactory, options, audio,
+                            _ => { }, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        pass = await RunPassAsync(recognitionFactory, options, audio,
+                            beamSearch: decoder == "beam", detectLoop: false,
+                            _ => { }, _ => { }, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    var relative = new List<RecognitionSegment>(pass.Confirmed.Count);
+                    foreach (var part in pass.Confirmed)
+                    {
+                        relative.Add(part.Segment);
+                    }
+                    var coverage = WhisperTimingDiagnostics.AnalyzeCoverage(relative, probe.DurationSeconds);
+                    var bounded = WhisperGapRecovery.NormalizeWindowSegments(relative, probe);
+                    var candidate = WhisperGapRecovery.Assess(decoder, bounded, probe.DurationSeconds);
+                    candidates.Add(candidate);
+                    log($"gap-review #{p + 1} candidate={decoder} " +
+                        $"segmentsRaw={relative.Count} segmentsInside={bounded.Count} " +
+                        $"words={candidate.Words} rate={candidate.WordsPerSecond:0.00}/s " +
+                        $"repeated={candidate.RepeatedWords} markers={candidate.Markers} " +
+                        $"plausible={candidate.Plausible} coverage={coverage.CoveredSeconds:0.00}s " +
+                        $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
+                        $"trailingGap={coverage.TrailingGapSeconds:0.00}s " +
+                        $"outsideWindow={coverage.OutsideWindowSeconds:0.00}s " +
+                        $"elapsed={clock.Elapsed.TotalSeconds:0.00}s " +
+                        $"excerpt=\"{WhisperRepetitionGuard.Tail(candidate.Text, 160).Replace('\n', ' ')}\"");
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    log($"gap-review #{p + 1} decoder={decoder} ERROR {exception}");
+                }
+            }
+
+            var existingText = probe.Kind == GapProbeKind.SparseSegment
+                ? original[probe.SegmentIndex].Text : "";
+            var left = probe.SegmentIndex > 0 ? original[probe.SegmentIndex - 1].Text : null;
+            var right = probe.Kind == GapProbeKind.MissingGap
+                ? original[probe.SegmentIndex].Text
+                : probe.SegmentIndex + 1 < original.Count
+                    ? original[probe.SegmentIndex + 1].Text : null;
+            var selected = WhisperGapRecovery.Choose(
+                candidates, probe.Kind, existingText, left, right);
+            if (selected.Candidate is not null)
+            {
+                if (probe.Kind == GapProbeKind.MissingGap)
+                {
+                    additions[probe.SegmentIndex] = selected.Candidate.Segments;
+                }
+                else
+                {
+                    replacements[probe.SegmentIndex] = selected.Candidate.Segments;
+                }
+                recovered++;
+                log($"gap-review #{p + 1} APPLIED decoder={selected.Candidate.Decoder} " +
+                    $"words={selected.Candidate.Words} segments={selected.Candidate.Segments.Count} " +
+                    $"agreement={selected.Agreement:0.000} reason={selected.Reason}");
+            }
+            else
+            {
+                unresolved++;
+                log($"gap-review #{p + 1} UNRESOLVED agreement={selected.Agreement:0.000} " +
+                    $"reason={selected.Reason}; original transcript preserved");
+            }
+
+            progress.Report(0.95 + 0.04 * (p + 1) / probes.Count);
+        }
+
+        if (recovered == 0)
+        {
+            log($"gap-review done recovered=0 unresolved={unresolved} skipped={skipped} " +
+                "original transcript unchanged");
+            return new(original, 0, unresolved, skipped);
+        }
+
+        var merged = new List<RecognitionSegment>(original.Count + recovered * 15);
+        for (var i = 0; i < original.Count; i++)
+        {
+            if (additions.TryGetValue(i, out var inserted))
+            {
+                merged.AddRange(inserted);
+            }
+            if (replacements.TryGetValue(i, out var replaced))
+            {
+                merged.AddRange(replaced);
+            }
+            else
+            {
+                merged.Add(original[i]);
+            }
+        }
+
+        for (var i = 0; i < merged.Count; i++)
+        {
+            merged[i] = merged[i] with { Id = i };
+        }
+
+        log($"gap-review done recovered={recovered} unresolved={unresolved} " +
+            $"skipped={skipped} segmentsBefore={original.Count} segmentsAfter={merged.Count}");
+        return new(merged, recovered, unresolved, skipped);
     }
 
     private WhisperFactory EnsureRecognitionFactory(
