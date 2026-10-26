@@ -130,6 +130,24 @@ internal static class WhisperRepetitionGuard
     internal static bool HasMarkerLoop(string text) =>
         MarkerCount(text) >= 3 && MeaningfulWords(text) <= 12;
 
+    internal static int RepairScore(string text) =>
+        MeaningfulWords(text) - CountRepeatedTokens(text) * 2 - MarkerCount(text) * 3;
+
+    internal static bool PreferShortRecovery(string beam, string shortRecovery, double seconds)
+    {
+        var beamSuspicious = IsSuspiciousRepair(beam, seconds);
+        var shortSuspicious = IsSuspiciousRepair(shortRecovery, seconds);
+        if (beamSuspicious != shortSuspicious)
+        {
+            return !shortSuspicious;
+        }
+
+        // Keep Beam Search unless the shorter pass is clearly more useful;
+        // do not prefer a shorter result merely because it contains fewer markers.
+        return RepairScore(shortRecovery) > RepairScore(beam) + 4 &&
+            MeaningfulWords(shortRecovery) >= MeaningfulWords(beam) * 0.85;
+    }
+
 
     internal static int CountWords(string text) => WordPattern.Matches(text).Count;
 
@@ -394,15 +412,39 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 $"{(double)repairLength / SamplesPerSecond:0.0}s; " +
                 $"excerpt=\"{greedy.LoopExcerpt}\"");
 
-            // Keep the short repair candidate uncommitted until its pass succeeds.
-            // A failed Beam pass must not leave partial preview/output before fallback.
-            RecognitionPass repaired;
+            var audioWindow = samples.AsMemory(safeSample, repairLength);
+            var windowSeconds = (double)repairLength / SamplesPerSecond;
+            var audioDb = AudioRmsDb(audioWindow.Span);
+
+            void LogCandidate(string decoder, RecognitionPass candidate)
+            {
+                var text = ExtractText(candidate);
+                var firstStart = candidate.Confirmed.Count > 0
+                    ? candidate.Confirmed[0].Segment.Start.TotalSeconds.ToString("0.00") : "none";
+                var lastEnd = candidate.Confirmed.Count > 0
+                    ? candidate.Confirmed[^1].Segment.End.TotalSeconds.ToString("0.00") : "none";
+                Log($"repair #{repairCount} candidate={decoder} start={safeSample / (double)SamplesPerSecond:0.00}s " +
+                    $"window={windowSeconds:0.00}s audioRms={audioDb:0.0}dB " +
+                    $"segments={candidate.Confirmed.Count} first={firstStart}s last={lastEnd}s " +
+                    $"chars={text.Length} words={WhisperRepetitionGuard.CountWords(text)} " +
+                    $"meaningful={WhisperRepetitionGuard.MeaningfulWords(text)} " +
+                    $"markers={WhisperRepetitionGuard.MarkerCount(text)} " +
+                    $"repeated={WhisperRepetitionGuard.CountRepeatedTokens(text)} " +
+                    $"score={WhisperRepetitionGuard.RepairScore(text)} " +
+                    $"suspicious={WhisperRepetitionGuard.IsSuspiciousRepair(text, windowSeconds)}");
+            }
+
+            // Decode with Beam first; never publish a candidate before validation.
+            // If its output contains mostly markers or little speech, retry the *same*
+            // audio as two shorter greedy slices to avoid losing an entire window.
+            RecognitionPass? beam = null;
             try
             {
-                repaired = await RunPassAsync(recognitionFactory, options,
-                    samples.AsMemory(safeSample, repairLength), beamSearch: true, detectLoop: false,
+                beam = await RunPassAsync(recognitionFactory, options, audioWindow,
+                    beamSearch: true, detectLoop: false,
                     value => ReportPassProgress(safeSample, repairLength, value),
                     _ => { }, cancellationToken).ConfigureAwait(false);
+                LogCandidate("beam", beam);
             }
             catch (OperationCanceledException)
             {
@@ -410,45 +452,82 @@ public sealed class WhisperRecognitionService : IRecognitionService
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
-                Log($"Beam Search error near {(double)safeSample / SamplesPerSecond:0.0}s: {exception}");
                 warning = true;
-                // Try this region once more without Beam, still bounded to 45 seconds.
-                repaired = await RunPassAsync(recognitionFactory, options,
-                    samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
-                    value => ReportPassProgress(safeSample, repairLength, value),
-                    _ => { }, cancellationToken).ConfigureAwait(false);
+                Log($"repair #{repairCount} Beam Search error: {exception}");
             }
-            if (repaired.Confirmed.Count == 0)
+
+            var beamText = beam is null ? "" : ExtractText(beam);
+            var tryShort = beam is null ||
+                WhisperRepetitionGuard.IsSuspiciousRepair(beamText, windowSeconds);
+            RecognitionPass? shortRecovery = null;
+            if (tryShort)
             {
-                warning = true;
-                Log($"Beam Search returned no speech for repair #{repairCount}; retrying bounded region with greedy decoding");
-                repaired = await RunPassAsync(recognitionFactory, options,
-                    samples.AsMemory(safeSample, repairLength), beamSearch: false, detectLoop: false,
-                    value => ReportPassProgress(safeSample, repairLength, value),
-                    _ => { }, cancellationToken).ConfigureAwait(false);
-                if (repaired.Confirmed.Count == 0)
+                Log($"repair #{repairCount} Beam Search output suspicious; trying two " +
+                    $"~{windowSeconds / 2:0.0}s greedy slices on exactly the same audio");
+                try
                 {
-                    Log($"Both repair decoders returned no segments for this {repairLength / SamplesPerSecond:0}s window");
+                    shortRecovery = await RunShortRecoveryAsync(recognitionFactory, options,
+                        audioWindow, value => ReportPassProgress(safeSample, repairLength, value),
+                        cancellationToken).ConfigureAwait(false);
+                    LogCandidate("short-greedy", shortRecovery);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    warning = true;
+                    Log($"repair #{repairCount} short-window greedy error: {exception}");
                 }
             }
-            foreach (var part in repaired.Confirmed)
-            {
-                Append(part, safeSample);
-            }
 
-            var repairText = string.Concat(System.Linq.Enumerable.Select(repaired.Confirmed, part => part.Segment.Text));
-            var remainingLoops = WhisperRepetitionGuard.CountRepeatedTokens(repairText);
-            if (remainingLoops != 0)
+            var selectShort = shortRecovery is not null &&
+                (beam is null ||
+                 WhisperRepetitionGuard.PreferShortRecovery(beamText,
+                     ExtractText(shortRecovery), windowSeconds));
+            var repaired = selectShort ? shortRecovery! : beam ?? shortRecovery;
+            var selectedKind = selectShort || beam is null ? "short-greedy" : "beam";
+
+            if (repaired is null)
             {
                 warning = true;
-                Log($"Beam Search returned {remainingLoops} repeated words; retaining its bounded output with warning");
+                // There is no candidate at all. Skip only a small conservative interval
+                // rather than silently dropping the entire 25-second repair window.
+                cursorSample = Math.Min(samples.Length, safeSample +
+                    Math.Min(repairLength, SamplesPerSecond * ConservativeAdvanceSeconds));
+                Log($"repair #{repairCount} FAILED: no candidate; possible missing audio " +
+                    $"[{safeSample / (double)SamplesPerSecond:0.00}," +
+                    $"{cursorSample / (double)SamplesPerSecond:0.00}]s; resume={cursorSample / (double)SamplesPerSecond:0.00}s");
             }
+            else
+            {
+                var selectedText = ExtractText(repaired);
+                var suspicious = WhisperRepetitionGuard.IsSuspiciousRepair(selectedText, windowSeconds);
+                if (suspicious)
+                {
+                    warning = true;
+                }
 
-            var advancedBy = ChooseAdvance(repairLength,
-                repaired.Confirmed.Count > 0 ? repaired.Confirmed[^1].Segment.End : null);
-            cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
-            Log($"repair #{repairCount}: beamSegments={repaired.Confirmed.Count} " +
-                $"resume={(double)cursorSample / SamplesPerSecond:0.00}s elapsed={clock.Elapsed:c}");
+                foreach (var part in repaired.Confirmed)
+                {
+                    Append(part, safeSample);
+                }
+
+                // Do not trust a marker-only segment's "end time" as evidence that
+                // speech for the entire window was decoded. Advance cautiously and
+                // leave the remainder for the next native pass.
+                var advancedBy = suspicious
+                    ? Math.Min(repairLength, SamplesPerSecond * ConservativeAdvanceSeconds)
+                    : ChooseAdvance(repairLength,
+                        repaired.Confirmed.Count > 0 ? repaired.Confirmed[^1].Segment.End : null);
+                cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
+                Log($"repair #{repairCount} SELECTED={selectedKind} " +
+                    $"reason={(suspicious ? "low-confidence; conservative-resume" : "plausible-transcript")} " +
+                    $"chars={selectedText.Length} meaningful={WhisperRepetitionGuard.MeaningfulWords(selectedText)} " +
+                    $"markers={WhisperRepetitionGuard.MarkerCount(selectedText)} " +
+                    $"resume={cursorSample / (double)SamplesPerSecond:0.00}s elapsed={clock.Elapsed:c}");
+            }
 
             if (repairCount >= MaxLocalRepairs && cursorSample < samples.Length)
             {
@@ -508,7 +587,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 {
                     recent.Remove(0, recent.Length - 4096);
                 }
-                if (WhisperRepetitionGuard.CountRepeatedTokens(recent.ToString()) > 0)
+                if (WhisperRepetitionGuard.CountRepeatedTokens(recent.ToString()) > 0 ||
+                    WhisperRepetitionGuard.HasMarkerLoop(recent.ToString()))
                 {
                     loopDetected = true;
                     detectedAt = segment.End;
@@ -576,6 +656,74 @@ public sealed class WhisperRecognitionService : IRecognitionService
         return lastEnd > SamplesPerSecond
             ? Math.Clamp(lastEnd, 1, windowSamples)
             : windowSamples;
+    }
+
+    private static double AudioRmsDb(ReadOnlySpan<float> audio)
+    {
+        if (audio.IsEmpty)
+        {
+            return -120;
+        }
+
+        double sum = 0;
+        var count = 0;
+        for (var i = 0; i < audio.Length; i += 64)
+        {
+            sum += (double)audio[i] * audio[i];
+            count++;
+        }
+
+        return Math.Max(-120, 10 * Math.Log10(Math.Max(sum / count, 1e-12)));
+    }
+
+    private static string ExtractText(RecognitionPass pass)
+    {
+        var result = new StringBuilder();
+        foreach (var part in pass.Confirmed)
+        {
+            result.Append(part.Segment.Text);
+        }
+        return result.ToString();
+    }
+
+    private static async Task<RecognitionPass> RunShortRecoveryAsync(
+        WhisperFactory recognitionFactory,
+        RecognitionOptions options,
+        ReadOnlyMemory<float> audio,
+        Action<int> progress,
+        CancellationToken cancellationToken)
+    {
+        var firstLength = audio.Length / 2;
+        if (firstLength == 0)
+        {
+            return await RunPassAsync(recognitionFactory, options, audio,
+                beamSearch: false, detectLoop: false, progress, _ => { }, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var first = await RunPassAsync(recognitionFactory, options,
+            audio[..firstLength], beamSearch: false, detectLoop: false,
+            value => progress(value / 2), _ => { }, cancellationToken).ConfigureAwait(false);
+        var second = await RunPassAsync(recognitionFactory, options,
+            audio[firstLength..], beamSearch: false, detectLoop: false,
+            value => progress(50 + value / 2), _ => { }, cancellationToken).ConfigureAwait(false);
+
+        var parts = new List<RecognizedPart>(first.Confirmed.Count + second.Confirmed.Count);
+        parts.AddRange(first.Confirmed);
+        var shift = TimeSpan.FromSeconds((double)firstLength / SamplesPerSecond);
+        foreach (var part in second.Confirmed)
+        {
+            parts.Add(part with
+            {
+                Segment = part.Segment with
+                {
+                    Start = part.Segment.Start + shift,
+                    End = part.Segment.End + shift
+                }
+            });
+        }
+
+        return new RecognitionPass(parts, LoopDetected: false);
     }
 
     private WhisperFactory EnsureRecognitionFactory(
