@@ -39,15 +39,6 @@ public sealed class WhisperRepetitionGuardTests
         Assert.True(WhisperRepetitionGuard.CountRepeatedTokens(partial) > 0);
     }
 
-    [Fact]
-    public void Tail_limits_work_to_recent_text_only()
-    {
-        var text = new string('x', 6000) + " Repetir tres palabras. Repetir tres palabras. Repetir tres palabras.";
-        var tail = WhisperRepetitionGuard.Tail(text);
-        Assert.Equal(4096, tail.Length);
-        Assert.True(WhisperRepetitionGuard.CountRepeatedTokens(tail) > 0);
-    }
-
     [Theory]
     [InlineData(0, 0)]
     [InlineData(1, 16000)]

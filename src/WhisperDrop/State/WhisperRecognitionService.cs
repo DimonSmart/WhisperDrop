@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Whisper.net;
@@ -63,307 +62,6 @@ public interface IRecognitionService : IDisposable
 }
 
 
-// Small quality guard, not an attempt to correct recognition errors. We look only for
-// obviously repeated contiguous word groups, including short markers such as
-// "[HABLANDO EN INGLÉS]" which the old per-segment detector missed.
-// One diagnostic log per transcription. Recording errors must never break recognition.
-internal sealed class RecognitionDiagnostics : IDisposable
-{
-    private readonly StreamWriter? writer;
-    internal string? FilePath { get; }
-
-    internal RecognitionDiagnostics()
-    {
-        try
-        {
-            var folder = Path.GetDirectoryName(new ApplicationPaths().SettingsFilePath)!;
-            Directory.CreateDirectory(folder);
-            FilePath = Path.Combine(folder, "recognition-debug.log");
-            writer = new StreamWriter(FilePath, append: false) { AutoFlush = true };
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            Console.Error.WriteLine($"[WhisperDrop] Could not create diagnostic file: {exception.Message}");
-        }
-    }
-
-    internal void Write(string message)
-    {
-        var line = $"[WhisperDrop] {DateTimeOffset.Now:O} {message}";
-        Console.Error.WriteLine(line);
-        try
-        {
-            writer?.WriteLine(line);
-        }
-        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
-        {
-            Console.Error.WriteLine($"[WhisperDrop] Could not write diagnostic file: {exception.Message}");
-        }
-    }
-
-    public void Dispose()
-    {
-        try
-        {
-            writer?.Dispose();
-        }
-        catch (IOException exception)
-        {
-            Console.Error.WriteLine($"[WhisperDrop] Could not finalize diagnostic file: {exception.Message}");
-        }
-    }
-}
-
-internal static class WhisperRepetitionGuard
-{
-    private static readonly Regex WordPattern = new(@"[\p{L}\p{N}]+", RegexOptions.Compiled);
-    private static readonly Regex NonSpeechMarker = new(
-        @"\[(?:m[uú]sica|music|speaking\s+(?:spanish|english)|hablando\s+en\s+(?:español|ingl[eé]s)|applause|aplausos)\]",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-
-    internal static int MarkerCount(string text) => NonSpeechMarker.Matches(text).Count;
-
-    internal static int MeaningfulWords(string text) =>
-        CountWords(NonSpeechMarker.Replace(text, " "));
-
-    internal static bool IsSuspiciousRepair(string text, double seconds)
-    {
-        var words = MeaningfulWords(text);
-        var markers = MarkerCount(text);
-        // Real silence is possible; this is a reason to try a shorter decode,
-        // not evidence that actual speech exists.
-        return CountRepeatedTokens(text) > 0 ||
-            HasMarkerLoop(text) ||
-            markers > 0 && words < 8 ||
-            seconds >= 10 && words < Math.Max(6, seconds * 0.5);
-    }
-
-    internal static bool HasMarkerLoop(string text)
-    {
-        var matches = NonSpeechMarker.Matches(text);
-        for (var i = 1; i < matches.Count; i++)
-        {
-            var previousEnd = matches[i - 1].Index + matches[i - 1].Length;
-            if (string.IsNullOrWhiteSpace(text.Substring(previousEnd, matches[i].Index - previousEnd)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    internal static int RepairScore(string text) =>
-        MeaningfulWords(text) - CountRepeatedTokens(text) * 2 - MarkerCount(text) * 3;
-
-    internal static bool PreferShortRecovery(string beam, string shortRecovery, double seconds)
-    {
-        var beamSuspicious = IsSuspiciousRepair(beam, seconds);
-        var shortSuspicious = IsSuspiciousRepair(shortRecovery, seconds);
-        if (beamSuspicious != shortSuspicious)
-        {
-            return !shortSuspicious;
-        }
-
-        // Keep Beam Search unless the shorter pass is clearly more useful;
-        // do not prefer a shorter result merely because it contains fewer markers.
-        return RepairScore(shortRecovery) > RepairScore(beam) + 4 &&
-            MeaningfulWords(shortRecovery) >= MeaningfulWords(beam) * 0.85;
-    }
-
-
-    internal static int CountWords(string text) => WordPattern.Matches(text).Count;
-
-    internal static int CountRepeatedTokens(string text)
-    {
-        var matches = WordPattern.Matches(text);
-        var words = new string[matches.Count];
-        for (var index = 0; index < matches.Count; index++)
-        {
-            words[index] = matches[index].Value.ToLowerInvariant();
-        }
-
-        var repeated = 0;
-        for (var i = 0; i < words.Length;)
-        {
-            var blockSize = 0;
-            // Require at least three successive occurrences of 3–32 words.
-            for (var size = 3; size <= 32 && i + 3 * size <= words.Length; size++)
-            {
-                var identical = true;
-                for (var j = 0; j < size && identical; j++)
-                {
-                    identical = words[i + j] == words[i + size + j] &&
-                        words[i + j] == words[i + 2 * size + j];
-                }
-
-                if (identical)
-                {
-                    blockSize = size;
-                    break;
-                }
-            }
-
-            if (blockSize == 0)
-            {
-                i++;
-                continue;
-            }
-
-            var copies = 3;
-            while (i + (copies + 1) * blockSize <= words.Length)
-            {
-                var identical = true;
-                for (var j = 0; j < blockSize; j++)
-                {
-                    if (words[i + j] != words[i + copies * blockSize + j])
-                    {
-                        identical = false;
-                        break;
-                    }
-                }
-
-                if (!identical)
-                {
-                    break;
-                }
-
-                copies++;
-            }
-
-            repeated += (copies - 1) * blockSize;
-            i += copies * blockSize;
-        }
-
-        return repeated;
-    }
-
-
-    // Limit native-callback work to recent text; most suspicious loops are local.
-    internal static string Tail(string text, int maxCharacters = 4096) =>
-        text.Length <= maxCharacters ? text : text[^maxCharacters..];
-
-}
-
-// Diagnostic-only timestamp analysis. Long spans and gaps are indicators, not proof of lost speech.
-internal sealed record RecognitionTimingCoverage(
-    double FirstStartSeconds,
-    double LastEndSeconds,
-    double CoveredSeconds,
-    double LargestInternalGapSeconds,
-    double LeadingGapSeconds,
-    double TrailingGapSeconds,
-    double OutsideWindowSeconds);
-
-internal static class WhisperTimingDiagnostics
-{
-    private const double LongSegmentSeconds = 15;
-    private const double LargeGapSeconds = 5;
-    private const double SignificantOverlapSeconds = 3;
-    private const double TimestampToleranceSeconds = 0.1;
-
-    internal static string? ExplainAcceptedSegment(
-        RecognitionSegment? previous,
-        RecognitionSegment segment,
-        double audioDurationSeconds)
-    {
-        var details = new List<string>();
-        var start = segment.Start.TotalSeconds;
-        var end = segment.End.TotalSeconds;
-        var duration = end - start;
-        if (duration >= LongSegmentSeconds)
-        {
-            details.Add($"long-segment duration={duration:0.00}s");
-        }
-        if (duration < -TimestampToleranceSeconds)
-        {
-            details.Add($"invalid-duration duration={duration:0.00}s");
-        }
-        if (previous is not null)
-        {
-            var gap = start - previous.End.TotalSeconds;
-            if (gap >= LargeGapSeconds)
-            {
-                details.Add($"large-gap duration={gap:0.00}s previousEnd={previous.End.TotalSeconds:0.00}s");
-            }
-            else if (gap <= -SignificantOverlapSeconds)
-            {
-                details.Add($"large-overlap duration={-gap:0.00}s previousEnd={previous.End.TotalSeconds:0.00}s");
-            }
-        }
-        if (start < -TimestampToleranceSeconds || end > audioDurationSeconds + TimestampToleranceSeconds)
-        {
-            details.Add($"outside-audio start={start:0.00}s end={end:0.00}s audioEnd={audioDurationSeconds:0.00}s");
-        }
-        return details.Count == 0 ? null :
-            $"segment={segment.Id} start={start:0.00}s end={end:0.00}s chars={segment.Text.Length} " +
-            string.Join(" ", details);
-    }
-
-    internal static RecognitionTimingCoverage AnalyzeCoverage(
-        IReadOnlyList<RecognitionSegment> segments,
-        double windowSeconds)
-    {
-        windowSeconds = Math.Max(0, windowSeconds);
-        if (segments.Count == 0)
-        {
-            return new(0, 0, 0, 0, windowSeconds, windowSeconds, 0);
-        }
-
-        var intervals = new List<(double Start, double End)>(segments.Count);
-        var first = double.PositiveInfinity;
-        var last = double.NegativeInfinity;
-        double beyond = 0;
-        foreach (var segment in segments)
-        {
-            var start = segment.Start.TotalSeconds;
-            var end = segment.End.TotalSeconds;
-            first = Math.Min(first, start);
-            last = Math.Max(last, end);
-            if (end < start)
-            {
-                continue;
-            }
-
-            beyond += Math.Max(0, -start) + Math.Max(0, end - windowSeconds);
-            var clippedStart = Math.Clamp(start, 0, windowSeconds);
-            var clippedEnd = Math.Clamp(end, 0, windowSeconds);
-            if (clippedEnd > clippedStart)
-            {
-                intervals.Add((clippedStart, clippedEnd));
-            }
-        }
-
-        intervals.Sort((a, b) => a.Start.CompareTo(b.Start));
-        var covered = 0d;
-        var largestGap = 0d;
-        var previousEnd = 0d;
-        var firstCoveredStart = intervals.Count > 0 ? intervals[0].Start : windowSeconds;
-        foreach (var (start, end) in intervals)
-        {
-            if (start > previousEnd)
-            {
-                if (previousEnd > 0)
-                {
-                    largestGap = Math.Max(largestGap, start - previousEnd);
-                }
-                covered += end - start;
-                previousEnd = end;
-            }
-            else if (end > previousEnd)
-            {
-                covered += end - previousEnd;
-                previousEnd = end;
-            }
-        }
-
-        return new(
-            first, last, covered, largestGap,
-            firstCoveredStart,
-            windowSeconds - previousEnd,
-            beyond);
-    }
-}
-
 /// <summary>Owns one Whisper model; stops active decoding at obvious loops and repairs only local audio.</summary>
 public sealed class WhisperRecognitionService : IRecognitionService
 {
@@ -374,14 +72,12 @@ public sealed class WhisperRecognitionService : IRecognitionService
     private const int PendingSegmentLookbehind = 3;
     private const int MaxLocalRepairs = 5;
 
-
     private sealed record RecognizedPart(RecognitionSegment Segment, string? Language);
 
     private sealed record RecognitionPass(
         IReadOnlyList<RecognizedPart> Confirmed,
         bool LoopDetected,
-        TimeSpan? DetectedAt = null,
-        string? LoopExcerpt = null);
+        TimeSpan? DetectedAt = null);
 
 
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -527,8 +223,6 @@ public sealed class WhisperRecognitionService : IRecognitionService
 
             if (!greedy.LoopDetected)
             {
-                Log($"completed after {repairCount} local repair(s), segments={segments.Count} " +
-                    $"characters={transcript.Length} elapsed={clock.Elapsed:c}");
                 break;
             }
 
@@ -559,7 +253,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 $"rewind to safe {(double)safeSample / SamplesPerSecond:0.00}s; " +
                 $"kept={greedy.Confirmed.Count} segments; Beam Search window " +
                 $"{(double)repairLength / SamplesPerSecond:0.0}s; " +
-                $"excerpt=\"{greedy.LoopExcerpt}\"");
+                $"elapsed={clock.Elapsed:c}");
 
             var audioWindow = samples.AsMemory(safeSample, repairLength);
             var windowSeconds = (double)repairLength / SamplesPerSecond;
@@ -581,32 +275,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 Log($"repair #{repairCount} candidate={decoder} start={safeSample / (double)SamplesPerSecond:0.00}s " +
                     $"window={windowSeconds:0.00}s audioRms={audioDb:0.0}dB " +
                     $"segments={candidate.Confirmed.Count} first={firstStart}s last={lastEnd}s " +
-                    $"chars={text.Length} words={WhisperRepetitionGuard.CountWords(text)} " +
                     $"meaningful={WhisperRepetitionGuard.MeaningfulWords(text)} " +
                     $"markers={WhisperRepetitionGuard.MarkerCount(text)} " +
                     $"repeated={WhisperRepetitionGuard.CountRepeatedTokens(text)} " +
-                    $"score={WhisperRepetitionGuard.RepairScore(text)} " +
                     $"suspicious={WhisperRepetitionGuard.IsSuspiciousRepair(text, windowSeconds)} " +
                     $"coverage={coverage.CoveredSeconds:0.00}s " +
                     $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
                     $"largestInternalGap={coverage.LargestInternalGapSeconds:0.00}s " +
                     $"trailingGap={coverage.TrailingGapSeconds:0.00}s " +
-                    $"rawTimeRange=[{coverage.FirstStartSeconds:0.00},{coverage.LastEndSeconds:0.00}]s " +
                     $"outsideWindow={coverage.OutsideWindowSeconds:0.00}s");
-                if (coverage.OutsideWindowSeconds > 0.1 ||
-                    coverage.LargestInternalGapSeconds >= 5 ||
-                    coverage.LeadingGapSeconds >= 5 ||
-                    coverage.TrailingGapSeconds >= 5)
-                {
-                    Log($"repair #{repairCount} TIMING-ANOMALY candidate={decoder} " +
-                        $"start={safeSample / (double)SamplesPerSecond:0.00}s " +
-                        $"end={(safeSample + repairLength) / (double)SamplesPerSecond:0.00}s " +
-                        $"covered={coverage.CoveredSeconds:0.00}/{windowSeconds:0.00}s " +
-                        $"outside={coverage.OutsideWindowSeconds:0.00}s " +
-                        $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
-                        $"internalGap={coverage.LargestInternalGapSeconds:0.00}s " +
-                        $"trailingGap={coverage.TrailingGapSeconds:0.00}s");
-                }
             }
 
             // Decode with Beam first; never publish a candidate before validation.
@@ -671,10 +348,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
             if (suspicious)
             {
                 warning = true;
-                // Do NOT append 25 seconds of candidate text and then resume 8 seconds
-                // later: that would duplicate overlapping audio. The two short passes
-                // already cover this interval; accept only segments from its first half
-                // and rerun the rest using the regular decoder.
+                // Accept only speech from the first half of the short retry;
+                // resume at its boundary to prevent overlapping output.
                 var shortParts = shortRecovery?.Confirmed;
                 var cautiousAdvance = Math.Max(1, repairLength / 2);
                 var retainedParts = 0;
@@ -724,7 +399,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 Log($"repair limit {MaxLocalRepairs} reached; decoding remaining suffix with Beam Search");
                 warning = true;
                 var tailStart = cursorSample;
-                var tail = await RunPassAsync(recognitionFactory, options,
+                await RunPassAsync(recognitionFactory, options,
                     samples.AsMemory(tailStart), beamSearch: true, detectLoop: false,
                     value => ReportPassProgress(tailStart, samples.Length - tailStart, value),
                     part => Append(part, tailStart), cancellationToken).ConfigureAwait(false);
@@ -746,8 +421,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             {
                 transcript.Append(segment.Text);
             }
-            // Do not append out-of-order candidate text to the incremental preview;
-            // RecognitionResult below contains the rebuilt chronologically sorted result.
+            // The final transcript is rebuilt in time order; live preview is not replayed.
         }
         if (gapReview.Unresolved > 0)
         {
@@ -793,7 +467,6 @@ public sealed class WhisperRecognitionService : IRecognitionService
         var recent = new StringBuilder();
         var loopDetected = false;
         TimeSpan? detectedAt = null;
-        string? loopExcerpt = null;
 
         void OnSegment(SegmentData segment)
         {
@@ -811,8 +484,6 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 {
                     loopDetected = true;
                     detectedAt = segment.End;
-                    loopExcerpt = Regex.Replace(
-                        WhisperRepetitionGuard.Tail(recent.ToString(), 150), @"\s+", " ").Trim();
                     stop.Cancel();
                     return;
                 }
@@ -856,7 +527,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             }
         }
 
-        return new RecognitionPass(confirmed, loopDetected, detectedAt, loopExcerpt);
+        return new RecognitionPass(confirmed, loopDetected, detectedAt);
     }
 
     internal static int ToSample(TimeSpan offset) =>
@@ -1045,8 +716,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
                         $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
                         $"trailingGap={coverage.TrailingGapSeconds:0.00}s " +
                         $"outsideWindow={coverage.OutsideWindowSeconds:0.00}s " +
-                        $"elapsed={clock.Elapsed.TotalSeconds:0.00}s " +
-                        $"excerpt=\"{WhisperRepetitionGuard.Tail(candidate.Text, 160).Replace('\n', ' ')}\"");
+                        $"elapsed={clock.Elapsed.TotalSeconds:0.00}s");
                 }
                 catch (OperationCanceledException)
                 {
@@ -1055,18 +725,6 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 catch (Exception exception) when (exception is not OutOfMemoryException)
                 {
                     log($"gap-review #{p + 1} decoder={decoder} ERROR {exception}");
-                }
-            }
-
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                for (var j = i + 1; j < candidates.Count; j++)
-                {
-                    var a = candidates[i];
-                    var b = candidates[j];
-                    log($"gap-review #{p + 1} AGREEMENT {a.Decoder}~{b.Decoder}=" +
-                        $"{WhisperGapRecovery.Agreement(a.Text, b.Text):0.000} " +
-                        $"plausibleA={a.Plausible} plausibleB={b.Plausible}");
                 }
             }
 
