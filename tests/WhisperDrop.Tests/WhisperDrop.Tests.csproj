@@ -21,6 +21,7 @@
     <Compile Include="../../src/WhisperDrop/Media/*.cs" Link="Media/%(Filename)%(Extension)" />
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionService.cs" Link="State/WhisperRecognitionService.cs" />
+    <Compile Include="../../src/WhisperDrop/State/WhisperGapRecovery.cs" Link="State/WhisperGapRecovery.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
     <Compile Include="../../src/WhisperDrop/State/TranscriptEnhancement.cs" Link="State/TranscriptEnhancement.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRuntimeSelector.cs" Link="State/WhisperRuntimeSelector.cs" />
