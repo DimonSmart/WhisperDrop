@@ -66,9 +66,70 @@ public interface IRecognitionService : IDisposable
 // Small quality guard, not an attempt to correct recognition errors. We look only for
 // obviously repeated contiguous word groups, including short markers such as
 // "[HABLANDO EN INGLÉS]" which the old per-segment detector missed.
+// One diagnostic log per transcription. Recording errors must never break recognition.
+internal sealed class RecognitionDiagnostics : IDisposable
+{
+    private readonly StreamWriter? writer;
+    internal string? FilePath { get; }
+
+    internal RecognitionDiagnostics()
+    {
+        try
+        {
+            var folder = Path.GetDirectoryName(new ApplicationPaths().SettingsFilePath)!;
+            Directory.CreateDirectory(folder);
+            FilePath = Path.Combine(folder, "recognition-debug.log");
+            writer = new StreamWriter(FilePath, append: false) { AutoFlush = true };
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"[WhisperDrop] Could not create diagnostic file: {exception.Message}");
+        }
+    }
+
+    internal void Write(string message)
+    {
+        var line = $"[WhisperDrop] {DateTimeOffset.Now:O} {message}";
+        Console.Error.WriteLine(line);
+        try
+        {
+            writer?.WriteLine(line);
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+        {
+            Console.Error.WriteLine($"[WhisperDrop] Could not write diagnostic file: {exception.Message}");
+        }
+    }
+
+    public void Dispose() => writer?.Dispose();
+}
+
 internal static class WhisperRepetitionGuard
 {
     private static readonly Regex WordPattern = new(@"[\p{L}\p{N}]+", RegexOptions.Compiled);
+    private static readonly Regex NonSpeechMarker = new(
+        @"\[(?:m[uú]sica|music|speaking\s+(?:spanish|english)|hablando\s+en\s+(?:español|ingl[eé]s)|applause|aplausos)\]",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    internal static int MarkerCount(string text) => NonSpeechMarker.Matches(text).Count;
+
+    internal static int MeaningfulWords(string text) =>
+        CountWords(NonSpeechMarker.Replace(text, " "));
+
+    internal static bool IsSuspiciousRepair(string text, double seconds)
+    {
+        var words = MeaningfulWords(text);
+        var markers = MarkerCount(text);
+        // Real silence is possible; this is a reason to try a shorter decode,
+        // not evidence that actual speech exists.
+        return CountRepeatedTokens(text) > 0 ||
+            markers >= 2 && words < 8 ||
+            seconds >= 10 && words < 6;
+    }
+
+    internal static bool HasMarkerLoop(string text) =>
+        MarkerCount(text) >= 3 && MeaningfulWords(text) <= 12;
+
 
     internal static int CountWords(string text) => WordPattern.Matches(text).Count;
 
@@ -149,9 +210,10 @@ public sealed class WhisperRecognitionService : IRecognitionService
     private const float EntropyThreshold = 1.8f;
     private const float LogProbabilityThreshold = -0.8f;
     private const int SamplesPerSecond = 16000; // The media preparation contract is 16 kHz mono WAV.
-    private static readonly TimeSpan RepairWindow = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan RepairWindow = TimeSpan.FromSeconds(25);
     private const int PendingSegmentLookbehind = 3;
     private const int MaxLocalRepairs = 5;
+    private const int ConservativeAdvanceSeconds = 8;
 
     private sealed record RecognizedPart(RecognitionSegment Segment, string? Language);
 
@@ -253,7 +315,8 @@ public sealed class WhisperRecognitionService : IRecognitionService
         var warning = false;
         var cursorSample = 0;
 
-        void Log(string message) => Console.Error.WriteLine($"[WhisperDrop] {message}");
+        using var diagnostics = new RecognitionDiagnostics();
+        void Log(string message) => diagnostics.Write(message);
         void Append(RecognizedPart part, int baseSample)
         {
             var shift = TimeSpan.FromSeconds((double)baseSample / SamplesPerSecond);
@@ -280,7 +343,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
             progress.Report(position * 0.95); // Reserve 5% for any recovery/finalization.
         }
 
-        Log($"start duration={total:c} samples={samples.Length} model={Path.GetFileName(modelPath)} " +
+        Log($"start duration={total:c} samples={samples.Length} logFile={diagnostics.FilePath ?? "unavailable"} model={Path.GetFileName(modelPath)} " +
             $"device={device} entropy={EntropyThreshold} logprob={LogProbabilityThreshold} " +
             $"repairWindow={RepairWindow.TotalSeconds:0}s");
 
