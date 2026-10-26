@@ -486,6 +486,13 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 Start = part.Segment.Start + shift,
                 End = part.Segment.End + shift
             };
+            var earlier = segments.Count > 0 ? segments[^1] : null;
+            var anomaly = WhisperTimingDiagnostics.ExplainAcceptedSegment(
+                earlier, seg, total.TotalSeconds);
+            if (anomaly is not null)
+            {
+                Log($"timing accepted {anomaly}");
+            }
             segments.Add(seg);
             transcript.Append(seg.Text);
             recognizedSegments?.Report(seg.Text);
@@ -565,6 +572,12 @@ public sealed class WhisperRecognitionService : IRecognitionService
                     ? candidate.Confirmed[0].Segment.Start.TotalSeconds.ToString("0.00") : "none";
                 var lastEnd = candidate.Confirmed.Count > 0
                     ? candidate.Confirmed[^1].Segment.End.TotalSeconds.ToString("0.00") : "none";
+                var timestamps = new List<RecognitionSegment>(candidate.Confirmed.Count);
+                foreach (var part in candidate.Confirmed)
+                {
+                    timestamps.Add(part.Segment);
+                }
+                var coverage = WhisperTimingDiagnostics.AnalyzeCoverage(timestamps, windowSeconds);
                 Log($"repair #{repairCount} candidate={decoder} start={safeSample / (double)SamplesPerSecond:0.00}s " +
                     $"window={windowSeconds:0.00}s audioRms={audioDb:0.0}dB " +
                     $"segments={candidate.Confirmed.Count} first={firstStart}s last={lastEnd}s " +
@@ -573,7 +586,27 @@ public sealed class WhisperRecognitionService : IRecognitionService
                     $"markers={WhisperRepetitionGuard.MarkerCount(text)} " +
                     $"repeated={WhisperRepetitionGuard.CountRepeatedTokens(text)} " +
                     $"score={WhisperRepetitionGuard.RepairScore(text)} " +
-                    $"suspicious={WhisperRepetitionGuard.IsSuspiciousRepair(text, windowSeconds)}");
+                    $"suspicious={WhisperRepetitionGuard.IsSuspiciousRepair(text, windowSeconds)} " +
+                    $"coverage={coverage.CoveredSeconds:0.00}s " +
+                    $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
+                    $"largestInternalGap={coverage.LargestInternalGapSeconds:0.00}s " +
+                    $"trailingGap={coverage.TrailingGapSeconds:0.00}s " +
+                    $"rawTimeRange=[{coverage.FirstStartSeconds:0.00},{coverage.LastEndSeconds:0.00}]s " +
+                    $"outsideWindow={coverage.OutsideWindowSeconds:0.00}s");
+                if (coverage.OutsideWindowSeconds > 0.1 ||
+                    coverage.LargestInternalGapSeconds >= 5 ||
+                    coverage.LeadingGapSeconds >= 5 ||
+                    coverage.TrailingGapSeconds >= 5)
+                {
+                    Log($"repair #{repairCount} TIMING-ANOMALY candidate={decoder} " +
+                        $"start={safeSample / (double)SamplesPerSecond:0.00}s " +
+                        $"end={(safeSample + repairLength) / (double)SamplesPerSecond:0.00}s " +
+                        $"covered={coverage.CoveredSeconds:0.00}/{windowSeconds:0.00}s " +
+                        $"outside={coverage.OutsideWindowSeconds:0.00}s " +
+                        $"leadingGap={coverage.LeadingGapSeconds:0.00}s " +
+                        $"internalGap={coverage.LargestInternalGapSeconds:0.00}s " +
+                        $"trailingGap={coverage.TrailingGapSeconds:0.00}s");
+                }
             }
 
             // Decode with Beam first; never publish a candidate before validation.
@@ -700,6 +733,15 @@ public sealed class WhisperRecognitionService : IRecognitionService
         }
 
         progress.Report(1);
+        var overallCoverage = WhisperTimingDiagnostics.AnalyzeCoverage(segments, total.TotalSeconds);
+        Log($"timeline-summary audio={total.TotalSeconds:0.00}s " +
+            $"firstSegment={overallCoverage.FirstStartSeconds:0.00}s " +
+            $"lastSegment={overallCoverage.LastEndSeconds:0.00}s " +
+            $"timestampCoverage={overallCoverage.CoveredSeconds:0.00}s " +
+            $"leadingGap={overallCoverage.LeadingGapSeconds:0.00}s " +
+            $"largestInternalGap={overallCoverage.LargestInternalGapSeconds:0.00}s " +
+            $"trailingGap={overallCoverage.TrailingGapSeconds:0.00}s " +
+            $"outsideAudio={overallCoverage.OutsideWindowSeconds:0.00}s");
         Log($"done segments={segments.Count} characters={transcript.Length} " +
             $"repairs={repairCount} warning={warning} elapsed={clock.Elapsed:c}");
         return new RecognitionResult(transcript.ToString(), detectedLanguage, segments)
