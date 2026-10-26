@@ -113,6 +113,39 @@ public sealed class WhisperGapRecoveryTests
     }
 
     [Fact]
+    public void Independent_agreement_can_replace_an_obviously_sparse_segment()
+    {
+        const string original = "Y después veremos las actividades.";
+        const string detailed =
+            "Los niños comerán paella y carne de ciervo, y también podrán elegir macarrones con tomate. " +
+            "Si alguien tiene problemas de estómago conviene llevar un medicamento adecuado y consultar a sus padres.";
+        var greedy = WhisperGapRecovery.Assess("greedy", [Segment(0, 24, detailed)], 24);
+        var beam = WhisperGapRecovery.Assess("beam", [Segment(0, 24, detailed)], 24);
+        var chosen = WhisperGapRecovery.Choose(
+            [greedy, beam], GapProbeKind.SparseSegment, original, null, null);
+
+        Assert.True(greedy.Plausible);
+        Assert.NotNull(chosen.Candidate);
+        Assert.Equal("two-decoders-agree", chosen.Reason);
+        Assert.Equal(1, chosen.Agreement);
+    }
+
+    [Fact]
+    public void Non_speech_markers_are_not_a_valid_recovery_even_when_decoders_agree()
+    {
+        var first = WhisperGapRecovery.Assess("greedy",
+            [Segment(0, 20, "[MÚSICA] [MÚSICA] [MÚSICA]")], 20);
+        var second = WhisperGapRecovery.Assess("beam",
+            [Segment(0, 20, "[MÚSICA] [MÚSICA] [MÚSICA]")], 20);
+
+        var chosen = WhisperGapRecovery.Choose(
+            [first, second], GapProbeKind.MissingGap, "", null, null);
+
+        Assert.False(first.Plausible);
+        Assert.Null(chosen.Candidate);
+    }
+
+    [Fact]
     public void Duplicate_of_adjacent_speech_is_not_inserted_into_gap()
     {
         const string neighbor =
