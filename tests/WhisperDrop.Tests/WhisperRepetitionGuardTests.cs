@@ -99,4 +99,86 @@ public sealed class WhisperRepetitionGuardTests
         Assert.False(WhisperRepetitionGuard.IsSuspiciousRepair("Hola.", 2));
     }
 
+    [Fact]
+    public void Coverage_reports_22_second_tail_after_only_three_seconds_of_beam_output()
+    {
+        var segments = new[]
+        {
+            new WhisperDrop.Models.RecognitionSegment(0,
+                System.TimeSpan.Zero, System.TimeSpan.FromSeconds(3),
+                "The first sentence.", null, null, null, null)
+        };
+
+        var coverage = WhisperTimingDiagnostics.AnalyzeCoverage(segments, 25);
+
+        Assert.Equal(3, coverage.CoveredSeconds);
+        Assert.Equal(22, coverage.TrailingGapSeconds);
+        Assert.Equal(0, coverage.OutsideWindowSeconds);
+        Assert.Equal(0, coverage.LeadingGapSeconds);
+    }
+
+    [Fact]
+    public void Coverage_reports_native_segment_end_beyond_repair_window()
+    {
+        var segments = new[]
+        {
+            new WhisperDrop.Models.RecognitionSegment(0,
+                System.TimeSpan.Zero, System.TimeSpan.FromSeconds(26.96),
+                "One unusually long native segment.", null, null, null, null)
+        };
+
+        var coverage = WhisperTimingDiagnostics.AnalyzeCoverage(segments, 25);
+
+        Assert.Equal(25, coverage.CoveredSeconds);
+        Assert.Equal(26.96, coverage.LastEndSeconds, 2);
+        Assert.Equal(1.96, coverage.OutsideWindowSeconds, 2);
+    }
+
+    [Fact]
+    public void Coverage_merges_overlapping_segment_timestamps_without_double_counting()
+    {
+        var segments = new[]
+        {
+            new WhisperDrop.Models.RecognitionSegment(0,
+                System.TimeSpan.FromSeconds(1), System.TimeSpan.FromSeconds(6),
+                "First.", null, null, null, null),
+            new WhisperDrop.Models.RecognitionSegment(1,
+                System.TimeSpan.FromSeconds(4), System.TimeSpan.FromSeconds(8),
+                "Second.", null, null, null, null),
+            new WhisperDrop.Models.RecognitionSegment(2,
+                System.TimeSpan.FromSeconds(12), System.TimeSpan.FromSeconds(15),
+                "Third.", null, null, null, null)
+        };
+
+        var coverage = WhisperTimingDiagnostics.AnalyzeCoverage(segments, 20);
+
+        Assert.Equal(10, coverage.CoveredSeconds);
+        Assert.Equal(4, coverage.LargestInternalGapSeconds);
+        Assert.Equal(1, coverage.LeadingGapSeconds);
+        Assert.Equal(5, coverage.TrailingGapSeconds);
+    }
+
+    [Fact]
+    public void Accepted_segment_diagnostics_report_long_segments_and_large_timestamp_gaps()
+    {
+        var earlier = new WhisperDrop.Models.RecognitionSegment(0,
+            System.TimeSpan.FromSeconds(0), System.TimeSpan.FromSeconds(4),
+            "Short.", null, null, null, null);
+        var later = new WhisperDrop.Models.RecognitionSegment(1,
+            System.TimeSpan.FromSeconds(14), System.TimeSpan.FromSeconds(35),
+            "Long.", null, null, null, null);
+
+        var diagnostic = WhisperTimingDiagnostics.ExplainAcceptedSegment(earlier, later, 100);
+
+        Assert.Contains("large-gap duration=10.00s", diagnostic);
+        Assert.Contains("long-segment duration=21.00s", diagnostic);
+        Assert.Null(WhisperTimingDiagnostics.ExplainAcceptedSegment(
+            earlier, earlier with
+            {
+                Id = 1,
+                Start = System.TimeSpan.FromSeconds(4),
+                End = System.TimeSpan.FromSeconds(6)
+            }, 100));
+    }
+
 }
