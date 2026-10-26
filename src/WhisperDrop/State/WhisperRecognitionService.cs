@@ -231,7 +231,7 @@ public sealed class WhisperRecognitionService : IRecognitionService
     private static readonly TimeSpan RepairWindow = TimeSpan.FromSeconds(25);
     private const int PendingSegmentLookbehind = 3;
     private const int MaxLocalRepairs = 5;
-    private const int ConservativeAdvanceSeconds = 8;
+
 
     private sealed record RecognizedPart(RecognitionSegment Segment, string? Language);
 
@@ -489,41 +489,54 @@ public sealed class WhisperRecognitionService : IRecognitionService
             var repaired = selectShort ? shortRecovery! : beam ?? shortRecovery;
             var selectedKind = selectShort || beam is null ? "short-greedy" : "beam";
 
-            if (repaired is null)
+            var selectedText = repaired is null ? "" : ExtractText(repaired);
+            var suspicious = repaired is null ||
+                WhisperRepetitionGuard.IsSuspiciousRepair(selectedText, windowSeconds);
+
+            if (suspicious)
             {
                 warning = true;
-                // There is no candidate at all. Skip only a small conservative interval
-                // rather than silently dropping the entire 25-second repair window.
-                cursorSample = Math.Min(samples.Length, safeSample +
-                    Math.Min(repairLength, SamplesPerSecond * ConservativeAdvanceSeconds));
-                Log($"repair #{repairCount} FAILED: no candidate; possible missing audio " +
-                    $"[{safeSample / (double)SamplesPerSecond:0.00}," +
-                    $"{cursorSample / (double)SamplesPerSecond:0.00}]s; resume={cursorSample / (double)SamplesPerSecond:0.00}s");
+                // Do NOT append 25 seconds of candidate text and then resume 8 seconds
+                // later: that would duplicate overlapping audio. The two short passes
+                // already cover this interval; accept only segments from its first half
+                // and rerun the rest using the regular decoder.
+                var shortParts = shortRecovery?.Confirmed;
+                var cautiousAdvance = Math.Max(1, repairLength / 2);
+                var retainedParts = 0;
+                if (shortParts is not null)
+                {
+                    var limit = TimeSpan.FromSeconds((double)cautiousAdvance / SamplesPerSecond);
+                    foreach (var part in shortParts)
+                    {
+                        if (part.Segment.End <= limit &&
+                            WhisperRepetitionGuard.MeaningfulWords(part.Segment.Text) > 0)
+                        {
+                            Append(part, safeSample);
+                            retainedParts++;
+                        }
+                    }
+                }
+                cursorSample = Math.Min(samples.Length, safeSample + cautiousAdvance);
+                Log($"repair #{repairCount} UNRESOLVED: beam={beam is not null} " +
+                    $"short={shortRecovery is not null} selected={selectedKind} " +
+                    $"beamWords={WhisperRepetitionGuard.MeaningfulWords(beamText)} " +
+                    $"shortWords={WhisperRepetitionGuard.MeaningfulWords(shortRecovery is null ? "" : ExtractText(shortRecovery))} " +
+                    $"retainedEarlySegments={retainedParts} " +
+                    $"POSSIBLE MISSING AUDIO [{safeSample / (double)SamplesPerSecond:0.00}," +
+                    $"{cursorSample / (double)SamplesPerSecond:0.00}]s " +
+                    $"resuming remainder from {cursorSample / (double)SamplesPerSecond:0.00}s");
             }
             else
             {
-                var selectedText = ExtractText(repaired);
-                var suspicious = WhisperRepetitionGuard.IsSuspiciousRepair(selectedText, windowSeconds);
-                if (suspicious)
-                {
-                    warning = true;
-                }
-
-                foreach (var part in repaired.Confirmed)
+                foreach (var part in repaired!.Confirmed)
                 {
                     Append(part, safeSample);
                 }
 
-                // Do not trust a marker-only segment's "end time" as evidence that
-                // speech for the entire window was decoded. Advance cautiously and
-                // leave the remainder for the next native pass.
-                var advancedBy = suspicious
-                    ? Math.Min(repairLength, SamplesPerSecond * ConservativeAdvanceSeconds)
-                    : ChooseAdvance(repairLength,
-                        repaired.Confirmed.Count > 0 ? repaired.Confirmed[^1].Segment.End : null);
+                var advancedBy = ChooseAdvance(repairLength,
+                    repaired.Confirmed.Count > 0 ? repaired.Confirmed[^1].Segment.End : null);
                 cursorSample = Math.Min(samples.Length, safeSample + advancedBy);
-                Log($"repair #{repairCount} SELECTED={selectedKind} " +
-                    $"reason={(suspicious ? "low-confidence; conservative-resume" : "plausible-transcript")} " +
+                Log($"repair #{repairCount} SELECTED={selectedKind} reason=plausible-transcript " +
                     $"chars={selectedText.Length} meaningful={WhisperRepetitionGuard.MeaningfulWords(selectedText)} " +
                     $"markers={WhisperRepetitionGuard.MarkerCount(selectedText)} " +
                     $"resume={cursorSample / (double)SamplesPerSecond:0.00}s elapsed={clock.Elapsed:c}");
