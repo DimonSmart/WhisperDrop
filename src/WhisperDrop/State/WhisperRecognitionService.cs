@@ -1058,6 +1058,18 @@ public sealed class WhisperRecognitionService : IRecognitionService
                 }
             }
 
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                for (var j = i + 1; j < candidates.Count; j++)
+                {
+                    var a = candidates[i];
+                    var b = candidates[j];
+                    log($"gap-review #{p + 1} AGREEMENT {a.Decoder}~{b.Decoder}=" +
+                        $"{WhisperGapRecovery.Agreement(a.Text, b.Text):0.000} " +
+                        $"plausibleA={a.Plausible} plausibleB={b.Plausible}");
+                }
+            }
+
             var existingText = probe.Kind == GapProbeKind.SparseSegment
                 ? original[probe.SegmentIndex].Text : "";
             var left = probe.SegmentIndex > 0 ? original[probe.SegmentIndex - 1].Text : null;
