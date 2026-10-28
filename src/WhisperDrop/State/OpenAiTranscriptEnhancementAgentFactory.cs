@@ -62,7 +62,6 @@ public sealed class OpenAiTranscriptEnhancementAgentFactory : ITranscriptEnhance
                     TranscriptEnhancementPromptBuilder.BuildUserPrompt(
                         chunk,
                         detectedLanguage,
-                        userInstructions,
                         previousResponseError),
                     cancellationToken).ConfigureAwait(false);
                 return JsonSerializer.Deserialize<TranscriptChunkResult>(response, JsonOptions)

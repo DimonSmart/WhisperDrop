@@ -178,6 +178,75 @@ public sealed class TranscriptEnhancementTests
         Assert.Equal("en", factory.LastDetectedLanguage);
     }
 
+    [Fact]
+    public void Prompt_preserves_code_switching_and_does_not_include_custom_instructions()
+    {
+        var chunk = new TranscriptChunk(
+            [Segment(42, "Tirolina. Sip line. We go to Cazula.")],
+            [Segment(41, "Nos vamos a Cazorla.")],
+            [Segment(43, "El martes salimos a las ocho.")],
+            false);
+
+        var prompt = TranscriptEnhancementPromptBuilder.BuildUserPrompt(chunk, "es", null);
+
+        Assert.Contains("Tirolina. Sip line.", prompt);
+        Assert.Contains("previousContext", prompt);
+        Assert.Contains("nextContext", prompt);
+        Assert.Contains("segmentsToCorrect", prompt);
+        Assert.Contains("paragraphBreakAfter", prompt);
+        Assert.DoesNotContain("see sharp", prompt);
+        Assert.DoesNotContain("user_instructions", prompt);
+    }
+
+    [Fact]
+    public void Protective_validation_allows_isolated_recognition_fixes_and_punctuation()
+    {
+        var input = "Tirolina, sorry, I do not remember how to say sip line in English today.";
+        var output = "Tirolina, sorry, I do not remember how to say zip line in English today.";
+        TranscriptCorrectionSafety.Validate(input, output, 7);
+        TranscriptCorrectionSafety.Validate(
+            "So we will arrive on Tuesday 22, around 8 AM.",
+            "So we will arrive on Tuesday, the 22nd, around 8 a.m.", 8);
+    }
+
+    [Theory]
+    [InlineData("We leave on the 22nd and return on the 25th.", "We leave on the 23rd and return on the 25th.")]
+    [InlineData("The bus costs 330 euros and goes at 8 AM.", "The bus costs 350 euros and goes at 8 AM.")]
+    [InlineData("There is a good plan for our journey today.", "There is a good plan for our journey on day 2.")]
+    public void Protective_validation_rejects_changed_or_new_numbers(string original, string edited)
+    {
+        Assert.Throws<TranscriptEnhancementException>(() =>
+            TranscriptCorrectionSafety.Validate(original, edited, 10));
+    }
+
+    [Fact]
+    public void Protective_validation_rejects_summarizing_and_translating_long_segments()
+    {
+        var source = "Los niños pueden llevar teléfono durante las actividades y también pueden hablar con sus padres por WhatsApp por la noche.";
+        Assert.Throws<TranscriptEnhancementException>(() =>
+            TranscriptCorrectionSafety.Validate(source, "Pueden llevar teléfono.", 10));
+        Assert.Throws<TranscriptEnhancementException>(() =>
+            TranscriptCorrectionSafety.Validate(source,
+                "The children can bring a phone during activities and call their parents by WhatsApp at night.", 10));
+    }
+
+    [Fact]
+    public async Task Service_retries_a_destructive_rewrite_and_keeps_the_source_in_second_attempt()
+    {
+        var attempts = 0;
+        var original = "Los niños pueden llevar teléfono durante las actividades y también pueden hablar con sus padres por WhatsApp por la noche.";
+        var factory = new FakeAgentFactory(chunk => new TranscriptChunkResult(
+            [new CorrectedSegment(chunk.Segments[0].Id,
+                ++attempts == 1 ? "Pueden llevar teléfono." : original, false)]));
+        var service = new TranscriptEnhancementService(factory, new TranscriptChunker());
+        var recognition = new RecognitionResult(original, "es", [Segment(0, original)]);
+
+        var result = await service.EnhanceAsync(recognition, new AiPostProcessingOptions());
+
+        Assert.Equal(original, result.Transcript);
+        Assert.Equal(2, factory.AgentCalls);
+    }
+
     private static RecognitionSegment Segment(int id, string text) =>
         new(
             id,

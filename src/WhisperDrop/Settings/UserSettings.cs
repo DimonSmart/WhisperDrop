@@ -27,7 +27,7 @@ public sealed record AiPostProcessingSettings
 
     public string Endpoint { get; init; } = "http://localhost:11434/v1/";
 
-    public string Model { get; init; } = "gpt-oss:20b";
+    public string Model { get; init; } = "gpt-oss:latest";
 
     public string Instructions { get; init; } = string.Empty;
 

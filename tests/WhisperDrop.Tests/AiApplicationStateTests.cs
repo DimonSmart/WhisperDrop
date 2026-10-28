@@ -133,10 +133,11 @@ public sealed class AiApplicationStateTests
 
         Assert.Contains("===== SYSTEM INSTRUCTIONS =====", input);
         Assert.Contains("===== USER REQUEST 1/1 =====", input);
-        Assert.Contains("Prefer the product spelling AcmeDB.", input);
+        Assert.DoesNotContain("Prefer the product spelling AcmeDB.", input);
         Assert.Contains("recording.wav raw", input);
         Assert.Contains("\"segmentsToCorrect\"", input);
-        Assert.Contains("Examples of context-sensitive recognition corrections:", input);
+        Assert.Contains("conservative multilingual ASR transcript proofreader", input);
+        Assert.DoesNotContain("see sharp", input);
         Assert.Contains("probability", input);
     }
 

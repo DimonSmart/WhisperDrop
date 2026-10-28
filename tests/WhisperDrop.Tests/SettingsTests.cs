@@ -32,7 +32,7 @@ public sealed class SettingsTests : IDisposable
         Assert.False(settings.AiPostProcessing.Enabled);
         Assert.Equal(AiProviderPreset.Ollama, settings.AiPostProcessing.Provider);
         Assert.Equal("http://localhost:11434/v1/", settings.AiPostProcessing.Endpoint);
-        Assert.Equal("gpt-oss:20b", settings.AiPostProcessing.Model);
+        Assert.Equal("gpt-oss:latest", settings.AiPostProcessing.Model);
         Assert.Equal(string.Empty, settings.AiPostProcessing.Instructions);
         Assert.Null(settings.AiPostProcessing.ContextSize);
     }

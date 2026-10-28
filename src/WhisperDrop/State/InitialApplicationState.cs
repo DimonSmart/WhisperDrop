@@ -125,8 +125,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public IReadOnlyList<AiContextSizeOption> AiContextSizeOptions { get; }
 
-    public string AiBuiltInRecognitionHints => TranscriptEnhancementPromptBuilder.BuiltInRecognitionHints;
-
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
 
     public ObservableCollection<LocalModelInfo> InstalledModels { get; } = [];

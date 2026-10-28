@@ -735,28 +735,18 @@
                 <StackPanel Spacing="{StaticResource SpacingXs}">
                     <TextBlock
                         Style="{StaticResource SettingsLabelTextStyle}"
-                        Text="Recognition corrections / instructions" />
+                        Text="Custom correction instructions (not active yet)" />
                     <TextBlock
                         Style="{StaticResource CaptionTextStyle}"
-                        Text="Editable instructions added to every AI correction request. Use this for terminology, recurring recognition mistakes, and preferred formatting."
+                        Text="The current correction pass uses built-in conservative rules only. Saved custom instructions are retained but not sent to the AI model."
                         TextWrapping="Wrap" />
                     <TextBox
-                        MinHeight="120"
+                        MinHeight="90"
                         AcceptsReturn="True"
+                        IsEnabled="False"
                         TextWrapping="Wrap"
                         Style="{StaticResource SettingsTextBoxStyle}"
-                        PlaceholderText="For example: AcmeDB is a product name. Whisper sometimes recognizes it as “Acme DB”. Keep speaker wording and use short paragraphs."
-                        Text="{x:Bind ViewModel.AiInstructions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
-
-                <StackPanel Spacing="{StaticResource SpacingXs}">
-                    <TextBlock
-                        Style="{StaticResource SettingsLabelTextStyle}"
-                        Text="Built-in recognition guidance" />
-                    <TextBlock
-                        Style="{StaticResource CaptionTextStyle}"
-                        Text="{x:Bind ViewModel.AiBuiltInRecognitionHints, Mode=OneWay}"
-                        TextWrapping="Wrap" />
+                        Text="{x:Bind ViewModel.AiInstructions, Mode=OneWay}" />
                 </StackPanel>
 
                 <Expander Header="Technical settings">
