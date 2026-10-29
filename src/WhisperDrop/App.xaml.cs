@@ -37,6 +37,7 @@ public partial class App : Application
                 services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
                 services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
                 services.AddSingleton<TranscriptChunker>();
+                services.AddSingleton<ITranscriptEnhancementDiagnostics, TranscriptEnhancementDiagnostics>();
                 services.AddSingleton<ITranscriptEnhancementAgentFactory, OpenAiTranscriptEnhancementAgentFactory>();
                 services.AddSingleton<ITranscriptEnhancementService, TranscriptEnhancementService>();
                 services.AddSingleton<IApplicationVersionProvider>(_ => new ApplicationVersionProvider(typeof(App).Assembly));

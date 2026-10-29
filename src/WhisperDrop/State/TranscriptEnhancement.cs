@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -86,6 +87,15 @@ public interface ITranscriptEnhancementAgent
 public interface ITranscriptEnhancementAgentFactory
 {
     ITranscriptEnhancementAgent Create(AiPostProcessingOptions options);
+}
+
+public interface ITranscriptEnhancementDiagnostics
+{
+    IDisposable BeginOperation(string operationId);
+
+    void Write(string message);
+
+    void WriteException(string phase, Exception exception);
 }
 
 public static class TranscriptEnhancementPromptBuilder
@@ -357,13 +367,16 @@ public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
     private const int MaximumChunkAttempts = 3;
     private readonly ITranscriptEnhancementAgentFactory agentFactory;
     private readonly TranscriptChunker chunker;
+    private readonly ITranscriptEnhancementDiagnostics? diagnostics;
 
     public TranscriptEnhancementService(
         ITranscriptEnhancementAgentFactory agentFactory,
-        TranscriptChunker chunker)
+        TranscriptChunker chunker,
+        ITranscriptEnhancementDiagnostics? diagnostics = null)
     {
         this.agentFactory = agentFactory;
         this.chunker = chunker;
+        this.diagnostics = diagnostics;
     }
 
     public async Task<TranscriptEnhancementResult> EnhanceAsync(
@@ -372,106 +385,173 @@ public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(recognition);
-        ArgumentNullException.ThrowIfNull(options);
+        var operationId = Guid.NewGuid().ToString("N")[..10];
+        using var operation = diagnostics?.BeginOperation(operationId);
+        var elapsed = Stopwatch.StartNew();
 
-        _ = options.GetValidatedEndpoint();
-
-        if (string.IsNullOrWhiteSpace(options.Model))
+        try
         {
-            throw new TranscriptEnhancementException("An AI model must be configured.");
-        }
+            ArgumentNullException.ThrowIfNull(recognition);
+            ArgumentNullException.ThrowIfNull(options);
 
-        if (recognition.Segments.Count == 0)
-        {
-            progress?.Report(1);
-            return new TranscriptEnhancementResult(recognition.Transcript, []);
-        }
-
-        var chunks = chunker.CreateChunks(recognition.Segments, options.ContextSize, string.Empty);
-        if (chunks.Any(chunk => chunk.IsOversized))
-        {
-            throw new TranscriptEnhancementException(
-                "A transcript segment exceeds the configured AI context size.");
-        }
-
-        var agent = agentFactory.Create(options);
-        var corrected = new Dictionary<int, CorrectedSegment>(recognition.Segments.Count);
-        progress?.Report(0);
-
-        for (var index = 0; index < chunks.Count; index++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var chunk = chunks[index];
-            IReadOnlyList<CorrectedSegment>? validated = null;
-            string? previousResponseError = null;
-            for (var attempt = 1; attempt <= MaximumChunkAttempts; attempt++)
+            var endpoint = options.GetValidatedEndpoint();
+            if (string.IsNullOrWhiteSpace(options.Model))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    var response = await agent.CorrectAsync(
-                        chunk,
-                        recognition.DetectedLanguage,
-                        string.Empty,
-                        previousResponseError,
-                        cancellationToken).ConfigureAwait(false);
-                    validated = ValidateChunkResult(chunk, response);
-                    break;
-                }
-                catch (TranscriptEnhancementException exception) when (attempt < MaximumChunkAttempts)
-                {
-                    previousResponseError = exception.Message;
-                }
-                catch (System.Text.Json.JsonException exception) when (attempt < MaximumChunkAttempts)
-                {
-                    previousResponseError = $"The response was not valid JSON: {exception.Message}";
-                }
+                throw new TranscriptEnhancementException("An AI model must be configured.");
             }
 
-            if (validated is null)
+            diagnostics?.Write(
+                $"enhancement-start model={options.Model} endpoint={DescribeEndpoint(endpoint)} " +
+                $"apiKeyConfigured={!string.IsNullOrWhiteSpace(options.ApiKey)} " +
+                $"language={recognition.DetectedLanguage ?? "unknown"} segments={recognition.Segments.Count} " +
+                $"characters={recognition.Transcript.Length} contextSize={options.ContextSize ?? TranscriptChunker.DefaultContextSize}");
+
+            if (recognition.Segments.Count == 0)
+            {
+                progress?.Report(1);
+                diagnostics?.Write("enhancement-complete reason=no-segments chunks=0");
+                return new TranscriptEnhancementResult(recognition.Transcript, []);
+            }
+
+            var chunks = chunker.CreateChunks(recognition.Segments, options.ContextSize, string.Empty);
+            diagnostics?.Write($"chunk-plan chunks={chunks.Count} oversized={chunks.Count(chunk => chunk.IsOversized)}");
+            if (chunks.Any(chunk => chunk.IsOversized))
             {
                 throw new TranscriptEnhancementException(
-                    $"The AI model failed to return a valid structured response after {MaximumChunkAttempts} attempts.");
+                    "A transcript segment exceeds the configured AI context size.");
             }
 
-            foreach (var segment in validated)
+            var agent = agentFactory.Create(options);
+            var corrected = new Dictionary<int, CorrectedSegment>(recognition.Segments.Count);
+            progress?.Report(0);
+
+            for (var index = 0; index < chunks.Count; index++)
             {
-                corrected.Add(segment.Id, segment);
+                cancellationToken.ThrowIfCancellationRequested();
+                var chunk = chunks[index];
+                var targetCharacters = chunk.Segments.Sum(segment => segment.Text.Length);
+                diagnostics?.Write(
+                    $"chunk-start index={index + 1}/{chunks.Count} targetSegments={chunk.Segments.Count} " +
+                    $"contextSegments={chunk.PreviousContext.Count + chunk.NextContext.Count} targetCharacters={targetCharacters}");
+
+                IReadOnlyList<CorrectedSegment>? validated = null;
+                string? previousResponseError = null;
+                for (var attempt = 1; attempt <= MaximumChunkAttempts; attempt++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var attemptElapsed = Stopwatch.StartNew();
+                    diagnostics?.Write($"chunk-attempt-start index={index + 1}/{chunks.Count} attempt={attempt}/{MaximumChunkAttempts}");
+                    try
+                    {
+                        var response = await agent.CorrectAsync(
+                            chunk,
+                            recognition.DetectedLanguage,
+                            string.Empty,
+                            previousResponseError,
+                            cancellationToken).ConfigureAwait(false);
+                        validated = ValidateChunkResult(chunk, response);
+                        diagnostics?.Write(
+                            $"chunk-attempt-accepted index={index + 1}/{chunks.Count} attempt={attempt} " +
+                            $"returnedSegments={validated.Count} elapsedMs={attemptElapsed.ElapsedMilliseconds}");
+                        break;
+                    }
+                    catch (TranscriptEnhancementException exception) when (attempt < MaximumChunkAttempts)
+                    {
+                        previousResponseError = exception.Message;
+                        diagnostics?.WriteException($"chunk-retry index={index + 1}/{chunks.Count} attempt={attempt}", exception);
+                    }
+                    catch (System.Text.Json.JsonException exception) when (attempt < MaximumChunkAttempts)
+                    {
+                        previousResponseError = $"The response was not valid JSON: {exception.Message}";
+                        diagnostics?.WriteException($"chunk-retry index={index + 1}/{chunks.Count} attempt={attempt}", exception);
+                    }
+                }
+
+                if (validated is null)
+                {
+                    throw new TranscriptEnhancementException(
+                        $"The AI model failed to return a valid structured response after {MaximumChunkAttempts} attempts.");
+                }
+
+                foreach (var segment in validated)
+                {
+                    corrected.Add(segment.Id, segment);
+                }
+
+                progress?.Report((double)(index + 1) / chunks.Count);
+                diagnostics?.Write($"chunk-complete index={index + 1}/{chunks.Count} correctedSegments={corrected.Count}");
             }
 
-            progress?.Report((double)(index + 1) / chunks.Count);
-        }
+            if (corrected.Count != recognition.Segments.Count)
+            {
+                throw new TranscriptEnhancementException(
+                    "The AI model returned an incomplete structured response.");
+            }
 
-        if (corrected.Count != recognition.Segments.Count)
+            var ordered = recognition.Segments
+                .Select(segment => corrected[segment.Id])
+                .ToArray();
+            var result = new TranscriptEnhancementResult(
+                Merge(recognition.Segments, corrected),
+                ordered);
+
+            diagnostics?.Write(
+                $"enhancement-complete chunks={chunks.Count} correctedSegments={ordered.Length} " +
+                $"characters={result.Transcript.Length} elapsedMs={elapsed.ElapsedMilliseconds}");
+            return result;
+        }
+        catch (OperationCanceledException exception)
         {
-            throw new TranscriptEnhancementException(
-                "The AI model returned an incomplete structured response.");
+            diagnostics?.WriteException($"enhancement-cancelled elapsedMs={elapsed.ElapsedMilliseconds}", exception);
+            throw;
         }
-
-        var ordered = recognition.Segments
-            .Select(segment => corrected[segment.Id])
-            .ToArray();
-
-        return new TranscriptEnhancementResult(
-            Merge(recognition.Segments, corrected),
-            ordered);
+        catch (Exception exception)
+        {
+            diagnostics?.WriteException($"enhancement-failed elapsedMs={elapsed.ElapsedMilliseconds}", exception);
+            throw;
+        }
     }
 
     public async Task TestConnectionAsync(
         AiPostProcessingOptions options,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        _ = options.GetValidatedEndpoint();
-
-        if (string.IsNullOrWhiteSpace(options.Model))
+        var operationId = Guid.NewGuid().ToString("N")[..10];
+        using var operation = diagnostics?.BeginOperation(operationId);
+        var elapsed = Stopwatch.StartNew();
+        try
         {
-            throw new TranscriptEnhancementException("An AI model must be configured.");
-        }
+            ArgumentNullException.ThrowIfNull(options);
+            var endpoint = options.GetValidatedEndpoint();
 
-        var agent = agentFactory.Create(options);
-        await agent.TestConnectionAsync(cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(options.Model))
+            {
+                throw new TranscriptEnhancementException("An AI model must be configured.");
+            }
+
+            diagnostics?.Write(
+                $"connection-test-start model={options.Model} endpoint={DescribeEndpoint(endpoint)} " +
+                $"apiKeyConfigured={!string.IsNullOrWhiteSpace(options.ApiKey)}");
+            var agent = agentFactory.Create(options);
+            await agent.TestConnectionAsync(cancellationToken).ConfigureAwait(false);
+            diagnostics?.Write($"connection-test-complete elapsedMs={elapsed.ElapsedMilliseconds}");
+        }
+        catch (OperationCanceledException exception)
+        {
+            diagnostics?.WriteException($"connection-test-cancelled elapsedMs={elapsed.ElapsedMilliseconds}", exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            diagnostics?.WriteException($"connection-test-failed elapsedMs={elapsed.ElapsedMilliseconds}", exception);
+            throw;
+        }
+    }
+
+    private static string DescribeEndpoint(Uri endpoint)
+    {
+        var host = endpoint.HostNameType == UriHostNameType.IPv6 ? $"[{endpoint.Host}]" : endpoint.IdnHost;
+        return $"{endpoint.Scheme}://{host}{(endpoint.IsDefaultPort ? string.Empty : $":{endpoint.Port}")}";
     }
 
     internal static IReadOnlyList<CorrectedSegment> ValidateChunkResult(
