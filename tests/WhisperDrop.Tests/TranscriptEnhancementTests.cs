@@ -95,7 +95,7 @@ public sealed class TranscriptEnhancementTests
     }
 
     [Fact]
-    public async Task Service_processes_chunks_sequentially_and_merges_paragraph_boundaries()
+    public async Task Service_processes_chunks_sequentially_and_avoids_tiny_paragraphs()
     {
         var factory = new FakeAgentFactory(chunk => new TranscriptChunkResult(
             chunk.Segments
@@ -117,7 +117,7 @@ public sealed class TranscriptEnhancementTests
             new AiPostProcessingOptions { ContextSize = 4096 },
             new CollectingProgress(progressValues));
 
-        Assert.Equal("First." + Environment.NewLine + Environment.NewLine + "Second.", result.Transcript);
+        Assert.Equal("First. Second.", result.Transcript);
         Assert.Equal([0, 1], result.Segments.Select(segment => segment.Id));
         Assert.Equal(1, factory.CreateCount);
         Assert.Equal(1, factory.AgentCalls);
@@ -247,6 +247,95 @@ public sealed class TranscriptEnhancementTests
         Assert.Equal(2, factory.AgentCalls);
     }
 
+    [Theory]
+    [InlineData("Take protestor solar.", "Take protector solar.", "protestor", "protector")]
+    [InlineData("They can go home.", "They can already go home.", "_", "already")]
+    [InlineData("We can use a mobile phone.", "We can use a phone.", "mobile", "_")]
+    public void Correction_preview_shows_only_changed_words(string original, string corrected, string before, string after)
+    {
+        var preview = Assert.IsType<TranscriptCorrectionPreview>(
+            TranscriptCorrectionPreviewBuilder.Create(original, corrected));
+        Assert.Equal(before, preview.Before);
+        Assert.Equal(after, preview.After);
+        Assert.Null(TranscriptCorrectionPreviewBuilder.Create(original, original.Replace(".", "!")));
+    }
+
+    [Fact]
+    public void Correction_preview_shortens_large_replacements_without_hiding_the_first_changed_word()
+    {
+        var before = string.Join(" ", Enumerable.Repeat("originalword", 16));
+        var after = string.Join(" ", Enumerable.Repeat("correctedword", 18));
+        var preview = Assert.IsType<TranscriptCorrectionPreview>(TranscriptCorrectionPreviewBuilder.Create(before, after));
+
+        Assert.StartsWith("originalword", preview.Before);
+        Assert.StartsWith("correctedword", preview.After);
+        Assert.Contains("…", preview.Before);
+        Assert.Contains("…", preview.After);
+    }
+
+    [Fact]
+    public void Global_reference_terms_are_only_recurrent_in_sentence_capitals()
+    {
+        var segments = new[]
+        {
+            Segment(0, "Vamos a Cazorla para hacer actividades."),
+            Segment(1, "Después los niños viajarán a Cazorla y conocerán a los monitores."),
+            Segment(2, "Cazorla es un lugar especial, pero este día será distinto.")
+        };
+        var terms = TranscriptReferenceTerms.Collect(segments);
+        Assert.Contains("Cazorla", terms);
+        Assert.DoesNotContain("Vamos", terms);
+        Assert.DoesNotContain("Después", terms);
+
+        var chunk = new TranscriptChunk([segments[0]], [], [], false) { ReferenceTerms = terms };
+        var prompt = TranscriptEnhancementPromptBuilder.BuildUserPrompt(chunk, "es", null);
+        Assert.Contains("referenceTerms", prompt);
+        Assert.Contains("Cazorla", prompt);
+    }
+
+    [Theory]
+    [InlineData("The children must stay inside.", "The children may stay inside.")]
+    [InlineData("The children can leave the room.", "The children cannot leave the room.")]
+    [InlineData("It is yes or yes.", "It is yes or no.")]
+    [InlineData("No se puede salir de la habitación.", "Se puede salir de la habitación.")]
+    public void Safety_rejects_changes_to_permissions_obligations_and_negations(string raw, string changed)
+    {
+        Assert.Throws<TranscriptEnhancementException>(() =>
+            TranscriptCorrectionSafety.Validate(raw, changed, 1));
+    }
+
+    [Fact]
+    public async Task Service_reports_the_last_validated_word_correction()
+    {
+        var raw = "Take protestor solar.";
+        var factory = new FakeAgentFactory(chunk => new TranscriptChunkResult(
+            [new CorrectedSegment(chunk.Segments[0].Id, "Take protector solar.", false)]));
+        var service = new TranscriptEnhancementService(factory, new TranscriptChunker());
+        var recognition = new RecognitionResult(raw, "en", [Segment(0, raw)]);
+        var progress = new CollectingCorrectionProgress();
+
+        var result = await service.EnhanceAsync(recognition, new AiPostProcessingOptions(), progress);
+
+        Assert.Equal("Take protector solar.", result.Transcript);
+        var edit = Assert.Single(progress.Edits);
+        Assert.Equal("protestor", edit.Before);
+        Assert.Equal("protector", edit.After);
+    }
+
+    [Fact]
+    public void Merge_limits_unbroken_paragraphs_when_model_sets_no_breaks()
+    {
+        var sentence = string.Concat(Enumerable.Repeat("The children enjoy group activities in the camp today. ", 4));
+        var source = Enumerable.Range(0, 8).Select(i => Segment(i, sentence)).ToArray();
+        var corrected = source.ToDictionary(x => x.Id, x => new CorrectedSegment(x.Id, x.Text, false));
+
+        var merged = TranscriptEnhancementService.Merge(source, corrected);
+        var paragraphs = merged.Split(Environment.NewLine + Environment.NewLine);
+
+        Assert.True(paragraphs.Length > 1);
+        Assert.All(paragraphs, paragraph => Assert.InRange(paragraph.Length, 1, 800));
+    }
+
     private static RecognitionSegment Segment(int id, string text) =>
         new(
             id,
@@ -297,6 +386,15 @@ public sealed class TranscriptEnhancementTests
             public Task TestConnectionAsync(CancellationToken cancellationToken) =>
                 Task.CompletedTask;
         }
+    }
+
+    private sealed class CollectingCorrectionProgress : ITranscriptCorrectionProgress
+    {
+        public List<TranscriptCorrectionPreview> Edits { get; } = [];
+
+        public void Report(double value) { }
+
+        public void ReportCorrection(TranscriptCorrectionPreview correction) => Edits.Add(correction);
     }
 
     private sealed class CollectingProgress(List<double> values) : IProgress<double>
