@@ -26,6 +26,7 @@
     <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionDiagnostics.cs" Link="State/WhisperRecognitionDiagnostics.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
     <Compile Include="../../src/WhisperDrop/State/TranscriptEnhancement.cs" Link="State/TranscriptEnhancement.cs" />
+    <Compile Include="../../src/WhisperDrop/State/TranscriptCorrectionHints.cs" Link="State/TranscriptCorrectionHints.cs" />
     <Compile Include="../../src/WhisperDrop/State/WhisperRuntimeSelector.cs" Link="State/WhisperRuntimeSelector.cs" />
     <Compile Include="../../src/WhisperDrop/State/FileQueueAddResult.cs" Link="State/FileQueueAddResult.cs" />
     <Compile Include="../../src/WhisperDrop/Models/WhisperModelCatalog.cs" Link="Models/WhisperModelCatalog.cs" />

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using WhisperDrop.State;
 
 namespace WhisperDrop.Models;
 
@@ -36,6 +37,7 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private string? processedTranscript;
     private string? errorMessage;
     private string? aiEnhancementError;
+    private TranscriptCorrectionPreview? latestCorrection;
     private bool isProgressIndeterminate;
     private bool canTranscribe;
     private bool canEnhance;
@@ -154,6 +156,25 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         get => aiEnhancementError;
         internal set => Set(ref aiEnhancementError, value);
     }
+
+    public TranscriptCorrectionPreview? LatestCorrection
+    {
+        get => latestCorrection;
+        internal set
+        {
+            if (!Set(ref latestCorrection, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(LatestCorrectionBefore));
+            OnPropertyChanged(nameof(LatestCorrectionAfter));
+        }
+    }
+
+    public string? LatestCorrectionBefore => LatestCorrection?.Before;
+
+    public string? LatestCorrectionAfter => LatestCorrection?.After;
 
     public string? Preview => EffectiveTranscript is null ? null : CreatePreview(EffectiveTranscript);
 

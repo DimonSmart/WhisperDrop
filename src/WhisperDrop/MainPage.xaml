@@ -485,6 +485,28 @@
                                             TextWrapping="Wrap"
                                             Visibility="{Binding Preview, Converter={StaticResource StringToVisibilityConverter}}" />
 
+                                        <StackPanel
+                                            Orientation="Horizontal"
+                                            Spacing="{StaticResource SpacingXs}"
+                                            Visibility="{Binding LatestCorrectionBefore, Converter={StaticResource StringToVisibilityConverter}}">
+                                            <TextBlock
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="AI:" />
+                                            <TextBlock
+                                                MaxWidth="195"
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="{Binding LatestCorrectionBefore}"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <TextBlock
+                                                Style="{StaticResource CaptionTextStyle}"
+                                                Text="→" />
+                                            <TextBlock
+                                                MaxWidth="195"
+                                                Style="{StaticResource BodyTextStyle}"
+                                                Text="{Binding LatestCorrectionAfter}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+
                                         <TextBlock
                                             MaxLines="2"
                                             Foreground="{StaticResource WarningBrush}"

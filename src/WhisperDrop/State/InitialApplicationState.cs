@@ -883,6 +883,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         item.IsProgressIndeterminate = true;
         item.ErrorMessage = null;
         item.AiEnhancementError = null;
+        item.LatestCorrection = null;
         item.RecognitionResult = null;
         item.ProcessedTranscript = null;
         item.ResetPartialTranscript();
@@ -986,12 +987,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         item.AiEnhancementState = AiEnhancementState.Improving;
         item.AiEnhancementError = null;
+        item.LatestCorrection = null;
         item.IsProgressIndeterminate = false;
         item.Progress = "0%";
         RefreshQueueActionState();
 
-        var progress = new Progress<double>(value =>
-            item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
+        var progress = new AiCorrectionProgress(
+            new Progress<double>(value => item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%"),
+            new Progress<TranscriptCorrectionPreview>(value => item.LatestCorrection = value));
 
         try
         {
@@ -1030,6 +1033,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanCopyAll));
             RefreshQueueActionState();
         }
+    }
+
+    private sealed class AiCorrectionProgress(
+        IProgress<double> percent,
+        IProgress<TranscriptCorrectionPreview> corrections) : ITranscriptCorrectionProgress
+    {
+        public void Report(double value) => percent.Report(value);
+
+        public void ReportCorrection(TranscriptCorrectionPreview correction) =>
+            corrections.Report(correction);
     }
 
     private void EnsureModelStorageCanChange()
