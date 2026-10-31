@@ -466,7 +466,7 @@ public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
                             string.Empty,
                             previousResponseError,
                             cancellationToken).ConfigureAwait(false);
-                        validated = ValidateChunkResult(chunk, response);
+                        validated = ValidateChunkResult(chunk, response, diagnostics);
                         diagnostics?.Write(
                             $"chunk-attempt-accepted index={index + 1}/{chunks.Count} attempt={attempt} " +
                             $"returnedSegments={validated.Count} elapsedMs={attemptElapsed.ElapsedMilliseconds}");
@@ -586,46 +586,84 @@ public sealed class TranscriptEnhancementService : ITranscriptEnhancementService
 
     internal static IReadOnlyList<CorrectedSegment> ValidateChunkResult(
         TranscriptChunk chunk,
-        TranscriptChunkResult? response)
+        TranscriptChunkResult? response,
+        ITranscriptEnhancementDiagnostics? diagnostics = null)
     {
-        if (response?.Segments is null)
-        {
-            throw new TranscriptEnhancementException(
-                "The AI model returned an invalid structured response.");
-        }
-
         var expected = chunk.Segments.ToDictionary(segment => segment.Id);
-        var seen = new HashSet<int>();
-        var validated = new List<CorrectedSegment>(response.Segments.Count);
+        var contextIds = chunk.PreviousContext.Concat(chunk.NextContext)
+            .Select(segment => segment.Id).ToHashSet();
+        var targets = new Dictionary<int, CorrectedSegment>();
+        var ignoredContextIds = new HashSet<int>();
+        var unknownIds = new HashSet<int>();
+        var duplicateTargetIds = new HashSet<int>();
+        var invalidTextIds = new HashSet<int>();
+        var nullEntries = 0;
 
-        foreach (var corrected in response.Segments)
+        foreach (var corrected in response?.Segments ?? [])
         {
-            if (!expected.TryGetValue(corrected.Id, out var source) || !seen.Add(corrected.Id))
+            if (corrected is null)
             {
-                throw new TranscriptEnhancementException(
-                    "The AI model returned an invalid structured response.");
+                nullEntries++;
+                continue;
+            }
+
+            if (!expected.TryGetValue(corrected.Id, out var source))
+            {
+                if (contextIds.Contains(corrected.Id))
+                {
+                    ignoredContextIds.Add(corrected.Id);
+                }
+                else
+                {
+                    unknownIds.Add(corrected.Id);
+                }
+                continue;
+            }
+
+            if (!targets.TryAdd(corrected.Id, corrected))
+            {
+                duplicateTargetIds.Add(corrected.Id);
             }
 
             if (corrected.Text is null ||
                 (!string.IsNullOrWhiteSpace(source.Text) && string.IsNullOrWhiteSpace(corrected.Text)))
             {
-                throw new TranscriptEnhancementException(
-                    "The AI model returned an invalid structured response.");
+                invalidTextIds.Add(corrected.Id);
             }
-
-            TranscriptCorrectionSafety.Validate(source.Text, corrected.Text, corrected.Id);
-            validated.Add(corrected);
         }
 
-        if (seen.Count != expected.Count)
+        var missingIds = expected.Keys.Where(id => !targets.ContainsKey(id)).ToArray();
+        var invalid = response?.Segments is null || nullEntries > 0 || unknownIds.Count > 0 ||
+            duplicateTargetIds.Count > 0 || invalidTextIds.Count > 0 || missingIds.Length > 0;
+        // IDs and counts only: never include model text, prompts or transcript excerpts.
+        var details =
+            $"segmentsMissing={response?.Segments is null} nullEntries={nullEntries} " +
+            $"ignoredContextCount={ignoredContextIds.Count} ignoredContextIds=[{Ids(ignoredContextIds)}] " +
+            $"unknownCount={unknownIds.Count} unknownIds=[{Ids(unknownIds)}] " +
+            $"duplicateTargetCount={duplicateTargetIds.Count} duplicateTargetIds=[{Ids(duplicateTargetIds)}] " +
+            $"missingTargetCount={missingIds.Length} missingTargetIds=[{Ids(missingIds)}] " +
+            $"invalidTextCount={invalidTextIds.Count} invalidTextIds=[{Ids(invalidTextIds)}]";
+        diagnostics?.Write($"chunk-response-validation structureValid={!invalid} expectedTargets={expected.Count} " +
+            $"returnedSegments={response?.Segments?.Count ?? 0} {details}");
+
+        if (invalid)
         {
             throw new TranscriptEnhancementException(
-                "The AI model returned an incomplete structured response.");
+                $"The AI response has invalid target segments: {details}. " +
+                $"Return exactly one segment with non-null text for each target ID in this order: [{Ids(chunk.Segments.Select(segment => segment.Id), sort: false)}]. " +
+                $"Preserve non-empty source text. Do not return context IDs [{Ids(contextIds.Except(expected.Keys))}] or any other IDs.");
         }
 
-        return chunk.Segments.Select(segment =>
-            validated.Single(corrected => corrected.Id == segment.Id)).ToArray();
+        var validated = chunk.Segments.Select(segment => targets[segment.Id]).ToArray();
+        foreach (var corrected in validated)
+        {
+            TranscriptCorrectionSafety.Validate(expected[corrected.Id].Text, corrected.Text!, corrected.Id);
+        }
+        return validated;
     }
+
+    private static string Ids(IEnumerable<int> ids, bool sort = true) =>
+        string.Join(",", sort ? ids.Order() : ids);
 
     internal static string Merge(
         IReadOnlyList<RecognitionSegment> source,

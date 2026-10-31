@@ -52,7 +52,7 @@ public sealed class TranscriptEnhancementTests
     }
 
     [Fact]
-    public void Structured_validation_rejects_missing_duplicate_unknown_and_context_ids()
+    public void Structured_validation_rejects_missing_duplicate_unknown_and_context_only_responses()
     {
         var target = Segment(10, "source");
         var context = Segment(9, "before");
@@ -76,6 +76,75 @@ public sealed class TranscriptEnhancementTests
             TranscriptEnhancementService.ValidateChunkResult(
                 chunk,
                 new TranscriptChunkResult([new CorrectedSegment(9, "context", false)])));
+        Assert.Throws<TranscriptEnhancementException>(() =>
+            TranscriptEnhancementService.ValidateChunkResult(
+                chunk,
+                new TranscriptChunkResult([
+                    new CorrectedSegment(9, "ignored", false),
+                    new CorrectedSegment(10, "source 999", false)])));
+    }
+
+    [Fact]
+    public async Task Service_discards_returned_context_without_changing_targets_raw_text_or_diagnostics_privacy()
+    {
+        var segments = Enumerable.Range(0, 90).Select(id => Segment(id, "Private source phrase.")).ToArray();
+        var raw = string.Join(" ", segments.Select(segment => segment.Text));
+        var recognition = new RecognitionResult(raw, "en", segments);
+        var diagnostics = new CollectingDiagnostics();
+        var factory = new FakeAgentFactory(chunk => new TranscriptChunkResult(
+            chunk.PreviousContext.Concat(chunk.NextContext)
+                // Invalid context text and repetition must have no effect on target safety or output.
+                .Select(segment => new CorrectedSegment(segment.Id, "Context changed to 999.", true))
+                .Concat(chunk.PreviousContext.Select(segment => new CorrectedSegment(segment.Id, null, false)))
+                .Concat(chunk.Segments.Reverse().Select(segment => new CorrectedSegment(segment.Id, segment.Text, false)))
+                .ToArray()));
+        var service = new TranscriptEnhancementService(factory, new TranscriptChunker(), diagnostics);
+        var progress = new CollectingCorrectionProgress();
+
+        var result = await service.EnhanceAsync(recognition,
+            new AiPostProcessingOptions { ContextSize = 1024 }, progress);
+
+        Assert.True(factory.AgentCalls > 1);
+        Assert.Equal(new TranscriptChunker().CreateChunks(segments, 1024, "").Count, factory.AgentCalls);
+        Assert.Equal(segments.Select(segment => segment.Id), result.Segments.Select(segment => segment.Id));
+        Assert.All(result.Segments, segment => Assert.Equal("Private source phrase.", segment.Text));
+        Assert.Equal(raw, recognition.Transcript);
+        Assert.DoesNotContain("999", result.Transcript);
+        Assert.Empty(progress.Edits);
+        Assert.Contains(diagnostics.Messages, message => message.Contains("ignoredContextCount=2"));
+        Assert.DoesNotContain("Private source phrase", string.Join("\n", diagnostics.Messages));
+        Assert.DoesNotContain("Context changed", string.Join("\n", diagnostics.Messages));
+    }
+
+    [Fact]
+    public async Task Service_reports_all_structural_defects_and_repairs_response()
+    {
+        var attempts = 0;
+        var diagnostics = new CollectingDiagnostics();
+        var factory = new FakeAgentFactory(chunk => ++attempts == 1
+            ? new TranscriptChunkResult([
+                new CorrectedSegment(10, null, false),
+                new CorrectedSegment(10, "Private duplicate text", false),
+                new CorrectedSegment(99, "Private unknown text", false)])
+            : new TranscriptChunkResult(chunk.Segments.Select(segment =>
+                new CorrectedSegment(segment.Id, segment.Text, false)).ToArray()));
+        var recognition = new RecognitionResult("Private first. Private second.", "en",
+            [Segment(10, "Private first."), Segment(11, "Private second.")]);
+        var service = new TranscriptEnhancementService(factory, new TranscriptChunker(), diagnostics);
+
+        var result = await service.EnhanceAsync(recognition, new AiPostProcessingOptions());
+
+        Assert.Equal(2, factory.AgentCalls);
+        Assert.Equal(recognition.Transcript, result.Transcript);
+        var feedback = Assert.IsType<string>(factory.LastRetryFeedback);
+        Assert.Contains("unknownIds=[99]", feedback);
+        Assert.Contains("duplicateTargetIds=[10]", feedback);
+        Assert.Contains("missingTargetIds=[11]", feedback);
+        Assert.Contains("invalidTextIds=[10]", feedback);
+        Assert.Contains("in this order: [10,11]", feedback);
+        Assert.DoesNotContain("Private", feedback);
+        Assert.Contains(diagnostics.Messages, message => message.Contains("unknownIds=[99]"));
+        Assert.DoesNotContain("Private", string.Join("\n", diagnostics.Messages));
     }
 
     [Fact]
@@ -385,6 +454,18 @@ public sealed class TranscriptEnhancementTests
 
             public Task TestConnectionAsync(CancellationToken cancellationToken) =>
                 Task.CompletedTask;
+        }
+    }
+
+    private sealed class CollectingDiagnostics : ITranscriptEnhancementDiagnostics
+    {
+        public List<string> Messages { get; } = [];
+        public IDisposable BeginOperation(string operationId) => new Scope();
+        public void Write(string message) => Messages.Add(message);
+        public void WriteException(string phase, Exception exception) => Messages.Add(phase);
+        private sealed class Scope : IDisposable
+        {
+            public void Dispose() { }
         }
     }
 
