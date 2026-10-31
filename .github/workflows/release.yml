@@ -251,6 +251,16 @@ jobs:
               throw "Packaged macOS artifact cannot be restored to a valid WhisperDrop.app."
             }
             $restoredMediaLibraries = @(Get-VerifiedFfmpegLibraries $restoredApp)
+            $restoredResources = Join-Path $restoredApp "Contents/Resources"
+            $whisperRid = $env:RID.Replace("osx-", "macos-")
+            if (-not (Test-Path (Join-Path $restoredResources "runtimes/$whisperRid/libwhisper.dylib") -PathType Leaf)) {
+              throw "Packaged macOS artifact is missing the $whisperRid Whisper runtime."
+            }
+            foreach ($component in @("avcodec", "avformat", "avutil", "swresample")) {
+              if (-not (Test-Path (Join-Path $restoredResources "ffmpeg/$env:RID/lib$component.dylib") -PathType Leaf)) {
+                throw "Packaged macOS artifact is missing $component at the application runtime path."
+              }
+            }
             if (-not (Get-ChildItem $restoredApp -Filter "FFMPEG-SHA256SUMS.txt" -File -Recurse | Select-Object -First 1)) {
               throw "Packaged macOS artifact is missing FFMPEG-SHA256SUMS.txt."
             }

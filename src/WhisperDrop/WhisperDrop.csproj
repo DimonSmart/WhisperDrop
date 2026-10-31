@@ -92,6 +92,31 @@
     <Delete Files="@(_PublishedFfmpegCli)" />
   </Target>
 
+  <!-- Uno excludes nested native-library directories from the app bundle.
+       Copy the matching runtimes into Resources, where AppContext.BaseDirectory
+       and the application runtime selectors expect them. -->
+  <Target Name="CopyBundledRuntimesToMacOsApp"
+          AfterTargets="_UnoPublishAppBundle"
+          DependsOnTargets="PublishFFmpegBinaries;CopyBundledWhisperRuntimeToPublishDirectory;RemoveBundledFfmpegCliFromPublish"
+          Condition="'$(PackageFormat)' == 'app' and ('$(RuntimeIdentifier)' == 'osx-arm64' or '$(RuntimeIdentifier)' == 'osx-x64')">
+    <PropertyGroup>
+      <_WhisperMacRuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">macos-arm64</_WhisperMacRuntimeIdentifier>
+      <_WhisperMacRuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'osx-x64'">macos-x64</_WhisperMacRuntimeIdentifier>
+    </PropertyGroup>
+    <ItemGroup>
+      <_MacAppFfmpegLibrary Include="$(PublishDir)ffmpeg/$(RuntimeIdentifier)/*.dylib" />
+      <_MacAppWhisperLibrary Include="$(PublishDir)runtimes/$(_WhisperMacRuntimeIdentifier)/*.dylib" />
+    </ItemGroup>
+    <Error Condition="'@(_MacAppFfmpegLibrary)' == '' or '@(_MacAppWhisperLibrary)' == ''"
+           Text="Native media and Whisper libraries are required in the macOS app bundle." />
+    <Copy SourceFiles="@(_MacAppFfmpegLibrary)"
+          DestinationFolder="$(AppBundlePath)/Contents/Resources/ffmpeg/$(RuntimeIdentifier)"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_MacAppWhisperLibrary)"
+          DestinationFolder="$(AppBundlePath)/Contents/Resources/runtimes/$(_WhisperMacRuntimeIdentifier)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="PrepareWindowsRuntimeAppIcon"
           DependsOnTargets="UnoResizetizeImages"
           Condition="'$(OS)' == 'Windows_NT'">
