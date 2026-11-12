@@ -26,16 +26,16 @@ public partial class App : Application
             {
                 services.AddSingleton<IApplicationPaths, ApplicationPaths>();
                 services.AddSingleton<IUserSettingsStore, JsonUserSettingsStore>();
-                services.AddSingleton<IWhisperModelCatalog, WhisperModelCatalog>();
+                services.AddSingleton<IRecognitionModelCatalog, ParakeetModelCatalog>();
                 services.AddSingleton<IRecognitionLanguageCatalog, RecognitionLanguageCatalog>();
                 services.AddSingleton<ISelectedModelAvailability, SelectedModelAvailability>();
                 services.AddSingleton<ILocalModelInventory, LocalModelInventory>();
                 services.AddSingleton<ISelectedModelDownloader, SelectedModelDownloader>();
                 services.AddSingleton<ISelectedModelDownloadManager, SelectedModelDownloadManager>();
-                services.AddSingleton<IWhisperRuntimeSelector, WhisperRuntimeSelector>();
+                services.AddSingleton<IRecognitionRuntimeSelector, ParakeetRuntimeSelector>();
                 services.AddSingleton<IFfmpegRuntime, FfmpegRuntime>();
                 services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
-                services.AddSingleton<IRecognitionService, WhisperRecognitionService>();
+                services.AddSingleton<IRecognitionService, ParakeetRecognitionService>();
                 services.AddSingleton<TranscriptChunker>();
                 services.AddSingleton<ITranscriptEnhancementDiagnostics, TranscriptEnhancementDiagnostics>();
                 services.AddSingleton<ITranscriptEnhancementAgentFactory, OpenAiTranscriptEnhancementAgentFactory>();
@@ -59,10 +59,13 @@ public partial class App : Application
     {
         MainWindow = new Window
         {
-            Title = "WhisperDrop"
+            Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
+        var state = host.Services.GetRequiredService<InitialApplicationState>();
+        ApplicationAcceptanceProbe.Record("launch", new { queueCount = state.QueueRows.Count,
+            modelAvailable = state.IsSelectedModelAvailable, aiEnabled = state.AiPostProcessingEnabled });
         MainWindow.Activate();
     }
 
@@ -77,7 +80,7 @@ public partial class App : Application
         if (!OperatingSystem.IsWindows())
             return;
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "WhisperDrop.ico");
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "ParakeetDrop.ico");
         if (File.Exists(iconPath))
             window.AppWindow.SetIcon(iconPath);
     }

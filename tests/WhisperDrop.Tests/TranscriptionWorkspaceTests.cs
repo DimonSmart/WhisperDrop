@@ -53,7 +53,6 @@ public sealed class TranscriptionWorkspaceTests
         await state.TranscribeAllAsync();
 
         Assert.Equal(["third.wav", "first.wav", "second.wav"], recognition.Paths.Select(Path.GetFileName));
-        Assert.All(recognition.Options, option => Assert.Equal("auto", option.LanguageCode));
         Assert.Equal(["Completed", "Completed", "Error"], state.QueueRows.Select(row => row.Status));
         Assert.True(state.CanReorderQueue);
     }
@@ -96,205 +95,15 @@ public sealed class TranscriptionWorkspaceTests
     {
         var recognition = new FakeRecognitionService();
         var state = CreateAvailableState(recognition);
-        state.RecognitionLanguageCode = "en";
-        state.AddFiles(["first.wav", "second.wav", "third.wav"]);
-        recognition.OnCall = count =>
-        {
-            if (count == 1)
-            {
-                state.RecognitionLanguageCode = "es";
-                state.VocabularyContext = "changed";
-                state.WhisperMaxContextTokens = 24;
-                state.WhisperNoContext = true;
-            }
-        };
-
-        await state.TranscribeAllAsync();
-
-        Assert.Equal(3, recognition.Options.Count);
-        Assert.All(recognition.Options, option => Assert.Equal("en", option.LanguageCode));
-        Assert.All(recognition.Options, option => Assert.Equal(string.Empty, option.Prompt));
-        Assert.All(recognition.Options, option => Assert.Equal(224, option.WhisperMaxContextTokens));
-        Assert.All(recognition.Options, option => Assert.False(option.WhisperNoContext));
-    }
-
-    [Fact]
-    public void Context_token_numberbox_value_clamps_bounds_and_ignores_non_finite_values()
-    {
-        var state = CreateAvailableState(new FakeRecognitionService());
-
-        Assert.Equal(224d, state.WhisperMaxContextTokensValue);
-        state.WhisperMaxContextTokensValue = 64;
-        Assert.Equal(64, state.WhisperMaxContextTokens);
-
-        state.WhisperMaxContextTokensValue = 0;
-        Assert.Equal(1, state.WhisperMaxContextTokens);
-
-        state.WhisperMaxContextTokensValue = 999;
-        Assert.Equal(224, state.WhisperMaxContextTokens);
-
-        state.WhisperMaxContextTokensValue = double.NaN;
-        state.WhisperMaxContextTokensValue = double.PositiveInfinity;
-        Assert.Equal(224d, state.WhisperMaxContextTokensValue);
-
-        state.WhisperMaxContextTokensValue = 64.4;
-        Assert.Equal(64, state.WhisperMaxContextTokens);
-    }
-
-    [Fact]
-    public async Task Single_transcription_passes_task_prompt_threads_and_device_as_one_snapshot()
-    {
-        var recognition = new FakeRecognitionService();
-        var state = CreateAvailableState(recognition);
-        state.RecognitionLanguageCode = "es";
-        state.SelectedTranscriptionTask = TranscriptionTask.TranslateToEnglish;
-        state.VocabularyContext = "C#, .NET, WhisperDrop";
-        state.CpuThreads = 1;
         state.ProcessingDevice = ProcessingDevice.Cpu;
-        state.WhisperMaxContextTokens = 64;
-        state.WhisperNoContext = true;
-        state.AddFiles(["recording.wav"]);
-
-        await state.TranscribeAsync(state.QueueRows[0]);
-
-        var options = Assert.Single(recognition.Options);
-        Assert.Equal("es", options.LanguageCode);
-        Assert.Equal(TranscriptionTask.TranslateToEnglish, options.Task);
-        Assert.Equal("C#, .NET, WhisperDrop", options.Prompt);
-        Assert.Equal(1, options.CpuThreads);
-        Assert.Equal(ProcessingDevice.Cpu, options.ProcessingDevice);
-        Assert.Equal(64, options.WhisperMaxContextTokens);
-        Assert.True(options.WhisperNoContext);
-    }
-
-    [Fact]
-    public void Runtime_selector_configures_auto_and_cpu_before_first_use()
-    {
-        var autoSelector = new WhisperRuntimeSelector();
-        var autoOptions = autoSelector.ConfigureBeforeFirstUse(ProcessingDevice.Auto);
-        Assert.True(autoOptions.UseGpu);
-
-        var cpuSelector = new WhisperRuntimeSelector();
-        var cpuOptions = cpuSelector.ConfigureBeforeFirstUse(ProcessingDevice.Cpu);
-        Assert.False(cpuOptions.UseGpu);
-    }
-
-    [Fact]
-    public void Runtime_selector_gpu_matches_packaged_platform_support()
-    {
-        var selector = new WhisperRuntimeSelector();
-
-        if (OperatingSystem.IsMacOS() &&
-            System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
-            System.Runtime.InteropServices.Architecture.Arm64)
-        {
-            var options = selector.ConfigureBeforeFirstUse(ProcessingDevice.Gpu);
-            Assert.True(options.UseGpu);
-        }
-        else
-        {
-            var error = Assert.Throws<RecognitionConfigurationException>(
-                () => selector.ConfigureBeforeFirstUse(ProcessingDevice.Gpu));
-            Assert.Contains("GPU acceleration is not available", error.Message);
-        }
-    }
-
-    [Fact]
-    public void Processor_plan_maps_language_task_prompt_and_threads()
-    {
-        var explicitPlan = WhisperRecognitionService.CreateProcessorPlan(
-            new RecognitionOptions
-            {
-                LanguageCode = "es",
-                Task = TranscriptionTask.TranslateToEnglish,
-                Prompt = " C#, .NET ",
-                CpuThreads = 3,
-                WhisperMaxContextTokens = 64
-            });
-
-        Assert.False(explicitPlan.DetectLanguage);
-        Assert.Equal("es", explicitPlan.LanguageCode);
-        Assert.True(explicitPlan.Translate);
-        Assert.Equal(" C#, .NET ", explicitPlan.Prompt);
-        Assert.Equal(3, explicitPlan.Threads);
-        Assert.Equal(64, explicitPlan.MaxContextTokens);
-        Assert.False(explicitPlan.NoContext);
-
-        var autoPlan = WhisperRecognitionService.CreateProcessorPlan(
-            new RecognitionOptions { LanguageCode = "auto", Prompt = "   " });
-
-        Assert.True(autoPlan.DetectLanguage);
-        Assert.Null(autoPlan.LanguageCode);
-        Assert.False(autoPlan.Translate);
-        Assert.Null(autoPlan.Prompt);
-        Assert.Null(autoPlan.Threads);
-        Assert.Equal(224, autoPlan.MaxContextTokens);
-        Assert.False(autoPlan.NoContext);
-
-        var disabledPlan = WhisperRecognitionService.CreateProcessorPlan(
-            new RecognitionOptions { WhisperNoContext = true, WhisperMaxContextTokens = 32 });
-        Assert.True(disabledPlan.NoContext);
-        Assert.Null(disabledPlan.MaxContextTokens);
-
-        var cappedPlan = WhisperRecognitionService.CreateProcessorPlan(
-            new RecognitionOptions { WhisperMaxContextTokens = 10000 });
-        Assert.Equal(224, cappedPlan.MaxContextTokens);
-    }
-
-    [Fact]
-    public void Factory_reload_policy_ignores_processor_options_and_tracks_model_or_device()
-    {
-        Assert.False(WhisperRecognitionService.RequiresRecognitionFactoryReload(
-            "model.bin", ProcessingDevice.Cpu, "model.bin", ProcessingDevice.Cpu));
-        Assert.True(WhisperRecognitionService.RequiresRecognitionFactoryReload(
-            "model.bin", ProcessingDevice.Cpu, "other.bin", ProcessingDevice.Cpu));
-        Assert.True(WhisperRecognitionService.RequiresRecognitionFactoryReload(
-            "model.bin", ProcessingDevice.Cpu, "model.bin", ProcessingDevice.Auto));
-    }
-
-    [Fact]
-    public void Monotonic_progress_never_moves_back_and_clamps_to_one()
-    {
-        var values = new List<double>();
-        var reporter = new MonotonicProgressReporter(new CollectingProgress(values));
-
-        reporter.Report(0);
-        reporter.Report(0.6);
-        reporter.Report(0.4);
-        reporter.Report(1.4);
-
-        Assert.Equal([0d, 0.6d, 1d], values);
-    }
-
-    [Fact]
-    public async Task Translation_rejects_an_english_only_model_before_recognition()
-    {
-        var recognition = new FakeRecognitionService();
-        var folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(folder);
-        var paths = new ApplicationPaths(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        File.WriteAllText(availability.GetModelPath(folder, "base-en"), "model");
-        var store = new JsonUserSettingsStore(paths);
-        store.Save(new UserSettings
-        {
-            ModelsFolder = folder,
-            SelectedModelId = "base-en",
-            Task = TranscriptionTask.TranslateToEnglish
-        });
-        var state = new InitialApplicationState(
-            store,
-            catalog,
-            new RecognitionLanguageCatalog(),
-            availability,
-            recognitionService: recognition);
-        state.AddFiles(["recording.wav"]);
-
-        await state.TranscribeAsync(state.QueueRows[0]);
-
-        Assert.Equal("Translation requires a multilingual Whisper model.", state.TranscriptionGuidance);
-        Assert.Empty(recognition.Paths);
+        state.CpuThreads = 1;
+        state.AddFiles(["first.wav", "second.wav"]);
+        recognition.OnCall = count => { state.ProcessingDevice = ProcessingDevice.Gpu; state.CpuThreads = null; };
+        await state.TranscribeAllAsync();
+        Assert.Equal(2, recognition.Options.Count);
+        Assert.All(recognition.Options, option => Assert.Equal(ProcessingDevice.Cpu, option.ProcessingDevice));
+        Assert.All(recognition.Options, option => Assert.Equal(1, option.CpuThreads));
+        Assert.Same(recognition.Options[0], recognition.Options[1]);
     }
 
     [Fact]
@@ -305,13 +114,13 @@ public sealed class TranscriptionWorkspaceTests
         var state = CreateState(recognition, false, runtime);
 
         state.ProcessingDevice = ProcessingDevice.Cpu;
-        Assert.Null(state.ProcessingDeviceRestartMessage);
+        Assert.Null(state.ProcessingDeviceReloadMessage);
 
         runtime.IsInitializedValue = true;
         runtime.ActiveDeviceValue = ProcessingDevice.Cpu;
         state.ProcessingDevice = ProcessingDevice.Gpu;
 
-        Assert.Equal("Restart required to change processing device.", state.ProcessingDeviceRestartMessage);
+        Assert.Equal("The model will reload for the next transcription.", state.ProcessingDeviceReloadMessage);
     }
 
     [Fact]
@@ -328,23 +137,52 @@ public sealed class TranscriptionWorkspaceTests
             state.GetCompletedTranscriptsForCopy());
     }
 
+    [Fact]
+    public async Task Incomplete_result_is_visible_and_never_runs_automatic_AI()
+    {
+        var recognition = new FakeRecognitionService { Complete = false };
+        var state = CreateAvailableState(recognition);
+        state.AiPostProcessingEnabled = true;
+        state.AddFiles(["partial.wav"]);
+        await state.TranscribeAsync(state.QueueRows[0]);
+        var item = state.QueueRows[0];
+        Assert.Equal("Incomplete", item.Status);
+        Assert.False(item.CanEnhance);
+        Assert.Equal(AiEnhancementState.NotRequested, item.AiEnhancementState);
+        Assert.NotNull(item.RawTranscript);
+    }
+
+    [Fact]
+    public void Model_deletion_unloads_before_removing_only_the_catalogued_file()
+    {
+        var recognition = new FakeRecognitionService();
+        var state = CreateAvailableState(recognition);
+        var path = Path.Combine(state.ModelsFolder, "parakeet-ultra-Q8_0.gguf");
+        recognition.OnUnload = () => Assert.True(File.Exists(path));
+        File.WriteAllText(Path.Combine(state.ModelsFolder, "keep.txt"), "keep");
+        state.DeleteModel(ParakeetModelCatalog.ModelId);
+        Assert.False(File.Exists(path));
+        Assert.True(File.Exists(Path.Combine(state.ModelsFolder, "keep.txt")));
+        Assert.False(state.IsSelectedModelAvailable);
+    }
+
     private static InitialApplicationState CreateAvailableState(FakeRecognitionService service) =>
         CreateState(service, true);
 
     private static InitialApplicationState CreateState(
         FakeRecognitionService service,
         bool available,
-        IWhisperRuntimeSelector? runtimeSelector = null)
+        IRecognitionRuntimeSelector? runtimeSelector = null)
     {
         var folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         if (available)
         {
-            File.WriteAllText(Path.Combine(folder, "ggml-base.bin"), "model");
+            File.WriteAllText(Path.Combine(folder, "parakeet-ultra-Q8_0.gguf"), "model");
         }
 
         var paths = new ApplicationPaths(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
-        var catalog = new WhisperModelCatalog();
+        var catalog = new TestModelCatalog();
         var store = new JsonUserSettingsStore(paths);
         store.Save(new UserSettings { ModelsFolder = folder });
         return new InitialApplicationState(
@@ -367,6 +205,8 @@ public sealed class TranscriptionWorkspaceTests
         public Action<int>? OnCall { get; set; }
 
         public string Text { get; set; } = "initial";
+        public bool Complete { get; set; } = true;
+        public Action? OnUnload { get; set; }
 
         public Task<RecognitionResult> TranscribeAsync(
             string modelPath,
@@ -387,11 +227,12 @@ public sealed class TranscriptionWorkspaceTests
 
             progress?.Report(1);
             var transcript = Text == "initial" ? $"{Path.GetFileName(audioPath)} transcript" : Text;
-            return Task.FromResult(new RecognitionResult(transcript, "ru"));
+            return Task.FromResult(new RecognitionResult(transcript, "ru") { IsComplete = Complete });
         }
 
         public void UnloadModel()
         {
+            OnUnload?.Invoke();
         }
 
         public void Dispose()
@@ -404,7 +245,7 @@ public sealed class TranscriptionWorkspaceTests
         public void Report(double value) => values.Add(value);
     }
 
-    private sealed class FakeRuntimeSelector : IWhisperRuntimeSelector
+    private sealed class FakeRuntimeSelector : IRecognitionRuntimeSelector
     {
         public bool IsInitializedValue { get; set; }
 
@@ -414,12 +255,11 @@ public sealed class TranscriptionWorkspaceTests
 
         public ProcessingDevice ActiveDevice => ActiveDeviceValue;
 
-        public bool RequiresRestart(ProcessingDevice requestedDevice) =>
+        public bool RequiresModelReload(ProcessingDevice requestedDevice) =>
             IsInitialized && requestedDevice != ActiveDevice;
 
-        public Whisper.net.WhisperFactoryOptions ConfigureBeforeFirstUse(ProcessingDevice requestedDevice) =>
-            Whisper.net.WhisperFactoryOptions.Default;
+        public string? Backend => "cpu";
+        public void MarkInitialized(ProcessingDevice requestedDevice, string backend) => IsInitializedValue = true;
 
-        public void MarkInitialized() => IsInitializedValue = true;
     }
 }

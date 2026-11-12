@@ -94,7 +94,7 @@ public sealed class GitHubUpdateCheckService : IUpdateCheckService, IDisposable
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseUri);
-            request.Headers.UserAgent.ParseAdd($"WhisperDrop/{currentVersion}");
+            request.Headers.UserAgent.ParseAdd($"ParakeetDrop/{currentVersion}");
 
             using var response = await httpClient.SendAsync(
                 request,
@@ -236,10 +236,10 @@ public sealed class UnsupportedApplicationUpdateInstaller : IApplicationUpdateIn
 
 public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
 {
-    internal const string CaskName = "dimonsmart/whisperdrop/whisperdrop";
-    internal const string ApplicationBundle = "/Applications/WhisperDrop.app";
-    internal const string BundleExecutablePrefix = "/Applications/WhisperDrop.app/Contents/MacOS/";
-    internal const string InfoPlist = "/Applications/WhisperDrop.app/Contents/Info.plist";
+    internal const string CaskName = "dimonsmart/whisperdrop/parakeetdrop";
+    internal const string ApplicationBundle = "/Applications/ParakeetDrop.app";
+    internal const string BundleExecutablePrefix = "/Applications/ParakeetDrop.app/Contents/MacOS/";
+    internal const string InfoPlist = "/Applications/ParakeetDrop.app/Contents/Info.plist";
 
     private readonly IProcessExecutor processExecutor;
     private readonly IApplicationUpdateEnvironment environment;
@@ -264,7 +264,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
         if (string.IsNullOrWhiteSpace(processPath)
             || !processPath.StartsWith(BundleExecutablePrefix, StringComparison.Ordinal))
         {
-            return Unavailable("This WhisperDrop instance is not running from /Applications/WhisperDrop.app.");
+            return Unavailable("This ParakeetDrop instance is not running from /Applications/ParakeetDrop.app.");
         }
 
         var brewPath = FindBrewPath();
@@ -280,7 +280,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
 
             return installed.ExitCode == 0
                 ? new ApplicationUpdateAvailability(true)
-                : Unavailable("WhisperDrop is not installed through the supported Homebrew Cask.");
+                : Unavailable("ParakeetDrop is not installed through the supported Homebrew Cask.");
         }
         catch (OperationCanceledException)
         {
@@ -335,20 +335,20 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
                 ["info", "--cask", "--json=v2", CaskName],
                 cancellationToken);
             if (brewInfo.ExitCode != 0)
-                return Failed("The WhisperDrop Homebrew package could not be inspected.");
+                return Failed("The ParakeetDrop Homebrew package could not be inspected.");
 
             if (!TryReadCaskVersion(brewInfo.StandardOutput, out var caskVersion))
-                return Failed("The WhisperDrop Homebrew package reported an invalid version.");
+                return Failed("The ParakeetDrop Homebrew package reported an invalid version.");
 
             if (caskVersion < expectedVersion)
             {
                 return new ApplicationUpdateResult(
                     ApplicationUpdateResultStatus.PackageNotPublished,
-                    $"WhisperDrop {expectedVersion} has been released, but the Homebrew package is not available yet. Please try again shortly.");
+                    $"ParakeetDrop {expectedVersion} has been released, but the Homebrew package is not available yet. Please try again shortly.");
             }
 
             progress?.Report(new ApplicationUpdateProgress(
-                $"Installing WhisperDrop {expectedVersion}...",
+                $"Installing ParakeetDrop {expectedVersion}...",
                 CanCancel: false));
 
             var upgrade = await processExecutor.RunAsync(
@@ -360,7 +360,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
                 upgrade.StandardOutput.Contains("already up-to-date", StringComparison.OrdinalIgnoreCase)
                 || upgrade.StandardError.Contains("already up-to-date", StringComparison.OrdinalIgnoreCase);
             if (upgrade.ExitCode != 0 && !upgradeReportedAlreadyCurrent)
-                return Failed("Homebrew could not update WhisperDrop.");
+                return Failed("Homebrew could not update ParakeetDrop.");
 
             progress?.Report(new ApplicationUpdateProgress(
                 "Verifying the installed version...",
@@ -374,7 +374,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
                 || !ReleaseVersionParser.TryParse(installedVersion.StandardOutput, out var verifiedVersion)
                 || verifiedVersion < expectedVersion)
             {
-                return Failed("The updated WhisperDrop version could not be verified.");
+                return Failed("The updated ParakeetDrop version could not be verified.");
             }
 
             progress?.Report(new ApplicationUpdateProgress(
@@ -396,7 +396,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
                 return QuarantineFailed();
 
             progress?.Report(new ApplicationUpdateProgress(
-                "Restarting WhisperDrop...",
+                "Restarting ParakeetDrop...",
                 CanCancel: false));
 
             var relaunch = await processExecutor.RunAsync(
@@ -404,11 +404,11 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
                 ["-n", ApplicationBundle],
                 CancellationToken.None);
             if (relaunch.ExitCode != 0)
-                return Failed("WhisperDrop was updated, but the new application instance could not be started.");
+                return Failed("ParakeetDrop was updated, but the new application instance could not be started.");
 
             return new ApplicationUpdateResult(
                 ApplicationUpdateResultStatus.Succeeded,
-                $"WhisperDrop {verifiedVersion} was installed successfully.");
+                $"ParakeetDrop {verifiedVersion} was installed successfully.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -416,7 +416,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
         }
         catch
         {
-            return Failed("WhisperDrop could not be updated.");
+            return Failed("ParakeetDrop could not be updated.");
         }
     }
 
@@ -477,7 +477,7 @@ public sealed class MacOsHomebrewUpdateInstaller : IApplicationUpdateInstaller
     private static ApplicationUpdateResult QuarantineFailed() =>
         new(
             ApplicationUpdateResultStatus.QuarantineFailed,
-            "WhisperDrop was updated, but macOS quarantine could not be removed. The current instance will remain open. Run: /usr/bin/xattr -dr com.apple.quarantine /Applications/WhisperDrop.app");
+            "ParakeetDrop was updated, but macOS quarantine could not be removed. The current instance will remain open. Run: /usr/bin/xattr -dr com.apple.quarantine /Applications/ParakeetDrop.app");
 }
 
 public sealed class SystemUriLauncher : ISystemUriLauncher

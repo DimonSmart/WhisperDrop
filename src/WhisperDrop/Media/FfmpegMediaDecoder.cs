@@ -258,6 +258,7 @@ internal sealed unsafe class FfmpegMediaDecoder
         if (resampler is null)
             return;
 
+        byte** outputPlanes = stackalloc byte*[1];
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -271,7 +272,6 @@ internal sealed unsafe class FfmpegMediaDecoder
                 int converted;
                 fixed (byte* output = buffer)
                 {
-                    byte** outputPlanes = stackalloc byte*[1];
                     outputPlanes[0] = output;
                     converted = ffmpeg.swr_convert(resampler, outputPlanes, outputSamples, null, 0);
                 }

@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-12",
+  "scope": "Production recognition service compiled from the same application source, exercised through bundled MediaPreparationService; no standalone spike harness",
+  "runtimeCommit": "275cd50d2c4104c204009a197ac091b9687668e5",
+  "ggmlVendoredTree": "09259938849bc5f871148aa50d823ade83140df9",
+  "ggmlPatchHashes": {
+    "0004-cpu-x86-score-os-xsave-check.patch": "f63ee409e8311939a1b056b5b767d3f2e306b19a16b20aedc1d591d85e6d4d68",
+    "0002-backend-reg-filter.patch": "ca2f38a9bc4dadac126e7b6f89005abc759bc23f448ad87ac74b001d718f5c11",
+    "0003-metal-mapped-buffer-null.patch": "ad4a304fd730748572d154d68fb7099e2bd52db9061d7d15085676462e48f395",
+    "0001-fix-threadpool-oversubscription.patch": "a67d843f8ef1476b9b356d5f5eed8c078ed8184063721b9df09a722e5b540946"
+  },
+  "headerSha256": "5c8267936370f40d911866df8617cb320dda6dba951e5ba89287645988105dbf",
+  "modelRevision": "a1539be1b849ea7463b88343e5277b373d0c4ea9",
+  "modelBytes": 740363168,
+  "modelSha256": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+  "host": {
+    "architecture": "arm64",
+    "cpu": "Apple M4 Pro",
+    "macOS": "26.7.2"
+  },
+  "fixture": {
+    "kind": "Synthetic speech generated with macOS say/Samantha; no private audio or transcript recorded",
+    "sha256": "a4180755fcd17067f353b1d1eff6ea2dcf55b6d0e8e87ef85bc29d8040a76a8f",
+    "sampleRate": 16000,
+    "channels": 1,
+    "samples": 147096,
+    "seconds": 9.1935
+  },
+  "abi": "Native size and alignment checks passed for all six structures used by production",
+  "nativeFiles": {
+    "runtimeCommit": "275cd50d2c4104c204009a197ac091b9687668e5",
+    "ggmlVendoredTree": "09259938849bc5f871148aa50d823ade83140df9",
+    "files": {
+      "ggml-LICENSE": {
+        "bytes": 1078,
+        "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+      },
+      "model-LICENSE": {
+        "bytes": 18657,
+        "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+      },
+      "model-NOTICE": {
+        "bytes": 397,
+        "sha256": "8999f96f7a130b258418abd74c119b470efd906d25027759cddaea074831f1e1"
+      },
+      "libggml-cpu.so": {
+        "bytes": 994304,
+        "sha256": "0108e66858bb10fd9dbd4419042cba59717cdce33465fcde9f534485abcb0e99"
+      },
+      "libggml.0.dylib": {
+        "bytes": 78176,
+        "sha256": "81e38397b0f99f4e9ed3f745b763c2e5f6b5a5fad6aa6f240622e0866ab9ea00"
+      },
+      "libtranscribe.dylib": {
+        "bytes": 1973280,
+        "sha256": "7f7447e9b637649121809dd3d7956c8ae27db3c1fdad0a22f9fedd8c1421c33d"
+      },
+      "libggml-metal.so": {
+        "bytes": 5520080,
+        "sha256": "b0b4916bca120d845876e3bf9515cb75f373071dec895f2b11a018bd05a805b1"
+      },
+      "libggml-base.0.dylib": {
+        "bytes": 750672,
+        "sha256": "253053b1fbc0f5b5cebe3e2dab998940ec7d8040bb1cd2485300800899a2e415"
+      },
+      "transcribe-LICENSE": {
+        "bytes": 1083,
+        "sha256": "86a53633b56f6b029d3cb42158bcc7aac0cdff898aceb13e83b93e368bbc4ac6"
+      }
+    }
+  },
+  "workingDirectory": "Unrelated temporary directory",
+  "appLocalLibraries": "Loaded-image verification passed; all ggml/transcribe images resolved inside the application-relative native directory",
+  "runs": [
+    {
+      "requested": "Cpu",
+      "actual": "cpu",
+      "run": 0,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 1294
+    },
+    {
+      "requested": "Cpu",
+      "actual": "cpu",
+      "run": 1,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 622
+    },
+    {
+      "requested": "Gpu",
+      "actual": "metal",
+      "run": 0,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 426
+    },
+    {
+      "requested": "Gpu",
+      "actual": "metal",
+      "run": 1,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 92
+    },
+    {
+      "requested": "Auto",
+      "actual": "metal",
+      "run": 0,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 401
+    },
+    {
+      "requested": "Auto",
+      "actual": "metal",
+      "run": 1,
+      "complete": true,
+      "segments": 1,
+      "elapsedMs": 90
+    }
+  ],
+  "cancellationAndRecovery": [
+    {
+      "requested": "Cpu",
+      "actual": "cpu",
+      "passed": true,
+      "cancellationAndRecoveryElapsedMs": 1408
+    },
+    {
+      "requested": "Gpu",
+      "actual": "metal",
+      "passed": true,
+      "cancellationAndRecoveryElapsedMs": 354
+    },
+    {
+      "requested": "Auto",
+      "actual": "metal",
+      "passed": true,
+      "cancellationAndRecoveryElapsedMs": 398
+    }
+  ],
+  "noRecognitionProgressOrStreamingCallbacks": true,
+  "limitations": [
+    "This is not GUI, release-bundle or clean-machine verification.",
+    "Synthetic short speech does not establish long-recording completeness, language quality or performance.",
+    "Cancellation was requested during a repeated-speech service call and followed by recovery; interruption inside a single encoder/decoder was not measured.",
+    "Native truncation/repetition was not induced; statuses 18/19 and truncated/aborted flags have unit coverage.",
+    "Auto CPU fallback and unavailable-GPU guidance were unit-tested; Metal is available on this Mac.",
+    "Windows and Intel macOS were not tested."
+  ]
+}

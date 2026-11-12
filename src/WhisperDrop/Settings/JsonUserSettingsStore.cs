@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
 
 namespace WhisperDrop.Settings;
 
@@ -31,7 +32,10 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
 
         try
         {
-            var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(paths.SettingsFilePath), SerializerOptions);
+            var document = JsonNode.Parse(File.ReadAllText(paths.SettingsFilePath)) as JsonObject;
+            if (document is null) return Defaults();
+            if (document["AiPostProcessing"] is not null and not JsonObject) document["AiPostProcessing"] = null;
+            var settings = document.Deserialize<UserSettings>(SerializerOptions);
             return Normalize(settings);
         }
         catch (IOException)
@@ -39,6 +43,10 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             return Defaults();
         }
         catch (JsonException)
+        {
+            return Defaults();
+        }
+        catch (UnauthorizedAccessException)
         {
             return Defaults();
         }
@@ -68,8 +76,10 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
     private static JsonSerializerOptions CreateSerializerOptions()
     {
         var options = new JsonSerializerOptions { WriteIndented = true };
-        options.Converters.Add(new LenientEnumConverter<TranscriptionTask>());
         options.Converters.Add(new LenientEnumConverter<ProcessingDevice>());
+        options.Converters.Add(new NullableIntegerConverter());
+        options.Converters.Add(new LenientStringConverter());
+        options.Converters.Add(new LenientBooleanConverter());
         options.Converters.Add(new LenientEnumConverter<AiProviderPreset>());
         return options;
     }
@@ -78,9 +88,6 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
 
     private UserSettings Normalize(UserSettings? settings)
     {
-        var task = settings is not null && Enum.IsDefined(typeof(TranscriptionTask), settings.Task)
-            ? settings.Task
-            : TranscriptionTask.Transcribe;
         var processingDevice = settings is not null && Enum.IsDefined(typeof(ProcessingDevice), settings.ProcessingDevice)
             ? settings.ProcessingDevice
             : ProcessingDevice.Auto;
@@ -92,14 +99,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         return new UserSettings
         {
             ModelsFolder = string.IsNullOrWhiteSpace(settings?.ModelsFolder) ? paths.DefaultModelsFolder : settings.ModelsFolder,
-            SelectedModelId = string.IsNullOrWhiteSpace(settings?.SelectedModelId) ? "base" : settings.SelectedModelId,
-            RecognitionLanguageCode = string.IsNullOrWhiteSpace(settings?.RecognitionLanguageCode) ? "auto" : settings.RecognitionLanguageCode,
-            Task = task,
-            VocabularyContext = settings?.VocabularyContext ?? string.Empty,
-            WhisperMaxContextTokens = settings?.WhisperMaxContextTokens is int tokens && tokens >= WhisperContextLimits.MinTokens
-                ? Math.Min(tokens, WhisperContextLimits.MaxTokens)
-                : WhisperContextLimits.DefaultTokens,
-            WhisperNoContext = settings?.WhisperNoContext ?? false,
+            SelectedModelId = Models.ParakeetModelCatalog.ModelId,
             ProcessingDevice = processingDevice,
             CpuThreads = cpuThreads,
             AiPostProcessing = aiPostProcessing
@@ -143,6 +143,41 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
         return trimmed;
     }
 
+    private sealed class LenientStringConverter : JsonConverter<string>
+    {
+        public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String) return reader.GetString()!;
+            reader.Skip();
+            return string.Empty;
+        }
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
+    }
+    private sealed class LenientBooleanConverter : JsonConverter<bool>
+    {
+        public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType is JsonTokenType.True or JsonTokenType.False) return reader.GetBoolean();
+            reader.Skip();
+            return false;
+        }
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) => writer.WriteBooleanValue(value);
+    }
+
+    private sealed class NullableIntegerConverter : JsonConverter<int?>
+    {
+        public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var value)) return value;
+            reader.Skip();
+            return null;
+        }
+        public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+        {
+            if (value is int number) writer.WriteNumberValue(number); else writer.WriteNullValue();
+        }
+    }
+
     private sealed class LenientEnumConverter<TEnum> : JsonConverter<TEnum>
         where TEnum : struct, Enum
     {
@@ -165,7 +200,8 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
                 return default;
             }
 
-            throw new JsonException($"Expected a string or number for {typeof(TEnum).Name}.");
+            reader.Skip();
+            return default;
         }
 
         public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options) =>

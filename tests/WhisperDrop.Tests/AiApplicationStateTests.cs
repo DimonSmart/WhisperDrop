@@ -162,9 +162,9 @@ public sealed class AiApplicationStateTests
         Directory.CreateDirectory(models);
 
         var paths = new ApplicationPaths(root);
-        var catalog = new WhisperModelCatalog();
+        var catalog = new TestModelCatalog();
         var availability = new SelectedModelAvailability(catalog);
-        File.WriteAllText(availability.GetModelPath(models, "base"), "model");
+        File.WriteAllText(availability.GetModelPath(models, ParakeetModelCatalog.ModelId), "model");
 
         var store = new JsonUserSettingsStore(paths);
         store.Save(new UserSettings { ModelsFolder = models });

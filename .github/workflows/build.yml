@@ -25,7 +25,7 @@ jobs:
         os:
           - windows-latest
           - ubuntu-latest
-          - macos-latest
+          - macos-15
 
     steps:
       - name: Checkout
@@ -35,6 +35,21 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Setup native build Python
+        if: runner.os == 'macOS'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Stage pinned Apple Silicon native runtime
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          test "$(uname -m)" = arm64
+          python3 -m venv "$RUNNER_TEMP/parakeet-tools"
+          "$RUNNER_TEMP/parakeet-tools/bin/pip" install cmake==4.2.3
+          python3 native/parakeet/build.py --cmake "$RUNNER_TEMP/parakeet-tools/bin/cmake"
 
       - name: Restore
         run: dotnet restore WhisperDrop.sln --property:Configuration=Release
@@ -47,4 +62,4 @@ jobs:
 
       - name: Validate Homebrew Cask syntax
         if: runner.os == 'Linux'
-        run: ruby -c Casks/whisperdrop.rb
+        run: ruby -c Casks/parakeetdrop.rb

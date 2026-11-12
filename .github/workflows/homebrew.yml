@@ -31,12 +31,16 @@ jobs:
 
       - name: Resolve release tag
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+          RELEASE_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $tag = "${{ inputs.tag }}"
+          if ($env:EVENT_NAME -eq "workflow_dispatch") {
+            $tag = $env:REQUESTED_TAG
           }
           else {
-            $headSha = "${{ github.event.workflow_run.head_sha }}"
+            $headSha = $env:RELEASE_HEAD_SHA
             $tagPattern = '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$'
 
             $tag = git for-each-ref --format="%(refname:short)|%(objectname)|%(*objectname)" refs/tags |
@@ -83,8 +87,7 @@ jobs:
       - name: Update Cask
         shell: pwsh
         run: |
-          $armName = "WhisperDrop-$env:RELEASE_TAG-osx-arm64-app.zip"
-          $intelName = "WhisperDrop-$env:RELEASE_TAG-osx-x64-app.zip"
+          $armName = "ParakeetDrop-$env:RELEASE_TAG-osx-arm64-app.zip"
 
           function Get-ReleaseHash([string] $fileName) {
             $line = Get-Content $env:CHECKSUMS_PATH |
@@ -98,45 +101,46 @@ jobs:
             return ($line -split '\s+', 2)[0].ToLowerInvariant()
           }
 
+          $lines = @(Get-Content $env:CHECKSUMS_PATH | Where-Object { $_.Trim() })
+          if ($lines.Count -ne 1) { throw "Expected exactly one ARM64 release checksum." }
           $armHash = Get-ReleaseHash $armName
-          $intelHash = Get-ReleaseHash $intelName
 
           $cask = @"
-          cask "whisperdrop" do
-            arch arm: "arm64", intel: "x64"
+          cask "parakeetdrop" do
+            depends_on arch: :arm64
+            depends_on macos: ">= :sequoia"
 
             version "$env:VERSION"
 
-            sha256 arm: "$armHash",
-                   intel: "$intelHash"
+            sha256 "$armHash"
 
-            url "https://github.com/DimonSmart/WhisperDrop/releases/download/v#{version}/WhisperDrop-v#{version}-osx-#{arch}-app.zip"
+            url "https://github.com/DimonSmart/WhisperDrop/releases/download/v#{version}/ParakeetDrop-v#{version}-osx-arm64-app.zip"
 
-            name "WhisperDrop"
-            desc "Local desktop speech-to-text application powered by Whisper"
+            name "ParakeetDrop"
+            desc "Local desktop speech-to-text application powered by Parakeet Ultra"
             homepage "https://github.com/DimonSmart/WhisperDrop"
 
-            app "WhisperDrop.app"
+            app "ParakeetDrop.app"
 
             caveats <<~EOS
-              WhisperDrop is currently unsigned and not notarized.
+              ParakeetDrop is currently unsigned and not notarized.
               On first launch macOS may require using Open from the Finder context menu.
             EOS
           end
           "@
 
           $normalized = ($cask -split [Environment]::NewLine | ForEach-Object { $_ -replace '^          ', '' }) -join [Environment]::NewLine
-          ($normalized.TrimStart() + [Environment]::NewLine) | Set-Content Casks/whisperdrop.rb -Encoding utf8NoBOM
+          ($normalized.TrimStart() + [Environment]::NewLine) | Set-Content Casks/parakeetdrop.rb -Encoding utf8NoBOM
 
       - name: Validate Cask syntax
-        run: ruby -c Casks/whisperdrop.rb
+        run: ruby -c Casks/parakeetdrop.rb
 
       - name: Commit Homebrew metadata
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Casks/whisperdrop.rb
+          git add Casks/parakeetdrop.rb
 
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {

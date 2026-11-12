@@ -21,7 +21,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public const int SettingsTabIndex = ModelsTabIndex;
 
     private readonly IUserSettingsStore settingsStore;
-    private readonly IWhisperModelCatalog modelCatalog;
+    private readonly IRecognitionModelCatalog modelCatalog;
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
@@ -29,7 +29,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ITranscriptEnhancementService transcriptEnhancementService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
-    private readonly IWhisperRuntimeSelector runtimeSelector;
+    private readonly IRecognitionRuntimeSelector runtimeSelector;
     private UserSettings settings;
     private int selectedTabIndex = TranscribeTabIndex;
     private string? unsupportedFormatMessage;
@@ -41,25 +41,34 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private string aiApiKey = string.Empty;
     private string? aiConnectionStatus;
     private bool isAiConnectionTesting;
+    private CancellationTokenSource? activeTranscription;
+
+    public bool CanCancelTranscription => activeTranscription is not null && !activeTranscription.IsCancellationRequested;
+
+    public void CancelTranscription()
+    {
+        activeTranscription?.Cancel();
+        OnPropertyChanged(nameof(CanCancelTranscription));
+    }
 
     public InitialApplicationState(
         IUserSettingsStore settingsStore,
-        IWhisperModelCatalog modelCatalog,
+        IRecognitionModelCatalog modelCatalog,
         IRecognitionLanguageCatalog languageCatalog,
         ISelectedModelAvailability availability,
         ISelectedModelDownloadManager? downloadManager = null,
         IRecognitionService? recognitionService = null,
         ITranscriptEnhancementService? transcriptEnhancementService = null,
         ILocalModelInventory? localModelInventory = null,
-        IWhisperRuntimeSelector? runtimeSelector = null,
+        IRecognitionRuntimeSelector? runtimeSelector = null,
         IMediaPreparationService? mediaPreparationService = null)
     {
         this.settingsStore = settingsStore;
         this.modelCatalog = modelCatalog;
         this.availability = availability;
         this.downloadManager = downloadManager ?? new SelectedModelDownloadManager(modelCatalog, availability, new SelectedModelDownloader());
-        this.runtimeSelector = runtimeSelector ?? new WhisperRuntimeSelector();
-        this.recognitionService = recognitionService ?? new WhisperRecognitionService(this.runtimeSelector);
+        this.runtimeSelector = runtimeSelector ?? new ParakeetRuntimeSelector();
+        this.recognitionService = recognitionService ?? new ParakeetRecognitionService(this.runtimeSelector);
         this.mediaPreparationService = mediaPreparationService ?? new DirectMediaPreparationService();
         this.transcriptEnhancementService = transcriptEnhancementService ?? new UnavailableTranscriptEnhancementService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
@@ -67,11 +76,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         settings = settingsStore.Load();
         LanguageOptions = languageCatalog.Languages;
-        TaskOptions =
-        [
-            new(TranscriptionTask.Transcribe, "Transcribe"),
-            new(TranscriptionTask.TranslateToEnglish, "Translate to English")
-        ];
         ProcessingDeviceOptions =
         [
             new(ProcessingDevice.Auto, "Auto"),
@@ -115,8 +119,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public IReadOnlyList<RecognitionLanguage> LanguageOptions { get; }
 
-    public IReadOnlyList<TranscriptionTaskOption> TaskOptions { get; }
-
     public IReadOnlyList<ProcessingDeviceOption> ProcessingDeviceOptions { get; }
 
     public IReadOnlyList<CpuThreadsOption> CpuThreadOptions { get; }
@@ -135,6 +137,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         set => SetField(ref selectedTabIndex, value);
     }
 
+    public bool CanChangeModelStorage => !IsBatchActive && !QueueRows.Any(row => row.IsProcessing) && SelectedModelDownloadState != SelectedModelDownloadState.Downloading;
+
     public string ModelsFolder
     {
         get => settings.ModelsFolder!;
@@ -142,6 +146,13 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             if (string.Equals(settings.ModelsFolder, value, StringComparison.Ordinal))
             {
+                return;
+            }
+
+            if (!CanChangeModelStorage)
+            {
+                TranscriptionGuidance = "Wait for recognition or the model download to finish before changing the models folder.";
+                OnPropertyChanged(nameof(ModelsFolder));
                 return;
             }
 
@@ -164,73 +175,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             UpdateSettings(settings with { SelectedModelId = value }, nameof(SelectedModelId), reevaluateModels: true);
         }
     }
-
-    public string RecognitionLanguageCode
-    {
-        get => settings.RecognitionLanguageCode;
-        set => UpdateSettings(settings with { RecognitionLanguageCode = value }, nameof(RecognitionLanguageCode));
-    }
-
-    public TranscriptionTask SelectedTranscriptionTask
-    {
-        get => settings.Task;
-        set => UpdateSettings(settings with { Task = value }, nameof(SelectedTranscriptionTask));
-    }
-
-    public string VocabularyContext
-    {
-        get => settings.VocabularyContext;
-        set => UpdateSettings(settings with { VocabularyContext = value ?? string.Empty }, nameof(VocabularyContext));
-    }
-
-    public int WhisperMaxContextTokens
-    {
-        get => settings.WhisperMaxContextTokens;
-        set
-        {
-            var tokens = Math.Clamp(value, WhisperContextLimits.MinTokens, WhisperContextLimits.MaxTokens);
-            if (settings.WhisperMaxContextTokens == tokens)
-            {
-                return;
-            }
-
-            UpdateSettings(settings with { WhisperMaxContextTokens = tokens }, nameof(WhisperMaxContextTokens));
-            OnPropertyChanged(nameof(WhisperMaxContextTokensValue));
-        }
-    }
-
-    // NumberBox.Value is a double; recognition settings use whole-number tokens.
-    public double WhisperMaxContextTokensValue
-    {
-        get => WhisperMaxContextTokens;
-        set
-        {
-            if (double.IsFinite(value))
-            {
-                WhisperMaxContextTokens = (int)Math.Clamp(
-                    Math.Round(value),
-                    WhisperContextLimits.MinTokens,
-                    WhisperContextLimits.MaxTokens);
-            }
-        }
-    }
-
-    public bool WhisperNoContext
-    {
-        get => settings.WhisperNoContext;
-        set
-        {
-            if (settings.WhisperNoContext == value)
-            {
-                return;
-            }
-
-            UpdateSettings(settings with { WhisperNoContext = value }, nameof(WhisperNoContext));
-            OnPropertyChanged(nameof(IsWhisperContextEnabled));
-        }
-    }
-
-    public bool IsWhisperContextEnabled => !WhisperNoContext;
 
     public ProcessingDevice ProcessingDevice
     {
@@ -329,12 +273,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         private set => SetField(ref isAiConnectionTesting, value);
     }
 
-    public string? ProcessingDeviceRestartMessage =>
-        runtimeSelector.RequiresRestart(settings.ProcessingDevice)
-            ? "Restart required to change processing device."
+    public string? ProcessingDeviceReloadMessage =>
+        runtimeSelector.RequiresModelReload(settings.ProcessingDevice)
+            ? "The model will reload for the next transcription."
             : null;
 
-    public bool HasProcessingDeviceRestartMessage => ProcessingDeviceRestartMessage is not null;
+    public string? ProcessingBackendStatus => runtimeSelector.Backend is { } backend ? $"Backend used: {backend}." : null;
+
+    public bool HasProcessingDeviceReloadMessage => ProcessingDeviceReloadMessage is not null;
 
     public bool IsSelectedModelAvailable => SelectedModelDownloadState == SelectedModelDownloadState.Downloaded;
 
@@ -379,8 +325,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         private set => SetField(ref isBatchActive, value);
     }
 
-    public bool CanReorderQueue => !IsBatchActive;
-    public bool CanTranscribeAll => IsSelectedModelAvailable && !IsBatchActive && QueueRows.Any();
+    public bool CanReorderQueue => activeTranscription is null && !IsBatchActive;
+    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && QueueRows.Any();
     public bool CanCopyAll => QueueRows.Any(row => row.CanCopy);
 
     public string? TranscriptionGuidance
@@ -563,7 +509,33 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool RemoveQueueItem(TranscriptionQueueItem item) => QueueRows.Remove(item);
 
-    public async Task TranscribeAsync(TranscriptionQueueItem item, CancellationToken cancellationToken = default)
+    public Task TranscribeAsync(TranscriptionQueueItem item, CancellationToken cancellationToken = default) =>
+        ExecuteTranscriptionAsync(token => TranscribeCoreAsync(item, token), cancellationToken);
+
+    public Task TranscribeAllAsync(CancellationToken cancellationToken = default) =>
+        ExecuteTranscriptionAsync(TranscribeAllCoreAsync, cancellationToken);
+
+    private async Task ExecuteTranscriptionAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
+    {
+        if (activeTranscription is not null)
+            return;
+
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        activeTranscription = cancellation;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        OnPropertyChanged(nameof(CanCancelTranscription));
+        RefreshQueueActionState();
+        try { await operation(cancellation.Token); }
+        finally
+        {
+            ApplicationAcceptanceProbe.RecordRun(this, timer.Elapsed);
+            activeTranscription = null;
+            OnPropertyChanged(nameof(CanCancelTranscription));
+            RefreshQueueActionState();
+        }
+    }
+
+    private async Task TranscribeCoreAsync(TranscriptionQueueItem item, CancellationToken cancellationToken)
     {
         if (!TryCreateRecognitionRequest(out var modelPath, out var options, out var guidance))
         {
@@ -592,7 +564,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         }
     }
 
-    public async Task TranscribeAllAsync(CancellationToken cancellationToken = default)
+    private async Task TranscribeAllCoreAsync(CancellationToken cancellationToken)
     {
         if (!TryCreateRecognitionRequest(out var modelPath, out var options, out var guidance))
         {
@@ -832,31 +804,15 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             return false;
         }
 
-        var model = modelCatalog.Get(SelectedModelId);
-        if (options.Task == TranscriptionTask.TranslateToEnglish && model.IsEnglishOnly)
-        {
-            guidance = "Translation requires a multilingual Whisper model.";
-            return false;
-        }
-
         modelPath = availability.GetModelPath(ModelsFolder, SelectedModelId);
         return true;
     }
 
     private RecognitionOptions CreateRecognitionOptionsSnapshot()
     {
-        var effectiveDevice = runtimeSelector.IsInitialized
-            ? runtimeSelector.ActiveDevice
-            : settings.ProcessingDevice;
-
         return new RecognitionOptions
         {
-            LanguageCode = settings.RecognitionLanguageCode,
-            Task = settings.Task,
-            Prompt = settings.VocabularyContext,
-            WhisperMaxContextTokens = settings.WhisperMaxContextTokens,
-            WhisperNoContext = settings.WhisperNoContext,
-            ProcessingDevice = effectiveDevice,
+            ProcessingDevice = settings.ProcessingDevice,
             CpuThreads = settings.CpuThreads
         };
     }
@@ -901,10 +857,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 item.FilePath,
                 preparationProgress,
                 cancellationToken);
+            ApplicationAcceptanceProbe.Record("prepared", new { durationSeconds = prepared.Duration?.TotalSeconds });
 
             item.TranscriptionState = TranscriptionState.Transcribing;
-            item.Progress = "0%";
-            item.IsProgressIndeterminate = false;
+            item.Progress = "—";
+            item.IsProgressIndeterminate = true;
             RefreshQueueActionState();
 
             var recognitionProgress = new Progress<double>(value =>
@@ -920,18 +877,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 recognizedSegments);
 
             item.RecognitionResult = result;
-            item.Language = options.LanguageCode == "auto"
-                ? result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)
-                    ? displayName
-                    : result.DetectedLanguage ?? "Auto"
-                : languageCatalog.Get(options.LanguageCode).DisplayName;
-            item.Progress = "100%";
-            item.TranscriptionState = TranscriptionState.Completed;
-            return true;
+            item.Language = result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)
+                ? displayName : result.DetectedLanguage ?? "—";
+            item.Progress = result.IsComplete ? "100%" : "—";
+            item.IsProgressIndeterminate = false;
+            item.TranscriptionState = result.IsComplete ? TranscriptionState.Completed : TranscriptionState.Incomplete;
+            return result.IsComplete;
         }
         catch (OperationCanceledException)
         {
-            item.TranscriptionState = TranscriptionState.Pending;
+            item.TranscriptionState = TranscriptionState.Cancelled;
             item.Progress = "—";
             item.IsProgressIndeterminate = false;
             item.RecognitionResult = null;
@@ -1047,18 +1002,20 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     private void EnsureModelStorageCanChange()
     {
-        if (QueueRows.Any(row => row.IsProcessing))
+        if (!CanChangeModelStorage)
         {
-            throw new InvalidOperationException("Models cannot be deleted while media processing is running.");
+            throw new InvalidOperationException("Wait for recognition or the model download to finish before deleting models.");
         }
     }
 
     private void RefreshQueueActionState()
     {
+        OnPropertyChanged(nameof(CanChangeModelStorage));
         foreach (var row in QueueRows)
         {
             row.CanTranscribe =
                 IsSelectedModelAvailable &&
+                activeTranscription is null &&
                 !IsBatchActive &&
                 !row.IsProcessing &&
                 row.AiEnhancementState != AiEnhancementState.Improving;
@@ -1077,8 +1034,9 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     private void NotifyRuntimeStatusChanged()
     {
-        OnPropertyChanged(nameof(ProcessingDeviceRestartMessage));
-        OnPropertyChanged(nameof(HasProcessingDeviceRestartMessage));
+        OnPropertyChanged(nameof(ProcessingBackendStatus));
+        OnPropertyChanged(nameof(ProcessingDeviceReloadMessage));
+        OnPropertyChanged(nameof(HasProcessingDeviceReloadMessage));
     }
 
     private bool TryGetLanguageName(string code, out string displayName)

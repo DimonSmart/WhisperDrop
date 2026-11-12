@@ -46,7 +46,7 @@
                     Glyph="&#xE712;" />
                 <Button.Flyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="About WhisperDrop…" Click="About_Click" />
+                        <MenuFlyoutItem Text="About ParakeetDrop…" Click="About_Click" />
                     </MenuFlyout>
                 </Button.Flyout>
             </Button>
@@ -79,30 +79,6 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-
-                <VisualStateManager.VisualStateGroups>
-                    <VisualStateGroup x:Name="RecognitionSettingsWidthStates">
-                        <VisualState x:Name="WideRecognitionSettings">
-                            <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="900" />
-                            </VisualState.StateTriggers>
-                            <VisualState.Setters>
-                                <Setter Target="RecognitionModelPanel.(Grid.Row)" Value="0" />
-                                <Setter Target="RecognitionModelPanel.(Grid.Column)" Value="0" />
-                                <Setter Target="RecognitionModelPanel.(Grid.ColumnSpan)" Value="2" />
-                                <Setter Target="LanguagePanel.(Grid.Row)" Value="0" />
-                                <Setter Target="LanguagePanel.(Grid.Column)" Value="2" />
-                                <Setter Target="LanguagePanel.(Grid.ColumnSpan)" Value="1" />
-                                <Setter Target="TaskPanel.(Grid.Row)" Value="0" />
-                                <Setter Target="TaskPanel.(Grid.Column)" Value="3" />
-                                <Setter Target="TaskPanel.(Grid.ColumnSpan)" Value="1" />
-                                <Setter Target="AdvancedSettingsExpander.(Grid.Row)" Value="1" />
-                                <Setter Target="AdvancedSettingsExpander.(Grid.Column)" Value="0" />
-                                <Setter Target="AdvancedSettingsExpander.(Grid.ColumnSpan)" Value="2" />
-                            </VisualState.Setters>
-                        </VisualState>
-                    </VisualStateGroup>
-                </VisualStateManager.VisualStateGroups>
 
                 <StackPanel
                     x:Name="RecognitionModelPanel"
@@ -173,92 +149,7 @@
                         Visibility="{x:Bind ViewModel.SelectedModelDownloadState, Mode=OneWay, Converter={StaticResource SelectedModelDownloadStateToVisibilityConverter}, ConverterParameter=DetailedStatus}" />
                 </StackPanel>
 
-                <StackPanel
-                    x:Name="LanguagePanel"
-                    Grid.Row="1"
-                    Grid.Column="0"
-                    Grid.ColumnSpan="2"
-                    MinWidth="0"
-                    Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Language" />
-                    <ComboBox
-                        MinWidth="0"
-                        Style="{StaticResource SettingsComboBoxStyle}"
-                        DisplayMemberPath="DisplayName"
-                        ItemsSource="{x:Bind ViewModel.LanguageOptions}"
-                        SelectedValue="{x:Bind ViewModel.RecognitionLanguageCode, Mode=TwoWay}"
-                        SelectedValuePath="Code" />
-                </StackPanel>
-
-                <StackPanel
-                    x:Name="TaskPanel"
-                    Grid.Row="1"
-                    Grid.Column="2"
-                    Grid.ColumnSpan="2"
-                    MinWidth="0"
-                    Spacing="{StaticResource SpacingXs}">
-                    <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Task" />
-                    <ComboBox
-                        MinWidth="0"
-                        Style="{StaticResource SettingsComboBoxStyle}"
-                        DisplayMemberPath="DisplayName"
-                        ItemsSource="{x:Bind ViewModel.TaskOptions}"
-                        SelectedValue="{x:Bind ViewModel.SelectedTranscriptionTask, Mode=TwoWay}"
-                        SelectedValuePath="Value" />
-                </StackPanel>
-
-                <Expander
-                    x:Name="AdvancedSettingsExpander"
-                    Grid.Row="2"
-                    Grid.Column="0"
-                    Grid.ColumnSpan="4"
-                    Header="Advanced">
-                    <StackPanel Padding="0,8,0,0" Spacing="{StaticResource SpacingSm}">
-                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
-                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Previous text context (tokens)" />
-                                <muxc:NumberBox
-                                    Width="200"
-                                    HorizontalAlignment="Left"
-                                    Minimum="1"
-                                    Maximum="224"
-                                    SmallChange="1"
-                                    SpinButtonPlacementMode="Inline"
-                                    ValidationMode="InvalidInputOverwritten"
-                                    Foreground="{StaticResource PrimaryTextBrush}"
-                                    Background="{StaticResource ElevatedSurfaceBrush}"
-                                    BorderBrush="{StaticResource StrongControlBorderBrush}"
-                                    Value="{x:Bind ViewModel.WhisperMaxContextTokensValue, Mode=TwoWay}"
-                                    IsEnabled="{x:Bind ViewModel.IsWhisperContextEnabled, Mode=OneWay}" />
-                                <TextBlock
-                                    Style="{StaticResource CaptionTextStyle}"
-                                    Text="1–224 tokens; default 224." />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
-                                <CheckBox
-                                    Content="Disable previous text context"
-                                    IsChecked="{x:Bind ViewModel.WhisperNoContext, Mode=OneWay}"
-                                    Click="WhisperNoContext_Click" />
-                                <TextBlock
-                                    Style="{StaticResource CaptionTextStyle}"
-                                    Text="May help prevent repeated phrases. Vocabulary hints still apply."
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Grid>
-                        <StackPanel Spacing="{StaticResource SpacingXs}">
-                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Vocabulary / context" />
-                            <TextBox
-                                Style="{StaticResource SettingsTextBoxStyle}"
-                                PlaceholderText="C#, .NET, WhisperDrop..."
-                                Text="{x:Bind ViewModel.VocabularyContext, Mode=TwoWay}" />
-                            <TextBlock
-                                Style="{StaticResource CaptionTextStyle}"
-                                Text="Optional words, names and terms to help recognition." />
-                        </StackPanel>
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="4">
                         <Grid ColumnSpacing="{StaticResource SpacingMd}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -275,9 +166,12 @@
                                     SelectedValuePath="Value" />
                                 <TextBlock
                                     Style="{StaticResource CaptionTextStyle}"
-                                    Text="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay}"
+                                    Text="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay}"
                                     TextWrapping="Wrap"
-                                    Visibility="{x:Bind ViewModel.ProcessingDeviceRestartMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                                    Visibility="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                                <TextBlock Style="{StaticResource CaptionTextStyle}"
+                                    Text="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
                                 <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
@@ -290,8 +184,7 @@
                                     SelectedValuePath="Value" />
                             </StackPanel>
                         </Grid>
-                    </StackPanel>
-                </Expander>
+                </StackPanel>
             </Grid>
 
             <StackPanel Grid.Row="1" Spacing="{StaticResource SpacingXs}">
@@ -347,6 +240,11 @@
                     HorizontalAlignment="Left"
                     Orientation="Horizontal"
                     Spacing="{StaticResource SpacingSm}">
+                    <Button
+                        Content="Cancel"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        IsEnabled="{x:Bind ViewModel.CanCancelTranscription, Mode=OneWay}"
+                        Click="CancelTranscription_Click" />
                     <Button
                         Style="{StaticResource SecondaryButtonStyle}"
                         Click="AddFiles_Click"
@@ -556,7 +454,7 @@
                                             Content="{Binding AiActionLabel}"
                                             IsEnabled="{Binding CanEnhance}"
                                             Tag="{Binding}"
-                                            ToolTipService.ToolTip="Improve the raw Whisper transcript with the configured AI model" />
+                                            ToolTipService.ToolTip="Improve the raw Parakeet transcript with the configured AI model" />
                                         <Button
                                             Style="{StaticResource SubtleButtonStyle}"
                                             Click="CopyAiInput_Click"
@@ -593,7 +491,7 @@
                                             IsEnabled="{Binding CanCopyRaw}"
                                             Tag="{Binding}"
                                             Visibility="{Binding ProcessedTranscript, Converter={StaticResource StringToVisibilityConverter}}"
-                                            ToolTipService.ToolTip="Copy the unchanged Whisper transcript" />
+                                            ToolTipService.ToolTip="Copy the unchanged Parakeet transcript" />
                                         <Button
                                             Style="{StaticResource DangerIconButtonStyle}"
                                             Click="RemoveFile_Click"
@@ -633,10 +531,12 @@
                         </Grid.ColumnDefinitions>
                         <TextBox
                             Style="{StaticResource SettingsTextBoxStyle}"
+                            IsEnabled="{x:Bind ViewModel.CanChangeModelStorage, Mode=OneWay}"
                             Text="{x:Bind ViewModel.ModelsFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <Button
                             Grid.Column="1"
                             Style="{StaticResource SecondaryButtonStyle}"
+                            IsEnabled="{x:Bind ViewModel.CanChangeModelStorage, Mode=OneWay}"
                             Click="BrowseModelsFolder_Click"
                             ToolTipService.ToolTip="Choose models folder">
                             <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingXs}">

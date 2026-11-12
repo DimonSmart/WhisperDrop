@@ -144,20 +144,19 @@ public sealed partial class MainPage : Page
     {
         if (sender is Button { Tag: TranscriptionQueueItem item })
         {
-            await ViewModel.TranscribeAsync(item);
+            try { await ViewModel.TranscribeAsync(item); }
+            catch (OperationCanceledException) { }
         }
     }
 
-    private async void TranscribeAll_Click(object sender, RoutedEventArgs e) =>
-        await ViewModel.TranscribeAllAsync();
-
-    private void WhisperNoContext_Click(object sender, RoutedEventArgs e)
+    private async void TranscribeAll_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is CheckBox checkBox)
-        {
-            ViewModel.WhisperNoContext = checkBox.IsChecked == true;
-        }
+        try { await ViewModel.TranscribeAllAsync(); }
+        catch (OperationCanceledException) { }
     }
+
+    private void CancelTranscription_Click(object sender, RoutedEventArgs e) => ViewModel.CancelTranscription();
+
 
     private async void PreviewTranscript_Click(object sender, RoutedEventArgs e)
     {
@@ -169,6 +168,7 @@ public sealed partial class MainPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
+            RequestedTheme = ElementTheme.Dark,
             Title = $"Transcript preview — {item.FileName}",
             CloseButtonText = "Close",
             Content = new TextBox
@@ -177,10 +177,12 @@ public sealed partial class MainPage : Page
                 IsReadOnly = true,
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
-                Width = 620,
+                MaxWidth = 620,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 Height = 400
             }
         };
+        dialog.Opened += (_, _) => ApplicationAcceptanceProbe.Record("preview", new { characters = item.GetPreviewTranscript().Length, readOnly = true });
         await dialog.ShowAsync();
     }
 
@@ -375,7 +377,7 @@ public sealed partial class MainPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "Download Whisper model",
+            Title = "Download Parakeet Ultra model",
             Content = content
         };
 
@@ -390,7 +392,7 @@ public sealed partial class MainPage : Page
 
             var installed = ViewModel.InstalledModels.FirstOrDefault(item => item.Id == model.Id);
             details.Text = installed is null
-                ? $"Approximate download size: {model.ApproximateSize}"
+                ? $"Exact download size: {model.ApproximateSize}"
                 : $"Installed · {installed.SizeText}";
             downloadButton.IsEnabled = installed is null;
         }
@@ -488,11 +490,25 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync();
     }
 
-    private static void CopyToClipboard(string text)
+    private static async void CopyToClipboard(string text)
     {
         var package = new DataPackage();
         package.SetText(text);
         Clipboard.SetContent(package);
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PARAKEETDROP_ACCEPTANCE_EVIDENCE")))
+        {
+            try
+            {
+                // The native clipboard bridge posts its write to the platform loop.
+                await Task.Delay(150);
+                var copied = await Clipboard.GetContent().GetTextAsync();
+                ApplicationAcceptanceProbe.Record("copy", new { characters = text.Length, clipboardCharacters = copied.Length, clipboardMatches = copied == text });
+            }
+            catch (Exception)
+            {
+                ApplicationAcceptanceProbe.Record("copy", new { characters = text.Length, clipboardMatches = false });
+            }
+        }
     }
 
     private static void InitializeForMainWindow(object picker)

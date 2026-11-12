@@ -50,7 +50,7 @@ public sealed partial class MainPage
         var content = new StackPanel { Spacing = 12 };
         content.Children.Add(new TextBlock
         {
-            Text = "WhisperDrop",
+            Text = "ParakeetDrop",
             FontSize = 22,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
@@ -64,7 +64,7 @@ public sealed partial class MainPage
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "About WhisperDrop",
+            Title = "About ParakeetDrop",
             Content = content,
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
@@ -175,7 +175,7 @@ public sealed partial class MainPage
             var progressDialog = new ContentDialog
             {
                 XamlRoot = XamlRoot,
-                Title = "Updating WhisperDrop",
+                Title = "Updating ParakeetDrop",
                 Content = content,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Close
@@ -234,7 +234,7 @@ public sealed partial class MainPage
             await ShowUpdateMessageAsync(
                 result.Status == ApplicationUpdateResultStatus.PackageNotPublished
                     ? "Update not available in Homebrew yet"
-                    : "Unable to update WhisperDrop",
+                    : "Unable to update ParakeetDrop",
                 result.Message);
         }
         finally

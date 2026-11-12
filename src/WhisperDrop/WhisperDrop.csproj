@@ -4,9 +4,9 @@
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
     <RootNamespace>WhisperDrop</RootNamespace>
-    <AssemblyName>WhisperDrop</AssemblyName>
-    <ApplicationTitle>WhisperDrop</ApplicationTitle>
-    <ApplicationId>io.dimonsmart.whisperdrop</ApplicationId>
+    <AssemblyName>ParakeetDrop</AssemblyName>
+    <ApplicationTitle>ParakeetDrop</ApplicationTitle>
+    <ApplicationId>io.dimonsmart.parakeetdrop</ApplicationId>
     <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <PublishTrimmed>false</PublishTrimmed>
@@ -20,9 +20,6 @@
     <PackageReference Include="OpenAI" Version="2.14.0" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="8.0.0.1" />
     <PackageReference Include="DevEnvy.FFmpeg.Binaries.LGPL" Version="8.0.1.4" />
-    <PackageReference Include="Whisper.net" Version="1.9.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" GeneratePathProperty="true" />
-    <PackageReference Include="Whisper.net.Runtime.Metal" Version="1.9.1" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,45 +27,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <WhisperMetalResource Include="$(PkgWhisper_net_Runtime_Metal)\build\ggml-metal.metal" />
     <FfmpegWindowsRuntimeDependency Include="Assets\Ffmpeg\win-x64\*.dll" />
-    <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-arm64\*.dll"><RuntimeIdentifier>win-arm64</RuntimeIdentifier></WhisperRuntimeFile>
-    <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x64\*.dll"><RuntimeIdentifier>win-x64</RuntimeIdentifier></WhisperRuntimeFile>
-    <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\win-x86\*.dll"><RuntimeIdentifier>win-x86</RuntimeIdentifier></WhisperRuntimeFile>
-    <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\macos-arm64\*.dylib"><RuntimeIdentifier>macos-arm64</RuntimeIdentifier></WhisperRuntimeFile>
-    <WhisperRuntimeFile Include="$(PkgWhisper_net_Runtime)\build\macos-x64\*.dylib"><RuntimeIdentifier>macos-x64</RuntimeIdentifier></WhisperRuntimeFile>
   </ItemGroup>
 
-  <Target Name="CopyBundledWhisperRuntime" AfterTargets="Build">
-    <Error Condition="'@(WhisperRuntimeFile)' == ''"
-           Text="Whisper.net.Runtime native files were not found. Verify the package layout before publishing." />
-    <Error Condition="'@(WhisperMetalResource)' == ''"
-           Text="Whisper.net.Runtime.Metal shader resource was not found." />
-    <Copy SourceFiles="@(WhisperRuntimeFile)"
-          DestinationFiles="@(WhisperRuntimeFile->'$(OutDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(WhisperMetalResource)"
-          DestinationFolder="$(OutDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)"
-          DestinationFiles="@(FfmpegWindowsRuntimeDependency->'$(OutDir)ffmpeg\win-x64\%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-  </Target>
-
-  <Target Name="CopyBundledWhisperRuntimeToPublishDirectory" AfterTargets="Publish">
-    <Error Condition="'@(WhisperRuntimeFile)' == ''"
-           Text="Whisper.net.Runtime native files were not found in the publish build." />
-    <Error Condition="'@(WhisperMetalResource)' == ''"
-           Text="Whisper.net.Runtime.Metal shader resource was not found in the publish build." />
-    <Copy SourceFiles="@(WhisperRuntimeFile)"
-          DestinationFiles="@(WhisperRuntimeFile->'$(PublishDir)runtimes\%(RuntimeIdentifier)\%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(WhisperMetalResource)"
-          DestinationFolder="$(PublishDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)"
-          DestinationFiles="@(FfmpegWindowsRuntimeDependency->'$(PublishDir)ffmpeg\win-x64\%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+  <Target Name="CopyBundledParakeetRuntime" AfterTargets="Build;Publish" >
+    <ItemGroup>
+      <_ParakeetLibrary Include="$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/*" />
+    </ItemGroup>
+    <Error Condition="$([MSBuild]::IsOSPlatform('OSX')) and
+                      (!Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libtranscribe.dylib') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml.0.dylib') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml-base.0.dylib') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml-cpu.so') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml-metal.so'))"
+           Text="Build the pinned native runtime first: python3 native/parakeet/build.py" />
+    <Copy SourceFiles="@(_ParakeetLibrary)" DestinationFolder="$(OutDir)parakeet/osx-arm64" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ParakeetLibrary)" DestinationFolder="$(PublishDir)parakeet/osx-arm64" SkipUnchangedFiles="true" Condition="'$(PublishDir)' != ''" />
+    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)" DestinationFolder="$(OutDir)ffmpeg/win-x64" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)" DestinationFolder="$(PublishDir)ffmpeg/win-x64" SkipUnchangedFiles="true" Condition="'$(PublishDir)' != ''" />
   </Target>
 
   <ItemGroup>
@@ -97,24 +73,16 @@
        and the application runtime selectors expect them. -->
   <Target Name="CopyBundledRuntimesToMacOsApp"
           AfterTargets="_UnoPublishAppBundle"
-          DependsOnTargets="PublishFFmpegBinaries;CopyBundledWhisperRuntimeToPublishDirectory;RemoveBundledFfmpegCliFromPublish"
-          Condition="'$(PackageFormat)' == 'app' and ('$(RuntimeIdentifier)' == 'osx-arm64' or '$(RuntimeIdentifier)' == 'osx-x64')">
-    <PropertyGroup>
-      <_WhisperMacRuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">macos-arm64</_WhisperMacRuntimeIdentifier>
-      <_WhisperMacRuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'osx-x64'">macos-x64</_WhisperMacRuntimeIdentifier>
-    </PropertyGroup>
+          DependsOnTargets="PublishFFmpegBinaries;CopyBundledParakeetRuntime;RemoveBundledFfmpegCliFromPublish"
+          Condition="'$(PackageFormat)' == 'app' and ('$(RuntimeIdentifier)' == 'osx-arm64' )">
     <ItemGroup>
       <_MacAppFfmpegLibrary Include="$(PublishDir)ffmpeg/$(RuntimeIdentifier)/*.dylib" />
-      <_MacAppWhisperLibrary Include="$(PublishDir)runtimes/$(_WhisperMacRuntimeIdentifier)/*.dylib" />
+      <_MacAppParakeetLibrary Include="$(PublishDir)parakeet/osx-arm64/*" />
     </ItemGroup>
-    <Error Condition="'@(_MacAppFfmpegLibrary)' == '' or '@(_MacAppWhisperLibrary)' == ''"
-           Text="Native media and Whisper libraries are required in the macOS app bundle." />
-    <Copy SourceFiles="@(_MacAppFfmpegLibrary)"
-          DestinationFolder="$(AppBundlePath)/Contents/Resources/ffmpeg/$(RuntimeIdentifier)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(_MacAppWhisperLibrary)"
-          DestinationFolder="$(AppBundlePath)/Contents/Resources/runtimes/$(_WhisperMacRuntimeIdentifier)"
-          SkipUnchangedFiles="true" />
+    <Error Condition="'@(_MacAppFfmpegLibrary)' == '' or '@(_MacAppParakeetLibrary)' == ''"
+           Text="Native media and Parakeet libraries are required in the macOS app bundle." />
+    <Copy SourceFiles="@(_MacAppFfmpegLibrary)" DestinationFolder="$(AppBundlePath)/Contents/Resources/ffmpeg/$(RuntimeIdentifier)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_MacAppParakeetLibrary)" DestinationFolder="$(AppBundlePath)/Contents/Resources/parakeet/osx-arm64" SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="PrepareWindowsRuntimeAppIcon"
@@ -135,7 +103,7 @@
           DependsOnTargets="PrepareWindowsRuntimeAppIcon"
           Condition="'$(OS)' == 'Windows_NT'">
     <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
-          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(TargetDir)WhisperDrop.ico')"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(TargetDir)ParakeetDrop.ico')"
           SkipUnchangedFiles="true" />
   </Target>
 
@@ -144,7 +112,7 @@
           DependsOnTargets="PrepareWindowsRuntimeAppIcon"
           Condition="'$(OS)' == 'Windows_NT' and '$(PublishDir)' != ''">
     <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
-          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(PublishDir)WhisperDrop.ico')"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(PublishDir)ParakeetDrop.ico')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>

@@ -2,7 +2,8 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Whisper.net.Ggml;
+using System.Net;
+using System.Net.Http;
 
 namespace WhisperDrop.Models;
 
@@ -23,24 +24,37 @@ public interface ISelectedModelDownloader
 
 public sealed class SelectedModelDownloader : ISelectedModelDownloader
 {
+    private static readonly HttpClient SharedClient = new() { Timeout = Timeout.InfiniteTimeSpan };
+    private readonly HttpClient client;
+    public SelectedModelDownloader() : this(SharedClient) { }
+    public SelectedModelDownloader(HttpClient client) => this.client = client;
+
     public async Task DownloadAsync(RecognitionModel model, Stream destination, IProgress<ModelDownloadProgress>? progress, CancellationToken cancellationToken)
     {
-        await using var source = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(model.GgmlType, cancellationToken: cancellationToken);
-        long? totalBytes = source.CanSeek ? source.Length : null;
-        var buffer = new byte[81920];
-        long received = 0;
-
-        while (true)
+        try
         {
-            var read = await source.ReadAsync(buffer.AsMemory(), cancellationToken);
-            if (read == 0)
+            using var response = await client.GetAsync(model.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                throw new IOException("The pinned model artifact is missing. Check for an application update.");
+            if ((int)response.StatusCode == 429)
+                throw new IOException("The model host is rate limiting downloads. Wait and retry.");
+            response.EnsureSuccessStatusCode();
+            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var buffer = new byte[81920];
+            long received = 0;
+            while (true)
             {
-                break;
+                var read = await source.ReadAsync(buffer.AsMemory(), cancellationToken);
+                if (read == 0) break;
+                received += read;
+                if (received > model.SizeBytes) throw new IOException("The model download exceeds the pinned size. Retry the download.");
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                progress?.Report(new ModelDownloadProgress(received, model.SizeBytes));
             }
-
-            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            received += read;
-            progress?.Report(new ModelDownloadProgress(received, totalBytes));
+        }
+        catch (HttpRequestException)
+        {
+            throw new IOException("The model download failed due to TLS or network connectivity. Check your connection and retry.");
         }
     }
 }
@@ -52,12 +66,13 @@ public interface ISelectedModelDownloadManager
 
 public sealed class SelectedModelDownloadManager : ISelectedModelDownloadManager
 {
-    private readonly IWhisperModelCatalog catalog;
+    private readonly SemaphoreSlim downloadGate = new(1, 1);
+    private readonly IRecognitionModelCatalog catalog;
     private readonly ISelectedModelAvailability availability;
     private readonly ISelectedModelDownloader downloader;
 
     public SelectedModelDownloadManager(
-        IWhisperModelCatalog catalog,
+        IRecognitionModelCatalog catalog,
         ISelectedModelAvailability availability,
         ISelectedModelDownloader downloader)
     {
@@ -68,7 +83,15 @@ public sealed class SelectedModelDownloadManager : ISelectedModelDownloadManager
 
     public async Task DownloadAsync(string modelsFolder, string modelId, IProgress<ModelDownloadProgress>? progress, CancellationToken cancellationToken)
     {
-        if (availability.IsAvailable(modelsFolder, modelId))
+        await downloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { await DownloadCoreAsync(modelsFolder, modelId, progress, cancellationToken).ConfigureAwait(false); }
+        finally { downloadGate.Release(); }
+    }
+
+    private async Task DownloadCoreAsync(string modelsFolder, string modelId, IProgress<ModelDownloadProgress>? progress, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (await Task.Run(() => availability.IsAvailable(modelsFolder, modelId), cancellationToken).ConfigureAwait(false))
         {
             return;
         }
@@ -86,7 +109,10 @@ public sealed class SelectedModelDownloadManager : ISelectedModelDownloadManager
                 await destination.FlushAsync(cancellationToken);
             }
 
-            File.Move(temporaryPath, finalPath);
+            if (!await ModelIntegrity.VerifyAsync(temporaryPath, model, cancellationToken))
+                throw new IOException("Model integrity verification failed (size or SHA-256). Retry the download.");
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporaryPath, finalPath, overwrite: true);
         }
         finally
         {

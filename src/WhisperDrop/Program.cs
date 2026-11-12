@@ -20,7 +20,7 @@ public static class Program
         }
         else
         {
-            throw new PlatformNotSupportedException("WhisperDrop supports Windows and macOS.");
+            throw new PlatformNotSupportedException("ParakeetDrop currently supports macOS on Apple Silicon. Windows is planned for a later release.");
         }
 
         var host = builder.App(() => new App()).Build();

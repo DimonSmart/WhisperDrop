@@ -14,6 +14,42 @@ namespace WhisperDrop.Tests;
 
 public sealed class MediaPreparationStateTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Cancel_command_stops_active_operation_and_allows_recovery(bool batch)
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var recognition = new FakeRecognitionService
+        {
+            OnRun = async token =>
+            {
+                started.SetResult();
+                await Task.Delay(Timeout.Infinite, token);
+            }
+        };
+        var state = CreateState(new FakeMediaPreparationService(), recognition);
+        state.AddFiles(["first.wav", "second.wav"]);
+        var running = batch ? state.TranscribeAllAsync() : state.TranscribeAsync(state.QueueRows[0]);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(state.CanCancelTranscription);
+        Assert.False(state.CanTranscribeAll);
+        Assert.False(state.CanReorderQueue);
+        Assert.All(state.QueueRows, row => Assert.False(row.CanTranscribe));
+        await state.TranscribeAsync(state.QueueRows[1]);
+        Assert.Single(recognition.Paths);
+        state.CancelTranscription();
+        Assert.False(state.CanCancelTranscription);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        Assert.Equal("Cancelled", state.QueueRows[0].Status);
+        Assert.Equal("Pending", state.QueueRows[1].Status);
+        Assert.False(state.CanCancelTranscription);
+        Assert.True(state.CanTranscribeAll);
+        recognition.OnRun = null;
+        await state.TranscribeAsync(state.QueueRows[0]);
+        Assert.Equal("Completed", state.QueueRows[0].Status);
+    }
+
     [Fact]
     public async Task Preparing_precedes_recognition_and_recognition_receives_prepared_audio()
     {
@@ -32,7 +68,7 @@ public sealed class MediaPreparationStateTests
     }
 
     [Fact]
-    public async Task Cancellation_during_preparation_returns_item_to_pending()
+    public async Task Cancellation_during_preparation_marks_item_cancelled()
     {
         var media = new FakeMediaPreparationService { Cancel = true };
         var state = CreateState(media, new FakeRecognitionService());
@@ -41,7 +77,7 @@ public sealed class MediaPreparationStateTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => state.TranscribeAsync(item));
 
-        Assert.Equal("Pending", item.Status);
+        Assert.Equal("Cancelled", item.Status);
         Assert.Equal("—", item.Progress);
         Assert.Null(item.ErrorMessage);
         Assert.Null(item.RecognitionResult);
@@ -84,11 +120,11 @@ public sealed class MediaPreparationStateTests
     {
         var models = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(models);
-        File.WriteAllText(Path.Combine(models, "ggml-base.bin"), "model");
+        File.WriteAllText(Path.Combine(models, "parakeet-ultra-Q8_0.gguf"), "model");
 
         var appRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         var paths = new ApplicationPaths(appRoot);
-        var catalog = new WhisperModelCatalog();
+        var catalog = new TestModelCatalog();
         var store = new JsonUserSettingsStore(paths);
         store.Save(new UserSettings { ModelsFolder = models });
 
@@ -139,8 +175,9 @@ public sealed class MediaPreparationStateTests
     private sealed class FakeRecognitionService : IRecognitionService
     {
         public List<string> Paths { get; } = [];
+        public Func<CancellationToken, Task>? OnRun { get; set; }
 
-        public Task<RecognitionResult> TranscribeAsync(
+        public async Task<RecognitionResult> TranscribeAsync(
             string modelPath,
             RecognitionOptions options,
             string audioPath,
@@ -149,8 +186,9 @@ public sealed class MediaPreparationStateTests
             IProgress<string>? recognizedSegments = null)
         {
             Paths.Add(audioPath);
+            if (OnRun is not null) await OnRun(cancellationToken);
             progress?.Report(1);
-            return Task.FromResult(new RecognitionResult("ok", "en"));
+            return new RecognitionResult("ok", "en");
         }
 
         public void UnloadModel()

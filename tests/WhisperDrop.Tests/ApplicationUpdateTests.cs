@@ -58,7 +58,7 @@ public sealed class ApplicationUpdateTests
 
         Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
         Assert.Equal(new ReleaseVersion(0, 1, 11), result.LatestVersion);
-        Assert.Equal("WhisperDrop/0.1.10", userAgent);
+        Assert.Equal("ParakeetDrop/0.1.10", userAgent);
         Assert.Equal(
             "https://github.com/DimonSmart/WhisperDrop/releases/tag/v0.1.11",
             result.ReleasePageUri?.AbsoluteUri);
@@ -106,10 +106,24 @@ public sealed class ApplicationUpdateTests
             new[] { "list", "--cask", MacOsHomebrewUpdateInstaller.CaskName },
             executor.Calls.Single().Arguments);
 
-        environment.ProcessPath = "/tmp/WhisperDrop/bin/Debug/WhisperDrop";
+        environment.ProcessPath = "/tmp/ParakeetDrop/bin/Debug/ParakeetDrop";
         Assert.False((await new MacOsHomebrewUpdateInstaller(
             new QueueProcessExecutor(),
             environment).GetAvailabilityAsync()).IsAvailable);
+    }
+
+    [Fact]
+    public async Task Mac_updater_never_inspects_or_updates_legacy_application()
+    {
+        var environment = CreateMacEnvironment();
+        environment.ProcessPath = "/Applications/WhisperDrop.app/Contents/MacOS/WhisperDrop";
+        var executor = new QueueProcessExecutor();
+        var installer = new MacOsHomebrewUpdateInstaller(executor, environment);
+
+        Assert.False((await installer.GetAvailabilityAsync()).IsAvailable);
+        Assert.Equal(ApplicationUpdateResultStatus.Unsupported,
+            (await installer.InstallAsync(new ReleaseVersion(0, 1, 11))).Status);
+        Assert.Empty(executor.Calls);
     }
 
     [Fact]
@@ -129,6 +143,7 @@ public sealed class ApplicationUpdateTests
         var result = await installer.InstallAsync(new ReleaseVersion(0, 1, 11));
 
         Assert.Equal(ApplicationUpdateResultStatus.Succeeded, result.Status);
+        Assert.Equal("dimonsmart/whisperdrop/parakeetdrop", MacOsHomebrewUpdateInstaller.CaskName);
         Assert.Equal(new[] { "update" }, executor.Calls[1].Arguments);
         Assert.Equal(
             new[] { "info", "--cask", "--json=v2", MacOsHomebrewUpdateInstaller.CaskName },
@@ -145,9 +160,11 @@ public sealed class ApplicationUpdateTests
             executor.Calls[3].Arguments);
         Assert.False(executor.Calls[3].CanBeCanceled);
         Assert.Equal("/usr/bin/plutil", executor.Calls[4].Executable);
+        Assert.Equal(new[] { "-extract", "CFBundleShortVersionString", "raw", "-o", "-", "/Applications/ParakeetDrop.app/Contents/Info.plist" }, executor.Calls[4].Arguments);
         Assert.Equal("/usr/bin/xattr", executor.Calls[5].Executable);
         Assert.Equal("/usr/bin/xattr", executor.Calls[6].Executable);
         Assert.Equal("/usr/bin/open", executor.Calls[7].Executable);
+        Assert.Equal(new[] { "-n", "/Applications/ParakeetDrop.app" }, executor.Calls[7].Arguments);
     }
 
     [Fact]
@@ -200,7 +217,7 @@ public sealed class ApplicationUpdateTests
         var environment = new StubUpdateEnvironment
         {
             IsMacOS = true,
-            ProcessPath = "/Applications/WhisperDrop.app/Contents/MacOS/WhisperDrop"
+            ProcessPath = "/Applications/ParakeetDrop.app/Contents/MacOS/ParakeetDrop"
         };
         environment.Files.Add("/opt/homebrew/bin/brew");
         environment.ExecutableFiles.Add("/opt/homebrew/bin/brew");

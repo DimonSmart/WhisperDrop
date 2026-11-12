@@ -16,7 +16,7 @@ public sealed class ApplicationPaths : IApplicationPaths
     private readonly string applicationDataFolder;
 
     public ApplicationPaths()
-        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WhisperDrop"))
+        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ParakeetDrop"))
     {
     }
 

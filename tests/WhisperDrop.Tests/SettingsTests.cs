@@ -1,338 +1,190 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
-using WhisperDrop.State;
 using Xunit;
 
 namespace WhisperDrop.Tests;
 
 public sealed class SettingsTests : IDisposable
 {
-    private readonly string root = Path.Combine(Path.GetTempPath(), "WhisperDrop.Tests", Guid.NewGuid().ToString("N"));
-
+    private readonly string root = Path.Combine(Path.GetTempPath(), "ParakeetDrop.Tests", Guid.NewGuid().ToString("N"));
     [Fact]
-    public void Defaults_use_the_platform_application_data_models_folder_base_and_auto()
+    public void Defaults_use_Parakeet_and_do_not_scan_legacy_locations()
     {
         var paths = new ApplicationPaths(root);
         var settings = new JsonUserSettingsStore(paths).Load();
-
-        Assert.Equal(Path.Combine(root, "Models"), settings.ModelsFolder);
-        Assert.Equal("base", settings.SelectedModelId);
-        Assert.Equal("auto", settings.RecognitionLanguageCode);
-        Assert.Equal(TranscriptionTask.Transcribe, settings.Task);
-        Assert.Equal(string.Empty, settings.VocabularyContext);
-        Assert.Equal(224, settings.WhisperMaxContextTokens);
-        Assert.False(settings.WhisperNoContext);
+        Assert.Equal(ParakeetModelCatalog.ModelId, settings.SelectedModelId);
         Assert.Equal(ProcessingDevice.Auto, settings.ProcessingDevice);
         Assert.Null(settings.CpuThreads);
-        Assert.False(settings.AiPostProcessing.Enabled);
-        Assert.Equal(AiProviderPreset.Ollama, settings.AiPostProcessing.Provider);
-        Assert.Equal("http://localhost:11434/v1/", settings.AiPostProcessing.Endpoint);
-        Assert.Equal("gpt-oss:latest", settings.AiPostProcessing.Model);
-        Assert.Equal(string.Empty, settings.AiPostProcessing.Instructions);
-        Assert.Null(settings.AiPostProcessing.ContextSize);
+        Assert.Equal(paths.DefaultModelsFolder, settings.ModelsFolder);
+        Assert.Contains("ParakeetDrop", new ApplicationPaths().SettingsFilePath);
+        Assert.False(Directory.Exists(root));
+        Assert.Single(new ParakeetModelCatalog().Models);
     }
-
     [Fact]
-    public void Save_replaces_settings_and_load_retains_the_user_choices()
+    public void Round_trip_preserves_settings_and_writes_atomically_without_removed_controls()
     {
-        var paths = new ApplicationPaths(root);
-        var store = new JsonUserSettingsStore(paths);
-        var selectedFolder = Path.Combine(root, "custom-models");
-
-        store.Save(new UserSettings
-        {
-            ModelsFolder = selectedFolder,
-            SelectedModelId = "small-en",
-            RecognitionLanguageCode = "es",
-            Task = TranscriptionTask.TranslateToEnglish,
-            VocabularyContext = "C#, .NET, WhisperDrop",
-            WhisperMaxContextTokens = 64,
-            WhisperNoContext = true,
-            ProcessingDevice = ProcessingDevice.Cpu,
-            CpuThreads = 2,
-            AiPostProcessing = new AiPostProcessingSettings
-            {
-                Enabled = true,
-                Provider = AiProviderPreset.CustomOpenAiCompatible,
-                Endpoint = "https://example.com/v1",
-                Model = "local-model",
-                Instructions = "Preserve terminology.",
-                ContextSize = 16384
-            }
-        });
-
-        var loaded = store.Load();
-        Assert.Equal(selectedFolder, loaded.ModelsFolder);
-        Assert.Equal("small-en", loaded.SelectedModelId);
-        Assert.Equal("es", loaded.RecognitionLanguageCode);
-        Assert.Equal(TranscriptionTask.TranslateToEnglish, loaded.Task);
-        Assert.Equal("C#, .NET, WhisperDrop", loaded.VocabularyContext);
-        Assert.Equal(64, loaded.WhisperMaxContextTokens);
-        Assert.True(loaded.WhisperNoContext);
-        Assert.Equal(ProcessingDevice.Cpu, loaded.ProcessingDevice);
-        Assert.Equal(Environment.ProcessorCount >= 2 ? (int?)2 : null, loaded.CpuThreads);
-        Assert.True(loaded.AiPostProcessing.Enabled);
-        Assert.Equal(AiProviderPreset.CustomOpenAiCompatible, loaded.AiPostProcessing.Provider);
-        Assert.Equal("https://example.com/v1/", loaded.AiPostProcessing.Endpoint);
-        Assert.Equal("local-model", loaded.AiPostProcessing.Model);
-        Assert.Equal("Preserve terminology.", loaded.AiPostProcessing.Instructions);
-        Assert.Equal(16384, loaded.AiPostProcessing.ContextSize);
-        Assert.DoesNotContain(Directory.EnumerateFiles(root), path => Path.GetFileName(path).Contains(".tmp", StringComparison.Ordinal));
+        var store = new JsonUserSettingsStore(new ApplicationPaths(root));
+        var settings = new UserSettings { ModelsFolder = root, CpuThreads = 1, ProcessingDevice = ProcessingDevice.Cpu,
+            AiPostProcessing = new() { Model = "custom", Instructions = "verbatim", Enabled = true } };
+        store.Save(settings);
+        Assert.Equal(settings, store.Load());
+        Assert.Empty(Directory.GetFiles(root, "*.tmp"));
+        var json = File.ReadAllText(new ApplicationPaths(root).SettingsFilePath);
+        Assert.DoesNotContain("Whisper", json);
+        Assert.DoesNotContain("Vocabulary", json);
+        Assert.DoesNotContain("Language", json);
     }
-
     [Fact]
-    public void Old_settings_json_gets_new_defaults_without_losing_existing_values()
+    public void Invalid_new_values_normalize_independently()
     {
-        var paths = new ApplicationPaths(root);
         Directory.CreateDirectory(root);
-        File.WriteAllText(
-            paths.SettingsFilePath,
-            "{\"ModelsFolder\":\"custom\",\"SelectedModelId\":\"small\",\"RecognitionLanguageCode\":\"es\"}");
-
-        var loaded = new JsonUserSettingsStore(paths).Load();
-
+        File.WriteAllText(new ApplicationPaths(root).SettingsFilePath,
+            "{\"ModelsFolder\":\"custom\",\"ProcessingDevice\":\"Quantum\",\"CpuThreads\":99999,\"SelectedModelId\":\"unsupported\",\"AiPostProcessing\":{\"Model\":\"keep\"}}");
+        var loaded = new JsonUserSettingsStore(new ApplicationPaths(root)).Load();
         Assert.Equal("custom", loaded.ModelsFolder);
-        Assert.Equal("small", loaded.SelectedModelId);
-        Assert.Equal("es", loaded.RecognitionLanguageCode);
-        Assert.Equal(TranscriptionTask.Transcribe, loaded.Task);
+        Assert.Equal("keep", loaded.AiPostProcessing.Model);
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
-        Assert.Equal(224, loaded.WhisperMaxContextTokens);
-        Assert.False(loaded.WhisperNoContext);
         Assert.Null(loaded.CpuThreads);
-        Assert.False(loaded.AiPostProcessing.Enabled);
-        Assert.Equal(AiProviderPreset.Ollama, loaded.AiPostProcessing.Provider);
+        Assert.Equal(ParakeetModelCatalog.ModelId, loaded.SelectedModelId);
     }
-
     [Fact]
-    public void Invalid_new_settings_are_normalized_without_discarding_model_and_language()
+    public void Malformed_field_types_do_not_discard_unrelated_valid_settings()
     {
-        var paths = new ApplicationPaths(root);
         Directory.CreateDirectory(root);
-        File.WriteAllText(
-            paths.SettingsFilePath,
-            "{\"SelectedModelId\":\"medium\",\"RecognitionLanguageCode\":\"fr\",\"Task\":\"Unexpected\",\"ProcessingDevice\":\"Quantum\",\"CpuThreads\":999999}");
-
-        var loaded = new JsonUserSettingsStore(paths).Load();
-
-        Assert.Equal("medium", loaded.SelectedModelId);
-        Assert.Equal("fr", loaded.RecognitionLanguageCode);
-        Assert.Equal(TranscriptionTask.Transcribe, loaded.Task);
+        File.WriteAllText(new ApplicationPaths(root).SettingsFilePath,
+            "{\"ModelsFolder\":\"custom\",\"ProcessingDevice\":true,\"CpuThreads\":\"bad\",\"SelectedModelId\":42,\"AiPostProcessing\":{\"Enabled\":{},\"Model\":\"keep\"}}");
+        var loaded = new JsonUserSettingsStore(new ApplicationPaths(root)).Load();
+        Assert.Equal("custom", loaded.ModelsFolder);
+        Assert.Equal("keep", loaded.AiPostProcessing.Model);
+        Assert.False(loaded.AiPostProcessing.Enabled);
         Assert.Equal(ProcessingDevice.Auto, loaded.ProcessingDevice);
         Assert.Null(loaded.CpuThreads);
     }
-
+    [Fact]
+    public void Model_availability_requires_exact_size_and_hash_offline()
+    {
+        var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
+        Directory.CreateDirectory(root);
+        var path = availability.GetModelPath(root, TestModelCatalog.Model.Id);
+        Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        File.WriteAllText(path, "wrong"); Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        File.WriteAllBytes(path, TestModelCatalog.Bytes); Assert.True(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        File.AppendAllText(path, "x"); Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+    }
+    [Fact]
+    public async Task Download_verifies_then_atomically_installs_and_reports_progress()
+    {
+        var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
+        var manager = new SelectedModelDownloadManager(catalog, availability, new FakeDownloader());
+        await manager.DownloadAsync(root, TestModelCatalog.Model.Id, null, default);
+        Assert.True(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        Assert.Empty(Directory.GetFiles(root, "*.download"));
+        var installed = Assert.Single(new LocalModelInventory(catalog, availability).GetInstalled(root));
+        Assert.Equal(5, installed.SizeBytes);
+    }
     [Theory]
-    [InlineData(-1, 224)]
-    [InlineData(0, 224)]
-    [InlineData(1, 1)]
-    [InlineData(64, 64)]
-    [InlineData(224, 224)]
-    [InlineData(225, 224)]
-    [InlineData(int.MaxValue, 224)]
-    public void Context_history_size_is_normalized_to_supported_limits(int input, int expected)
+    [InlineData("error")]
+    [InlineData("cancel")]
+    [InlineData("hash")]
+    [InlineData("size")]
+    public async Task Failed_or_cancelled_download_never_installs_partial_bytes(string mode)
     {
-        var paths = new ApplicationPaths(root);
-        var store = new JsonUserSettingsStore(paths);
-        store.Save(new UserSettings { WhisperMaxContextTokens = input, WhisperNoContext = true });
+        var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
+        var manager = new SelectedModelDownloadManager(catalog, availability, new FakeDownloader(mode));
+        await Assert.ThrowsAnyAsync<Exception>(() => manager.DownloadAsync(root, TestModelCatalog.Model.Id, null, default));
+        Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        Assert.Empty(Directory.GetFiles(root));
+    }
+    [Fact]
+    public async Task Cancellation_during_a_download_cleans_the_temporary_file()
+    {
+        var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
+        var transport = new PausingDownloader();
+        var manager = new SelectedModelDownloadManager(catalog, availability, transport);
+        using var cancellation = new CancellationTokenSource();
+        var task = manager.DownloadAsync(root, TestModelCatalog.Model.Id, null, cancellation.Token);
+        await transport.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        Assert.Single(Directory.GetFiles(root, "*.download"));
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+        Assert.Empty(Directory.GetFiles(root));
+    }
 
-        var loaded = store.Load();
-        Assert.Equal(expected, loaded.WhisperMaxContextTokens);
-        Assert.True(loaded.WhisperNoContext);
+    private sealed class PausingDownloader : ISelectedModelDownloader
+    {
+        public TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task DownloadAsync(RecognitionModel model, Stream stream, IProgress<ModelDownloadProgress>? progress, CancellationToken token)
+        {
+            await stream.WriteAsync(new byte[] { 1, 2 }, token);
+            Started.SetResult();
+            await Task.Delay(Timeout.Infinite, token);
+        }
     }
 
     [Fact]
-    public void Model_path_and_presence_follow_the_selected_catalog_model()
+    public async Task HTTP_downloader_copies_bytes_and_reports_the_pinned_total()
     {
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var modelsFolder = Path.Combine(root, "models");
-        var expectedPath = Path.Combine(modelsFolder, "ggml-base.bin");
-
-        Assert.Equal(expectedPath, availability.GetModelPath(modelsFolder, "base"));
-        Assert.False(availability.IsAvailable(modelsFolder, "base"));
-
-        Directory.CreateDirectory(modelsFolder);
-        File.WriteAllText(expectedPath, "complete model");
-
-        Assert.True(availability.IsAvailable(modelsFolder, "base"));
+        using var client = new HttpClient(new BytesHandler());
+        using var destination = new MemoryStream();
+        var progress = new SynchronousProgress();
+        await new SelectedModelDownloader(client).DownloadAsync(TestModelCatalog.Model, destination, progress, default);
+        Assert.Equal(TestModelCatalog.Bytes, destination.ToArray());
+        Assert.Equal(new ModelDownloadProgress(5, 5), progress.Last);
     }
-
-    [Fact]
-    public void Local_inventory_reports_actual_file_sizes_and_ignores_unrelated_files()
+    private sealed class BytesHandler : HttpMessageHandler
     {
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(TestModelCatalog.Bytes) });
+    }
+    private sealed class SynchronousProgress : IProgress<ModelDownloadProgress>
+    {
+        public ModelDownloadProgress? Last;
+        public void Report(ModelDownloadProgress value) => Last = value;
+    }
+    [Fact]
+    public void Deletion_is_catalog_bounded_and_keeps_unrelated_files()
+    {
+        var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
+        Directory.CreateDirectory(root);
+        File.WriteAllBytes(availability.GetModelPath(root, TestModelCatalog.Model.Id), TestModelCatalog.Bytes);
+        File.WriteAllText(Path.Combine(root, "keep.txt"), "keep");
         var inventory = new LocalModelInventory(catalog, availability);
-        var modelsFolder = Path.Combine(root, "models");
-        Directory.CreateDirectory(modelsFolder);
-        File.WriteAllBytes(availability.GetModelPath(modelsFolder, "base"), new byte[1536]);
-        File.WriteAllText(Path.Combine(modelsFolder, "notes.txt"), "keep");
-
-        var installed = inventory.GetInstalled(modelsFolder);
-
-        var model = Assert.Single(installed);
-        Assert.Equal("base", model.Id);
-        Assert.Equal(1536, model.SizeBytes);
-        Assert.Equal("1.5 KB", model.SizeText);
+        Assert.Throws<ArgumentOutOfRangeException>(() => inventory.Delete(root, "../keep.txt"));
+        inventory.DeleteAll(root);
+        Assert.Equal("keep.txt", Path.GetFileName(Assert.Single(Directory.GetFiles(root))));
     }
-
-    [Fact]
-    public void Delete_all_removes_only_known_model_files()
+    [Theory]
+    [InlineData(404, "missing")]
+    [InlineData(429, "rate limiting")]
+    [InlineData(503, "network")]
+    public async Task Download_errors_are_actionable(int status, string expected)
     {
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var inventory = new LocalModelInventory(catalog, availability);
-        var modelsFolder = Path.Combine(root, "models");
-        Directory.CreateDirectory(modelsFolder);
-        File.WriteAllText(availability.GetModelPath(modelsFolder, "base"), "base");
-        File.WriteAllText(availability.GetModelPath(modelsFolder, "small"), "small");
-        var unrelatedPath = Path.Combine(modelsFolder, "notes.txt");
-        File.WriteAllText(unrelatedPath, "keep");
-
-        inventory.DeleteAll(modelsFolder);
-
-        Assert.Empty(inventory.GetInstalled(modelsFolder));
-        Assert.True(File.Exists(unrelatedPath));
+        using var client = new HttpClient(new ResponseHandler(status));
+        using var destination = new MemoryStream();
+        var error = await Assert.ThrowsAsync<IOException>(() => new SelectedModelDownloader(client).DownloadAsync(TestModelCatalog.Model, destination, null, default));
+        Assert.Contains(expected, error.Message);
     }
-
-    [Fact]
-    public void Settings_are_retained_without_any_workspace_data()
+    private sealed class ResponseHandler(int code) : HttpMessageHandler
     {
-        var paths = new ApplicationPaths(root);
-        var store = new JsonUserSettingsStore(paths);
-        store.Save(new UserSettings
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => Task.FromResult(new HttpResponseMessage((HttpStatusCode)code));
+    }
+    private sealed class FakeDownloader(string mode = "ok") : ISelectedModelDownloader
+    {
+        public async Task DownloadAsync(RecognitionModel model, Stream stream, IProgress<ModelDownloadProgress>? progress, CancellationToken token)
         {
-            ModelsFolder = Path.Combine(root, "models"),
-            SelectedModelId = "medium",
-            RecognitionLanguageCode = "fr"
-        });
-
-        var json = File.ReadAllText(paths.SettingsFilePath);
-        Assert.DoesNotContain("transcript", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("workspace", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("progress", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ApiKey", json, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task Download_finalizes_a_complete_model_without_leaving_a_download_file()
-    {
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var downloader = new TestDownloader("complete model");
-        var manager = new SelectedModelDownloadManager(catalog, availability, downloader);
-        var modelsFolder = Path.Combine(root, "models");
-
-        await manager.DownloadAsync(modelsFolder, "base", progress: null, CancellationToken.None);
-
-        Assert.True(availability.IsAvailable(modelsFolder, "base"));
-        Assert.Equal("complete model", File.ReadAllText(availability.GetModelPath(modelsFolder, "base")));
-        Assert.Empty(Directory.EnumerateFiles(modelsFolder, "*.download"));
-    }
-
-    [Fact]
-    public async Task Download_error_cleans_up_incomplete_file_and_never_marks_the_model_available()
-    {
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var manager = new SelectedModelDownloadManager(catalog, availability, new TestDownloader(exception: new IOException("network failed")));
-        var modelsFolder = Path.Combine(root, "models");
-
-        await Assert.ThrowsAsync<IOException>(() => manager.DownloadAsync(modelsFolder, "base", progress: null, CancellationToken.None));
-
-        Assert.False(availability.IsAvailable(modelsFolder, "base"));
-        Assert.Empty(Directory.EnumerateFiles(modelsFolder, "*.download"));
-    }
-
-    [Fact]
-    public async Task Selected_model_is_reevaluated_and_never_downloads_until_requested()
-    {
-        var paths = new ApplicationPaths(root);
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var downloader = new TestDownloader("base model");
-        var state = new InitialApplicationState(
-            new JsonUserSettingsStore(paths),
-            catalog,
-            new RecognitionLanguageCatalog(),
-            availability,
-            new SelectedModelDownloadManager(catalog, availability, downloader));
-
-        Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
-        Assert.Equal(0, downloader.CallCount);
-        Assert.Empty(state.InstalledModels);
-
-        await state.DownloadSelectedModelAsync();
-
-        Assert.Equal(1, downloader.CallCount);
-        Assert.Equal(SelectedModelDownloadState.Downloaded, state.SelectedModelDownloadState);
-        Assert.Single(state.InstalledModels);
-
-        state.SelectedModelId = "small";
-        Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
-        state.ModelsFolder = Path.Combine(root, "another-models-folder");
-        Assert.Equal(SelectedModelDownloadState.NotDownloaded, state.SelectedModelDownloadState);
-        Assert.Empty(state.InstalledModels);
-    }
-
-    [Fact]
-    public async Task Download_failure_is_an_actionable_selected_model_error()
-    {
-        var paths = new ApplicationPaths(root);
-        var catalog = new WhisperModelCatalog();
-        var availability = new SelectedModelAvailability(catalog);
-        var state = new InitialApplicationState(
-            new JsonUserSettingsStore(paths),
-            catalog,
-            new RecognitionLanguageCatalog(),
-            availability,
-            new SelectedModelDownloadManager(catalog, availability, new TestDownloader(exception: new IOException("folder unavailable"))));
-
-        await state.DownloadSelectedModelAsync();
-
-        Assert.Equal(SelectedModelDownloadState.Error, state.SelectedModelDownloadState);
-        Assert.True(state.CanDownloadSelectedModel);
-        Assert.Contains("Download failed", state.SelectedModelStatus);
-    }
-
-    private sealed class TestDownloader : ISelectedModelDownloader
-    {
-        private readonly string content;
-        private readonly Exception? exception;
-
-        public TestDownloader(string content = "", Exception? exception = null)
-        {
-            this.content = content;
-            this.exception = exception;
-        }
-
-        public int CallCount { get; private set; }
-
-        public async Task DownloadAsync(RecognitionModel model, Stream destination, IProgress<ModelDownloadProgress>? progress, CancellationToken cancellationToken)
-        {
-            CallCount++;
-            if (exception is not null)
-            {
-                await destination.WriteAsync(new byte[] { 1 }, cancellationToken);
-                throw exception;
-            }
-
-            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            await destination.WriteAsync(bytes, cancellationToken);
-            progress?.Report(new ModelDownloadProgress(bytes.Length, bytes.Length));
+            await stream.WriteAsync(mode == "hash" ? "wrong"u8.ToArray() : mode == "size" ? [1] : TestModelCatalog.Bytes, token);
+            if (mode == "error") throw new IOException("network failed");
+            if (mode == "cancel") throw new OperationCanceledException();
+            progress?.Report(new(TestModelCatalog.Bytes.Length, model.SizeBytes));
         }
     }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(root))
-        {
-            Directory.Delete(root, true);
-        }
-    }
+    public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

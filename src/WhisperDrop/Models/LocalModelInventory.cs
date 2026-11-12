@@ -35,10 +35,10 @@ public interface ILocalModelInventory
 
 public sealed class LocalModelInventory : ILocalModelInventory
 {
-    private readonly IWhisperModelCatalog catalog;
+    private readonly IRecognitionModelCatalog catalog;
     private readonly ISelectedModelAvailability availability;
 
-    public LocalModelInventory(IWhisperModelCatalog catalog, ISelectedModelAvailability availability)
+    public LocalModelInventory(IRecognitionModelCatalog catalog, ISelectedModelAvailability availability)
     {
         this.catalog = catalog;
         this.availability = availability;
@@ -72,7 +72,7 @@ public sealed class LocalModelInventory : ILocalModelInventory
     private LocalModelInfo? CreateInstalledModel(string modelsFolder, RecognitionModel model)
     {
         var path = availability.GetModelPath(modelsFolder, model.Id);
-        if (!File.Exists(path))
+        if (!availability.IsAvailable(modelsFolder, model.Id))
         {
             return null;
         }

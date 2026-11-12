@@ -32,7 +32,7 @@ internal sealed class TranscriptEnhancementDiagnostics : ITranscriptEnhancementD
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine(
-                $"[WhisperDrop.AI] Could not create AI diagnostic file: {exception.GetType().Name}");
+                $"[ParakeetDrop.AI] Could not create AI diagnostic file: {exception.GetType().Name}");
         }
     }
 
@@ -45,7 +45,7 @@ internal sealed class TranscriptEnhancementDiagnostics : ITranscriptEnhancementD
 
     public void Write(string message)
     {
-        var line = $"[WhisperDrop.AI] {DateTimeOffset.Now:O} operation={currentOperationId.Value ?? "unscoped"} {message}";
+        var line = $"[ParakeetDrop.AI] {DateTimeOffset.Now:O} operation={currentOperationId.Value ?? "unscoped"} {message}";
         Console.Error.WriteLine(line);
         try
         {
@@ -57,7 +57,7 @@ internal sealed class TranscriptEnhancementDiagnostics : ITranscriptEnhancementD
         catch (Exception exception) when (exception is IOException or ObjectDisposedException)
         {
             Console.Error.WriteLine(
-                $"[WhisperDrop.AI] Could not write diagnostic file: {exception.GetType().Name}");
+                $"[ParakeetDrop.AI] Could not write diagnostic file: {exception.GetType().Name}");
         }
     }
 
@@ -146,7 +146,7 @@ internal sealed class TranscriptEnhancementDiagnostics : ITranscriptEnhancementD
         catch (IOException exception)
         {
             Console.Error.WriteLine(
-                $"[WhisperDrop.AI] Could not finalize diagnostic file: {exception.GetType().Name}");
+                $"[ParakeetDrop.AI] Could not finalize diagnostic file: {exception.GetType().Name}");
         }
     }
 

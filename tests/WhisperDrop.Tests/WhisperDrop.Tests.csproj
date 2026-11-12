@@ -11,25 +11,20 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-    <PackageReference Include="Whisper.net" Version="1.9.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="8.0.0.1" />
     <PackageReference Include="DevEnvy.FFmpeg.Binaries.LGPL" Version="8.0.1.4" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/WhisperDrop/State/Parakeet*.cs" Link="State/%(Filename)%(Extension)" />
+    <Compile Include="../../src/WhisperDrop/Models/ParakeetModelCatalog.cs" Link="Models/ParakeetModelCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Media/*.cs" Link="Media/%(Filename)%(Extension)" />
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
-    <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionService.cs" Link="State/WhisperRecognitionService.cs" />
-    <Compile Include="../../src/WhisperDrop/State/WhisperGapRecovery.cs" Link="State/WhisperGapRecovery.cs" />
-    <Compile Include="../../src/WhisperDrop/State/WhisperRepetitionGuard.cs" Link="State/WhisperRepetitionGuard.cs" />
-    <Compile Include="../../src/WhisperDrop/State/WhisperRecognitionDiagnostics.cs" Link="State/WhisperRecognitionDiagnostics.cs" />
+    <Compile Include="../../src/WhisperDrop/State/ApplicationAcceptanceProbe.cs" Link="State/ApplicationAcceptanceProbe.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
     <Compile Include="../../src/WhisperDrop/State/TranscriptEnhancement.cs" Link="State/TranscriptEnhancement.cs" />
     <Compile Include="../../src/WhisperDrop/State/TranscriptCorrectionHints.cs" Link="State/TranscriptCorrectionHints.cs" />
-    <Compile Include="../../src/WhisperDrop/State/WhisperRuntimeSelector.cs" Link="State/WhisperRuntimeSelector.cs" />
     <Compile Include="../../src/WhisperDrop/State/FileQueueAddResult.cs" Link="State/FileQueueAddResult.cs" />
-    <Compile Include="../../src/WhisperDrop/Models/WhisperModelCatalog.cs" Link="Models/WhisperModelCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Models/LocalModelInventory.cs" Link="Models/LocalModelInventory.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionModelOption.cs" Link="Models/RecognitionModelOption.cs" />
     <Compile Include="../../src/WhisperDrop/Models/RecognitionLanguageCatalog.cs" Link="Models/RecognitionLanguageCatalog.cs" />
@@ -46,6 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="../../artifacts/parakeet/osx-arm64/*" Link="parakeet/osx-arm64/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures/*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/WhisperDrop/Assets/Ffmpeg/win-x64/*.dll"
           Link="ffmpeg/win-x64/%(Filename)%(Extension)"

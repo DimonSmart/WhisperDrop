@@ -1,26 +1,46 @@
+using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace WhisperDrop.Models;
 
 public interface ISelectedModelAvailability
 {
     string GetModelPath(string modelsFolder, string modelId);
-
     bool IsAvailable(string modelsFolder, string modelId);
 }
 
-public sealed class SelectedModelAvailability : ISelectedModelAvailability
+public static class ModelIntegrity
 {
-    private readonly IWhisperModelCatalog catalog;
-
-    public SelectedModelAvailability(IWhisperModelCatalog catalog)
+    public static bool Verify(string path, RecognitionModel model)
     {
-        this.catalog = catalog;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return stream.Length == model.SizeBytes &&
+                Convert.ToHexString(SHA256.HashData(stream)).Equals(model.Sha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
-    public string GetModelPath(string modelsFolder, string modelId) =>
-        Path.Combine(modelsFolder, catalog.Get(modelId).FileName);
+    public static async Task<bool> VerifyAsync(string path, RecognitionModel model, CancellationToken token)
+    {
+        try
+        {
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024, true);
+            return stream.Length == model.SizeBytes &&
+                Convert.ToHexString(await SHA256.HashDataAsync(stream, token).ConfigureAwait(false)).Equals(model.Sha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+}
 
-    public bool IsAvailable(string modelsFolder, string modelId) =>
-        File.Exists(GetModelPath(modelsFolder, modelId));
+public sealed class SelectedModelAvailability(IRecognitionModelCatalog catalog) : ISelectedModelAvailability
+{
+    public string GetModelPath(string modelsFolder, string modelId) => Path.Combine(modelsFolder, catalog.Get(modelId).FileName);
+    public bool IsAvailable(string modelsFolder, string modelId) => ModelIntegrity.Verify(GetModelPath(modelsFolder, modelId), catalog.Get(modelId));
 }

@@ -13,6 +13,8 @@ public enum TranscriptionState
     Preparing,
     Transcribing,
     Completed,
+    Incomplete,
+    Cancelled,
     Error
 }
 
@@ -82,6 +84,8 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     {
         TranscriptionState.Preparing => "Preparing",
         TranscriptionState.Transcribing => "Transcribing",
+        TranscriptionState.Incomplete => "Incomplete",
+        TranscriptionState.Cancelled => "Cancelled",
         TranscriptionState.Error => "Error",
         TranscriptionState.Completed when AiEnhancementState == AiEnhancementState.Pending => "Waiting for AI",
         TranscriptionState.Completed when AiEnhancementState == AiEnhancementState.Improving => "Improving",

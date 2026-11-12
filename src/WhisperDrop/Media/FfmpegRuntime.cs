@@ -64,6 +64,9 @@ public sealed class FfmpegRuntime : IFfmpegRuntime
                 DynamicallyLoadedBindings.LibrariesPath = librariesPath;
                 DynamicallyLoadedBindings.ThrowErrorIfFunctionNotFound = true;
                 DynamicallyLoadedBindings.Initialize();
+                // FFmpeg's default stderr diagnostics can contain private source paths.
+                // The media layer already returns fixed, actionable error categories.
+                ffmpeg.av_log_set_level(ffmpeg.AV_LOG_QUIET);
 
                 var avCodec = ffmpeg.avcodec_version();
                 var avFormat = ffmpeg.avformat_version();

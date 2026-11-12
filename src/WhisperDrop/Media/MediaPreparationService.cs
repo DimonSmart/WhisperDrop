@@ -11,9 +11,16 @@ public sealed class MediaPreparationService : IMediaPreparationService
     private readonly string temporaryDirectory;
 
     public MediaPreparationService(IFfmpegRuntime runtime)
+        : this(runtime, Path.GetTempPath())
+    {
+    }
+
+    // The root can be isolated by tests; both cleanup and decoding always stay
+    // within the new application-owned area. Never discover legacy temp paths.
+    internal MediaPreparationService(IFfmpegRuntime runtime, string temporaryRoot)
     {
         this.runtime = runtime;
-        temporaryDirectory = Path.Combine(Path.GetTempPath(), "WhisperDrop", "media");
+        temporaryDirectory = Path.Combine(temporaryRoot, "ParakeetDrop", "media");
         TryCleanStaleFiles();
     }
 

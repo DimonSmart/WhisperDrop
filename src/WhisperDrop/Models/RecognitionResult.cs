@@ -18,6 +18,10 @@ public sealed record RecognitionResult(
     string? DetectedLanguage,
     IReadOnlyList<RecognitionSegment> Segments)
 {
+    public bool IsComplete { get; init; } = true;
+
+    public string? Backend { get; init; }
+
     public string? QualityWarning { get; init; }
 
     public RecognitionResult(string transcript, string? detectedLanguage)

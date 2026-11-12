@@ -1,11 +1,5 @@
 namespace WhisperDrop.Settings;
 
-public enum TranscriptionTask
-{
-    Transcribe,
-    TranslateToEnglish
-}
-
 public enum ProcessingDevice
 {
     Auto,
@@ -38,29 +32,11 @@ public sealed record UserSettings
 {
     public string? ModelsFolder { get; init; }
 
-    public string SelectedModelId { get; init; } = "base";
-
-    public string RecognitionLanguageCode { get; init; } = "auto";
-
-    public TranscriptionTask Task { get; init; } = TranscriptionTask.Transcribe;
-
-    public string VocabularyContext { get; init; } = string.Empty;
-
-    public int WhisperMaxContextTokens { get; init; } = WhisperContextLimits.DefaultTokens;
-
-    public bool WhisperNoContext { get; init; }
+    public string SelectedModelId { get; init; } = "parakeet-ultra-q8_0";
 
     public ProcessingDevice ProcessingDevice { get; init; } = ProcessingDevice.Auto;
 
     public int? CpuThreads { get; init; }
 
     public AiPostProcessingSettings AiPostProcessing { get; init; } = new();
-}
-
-/// <summary>Whisper.cpp uses at most half of its 448-token decoder text context for previous text.</summary>
-public static class WhisperContextLimits
-{
-    public const int MinTokens = 1;
-    public const int MaxTokens = 224;
-    public const int DefaultTokens = MaxTokens;
 }
