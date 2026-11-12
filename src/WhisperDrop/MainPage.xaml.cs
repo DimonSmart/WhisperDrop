@@ -53,6 +53,18 @@ public sealed partial class MainPage : Page
         AddFiles(files.Select(file => file.Path));
     }
 
+    private async void Microphone_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await ViewModel.ToggleMicrophoneRecordingAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorDialogAsync("Microphone recording failed", exception.Message);
+        }
+    }
+
     private async void BrowseModelsFolder_Click(object sender, RoutedEventArgs e)
     {
         var picker = new FolderPicker

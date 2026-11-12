@@ -35,6 +35,9 @@ public partial class App : Application
                 services.AddSingleton<IRecognitionRuntimeSelector, ParakeetRuntimeSelector>();
                 services.AddSingleton<IFfmpegRuntime, FfmpegRuntime>();
                 services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
+                services.AddSingleton<IMicrophoneCaptureService>(_ => OperatingSystem.IsMacOS()
+                    ? new MacOsMicrophoneCaptureService()
+                    : new UnsupportedMicrophoneCaptureService());
                 services.AddSingleton<IRecognitionService, ParakeetRecognitionService>();
                 services.AddSingleton<TranscriptChunker>();
                 services.AddSingleton<ITranscriptEnhancementDiagnostics, TranscriptEnhancementDiagnostics>();
@@ -62,6 +65,7 @@ public partial class App : Application
             Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
+        MainWindow.Closed += (_, _) => host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession();
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
         var state = host.Services.GetRequiredService<InitialApplicationState>();
         ApplicationAcceptanceProbe.Record("launch", new { queueCount = state.QueueRows.Count,

@@ -255,6 +255,12 @@
                         </StackPanel>
                     </Button>
                     <Button
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="Microphone_Click"
+                        Content="{x:Bind ViewModel.MicrophoneActionLabel, Mode=OneWay}"
+                        IsEnabled="{x:Bind ViewModel.CanUseMicrophone, Mode=OneWay}"
+                        ToolTipService.ToolTip="{x:Bind ViewModel.MicrophoneAvailabilityMessage, Mode=OneWay}" />
+                    <Button
                         Style="{StaticResource SubtleButtonStyle}"
                         Click="CopyAll_Click"
                         IsEnabled="{x:Bind ViewModel.CanCopyAll, Mode=OneWay}"
@@ -275,6 +281,15 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
+                <TextBlock
+                    Grid.Row="1"
+                    Grid.Column="2"
+                    Grid.ColumnSpan="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CaptionTextStyle}"
+                    Text="{x:Bind ViewModel.MicrophoneStatusMessage, Mode=OneWay}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind ViewModel.MicrophoneStatusMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
             </Grid>
 
             <Border

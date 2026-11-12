@@ -75,6 +75,8 @@ def verify_app(app, version):
     require(plist["CFBundleShortVersionString"] == version, "Bundle version differs from tag")
     require(plist["CFBundleIdentifier"] == "io.dimonsmart.parakeetdrop", "Incorrect application identity")
     require(plist["CFBundleExecutable"] == "ParakeetDrop", "Incorrect executable name")
+    require(plist.get("NSMicrophoneUsageDescription") == "ParakeetDrop records audio only when you start a microphone recording.",
+            "Missing or incorrect macOS microphone permission description")
     executable = app / "Contents/MacOS/ParakeetDrop"
     require(executable.is_file() and os.access(executable, os.X_OK), "Missing executable app host")
     for path in (resources / "ParakeetDrop.dll", executable.parent / "ParakeetDrop.runtimeconfig.json",
@@ -208,6 +210,10 @@ def main():
             f"-p:Version={version}", f"-p:AssemblyVersion={version}.0", f"-p:FileVersion={version}.0", f"-p:InformationalVersion={version}", f"-p:ApplicationDisplayVersion={version}")
         app = publish / "ParakeetDrop.app"
         resources = app / "Contents/Resources"
+        info_plist = app / "Contents/Info.plist"
+        plist = plistlib.loads(info_plist.read_bytes())
+        plist["NSMicrophoneUsageDescription"] = "ParakeetDrop records audio only when you start a microphone recording."
+        info_plist.write_bytes(plistlib.dumps(plist, sort_keys=False))
         # Uno flattens the .NET ICU filenames, but ICU 77 retains its versioned
         # sibling load command. Repair only this known package relocation.
         icu = app / "Contents/MacOS/libicuuc.dylib"

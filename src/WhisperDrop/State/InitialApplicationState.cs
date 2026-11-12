@@ -26,6 +26,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ISelectedModelDownloadManager downloadManager;
     private readonly IRecognitionService recognitionService;
     private readonly IMediaPreparationService mediaPreparationService;
+    private readonly IMicrophoneCaptureService microphoneCaptureService;
     private readonly ITranscriptEnhancementService transcriptEnhancementService;
     private readonly IRecognitionLanguageCatalog languageCatalog;
     private readonly ILocalModelInventory localModelInventory;
@@ -41,6 +42,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private string aiApiKey = string.Empty;
     private string? aiConnectionStatus;
     private bool isAiConnectionTesting;
+    private bool isMicrophoneRecording;
+    private string? microphoneRecordingStatus;
     private CancellationTokenSource? activeTranscription;
 
     public bool CanCancelTranscription => activeTranscription is not null && !activeTranscription.IsCancellationRequested;
@@ -61,7 +64,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ITranscriptEnhancementService? transcriptEnhancementService = null,
         ILocalModelInventory? localModelInventory = null,
         IRecognitionRuntimeSelector? runtimeSelector = null,
-        IMediaPreparationService? mediaPreparationService = null)
+        IMediaPreparationService? mediaPreparationService = null,
+        IMicrophoneCaptureService? microphoneCaptureService = null)
     {
         this.settingsStore = settingsStore;
         this.modelCatalog = modelCatalog;
@@ -70,6 +74,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         this.runtimeSelector = runtimeSelector ?? new ParakeetRuntimeSelector();
         this.recognitionService = recognitionService ?? new ParakeetRecognitionService(this.runtimeSelector);
         this.mediaPreparationService = mediaPreparationService ?? new DirectMediaPreparationService();
+        this.microphoneCaptureService = microphoneCaptureService ?? new UnsupportedMicrophoneCaptureService();
         this.transcriptEnhancementService = transcriptEnhancementService ?? new UnavailableTranscriptEnhancementService();
         this.localModelInventory = localModelInventory ?? new LocalModelInventory(modelCatalog, availability);
         this.languageCatalog = languageCatalog;
@@ -319,14 +324,86 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool IsTranscribeWorkspaceEmpty => QueueRows.Count == 0;
 
+    public bool IsMicrophoneRecording => isMicrophoneRecording;
+
+    public string MicrophoneActionLabel => IsMicrophoneRecording ? "Stop recording" : "Record microphone";
+
+    public string MicrophoneAvailabilityMessage => microphoneCaptureService.AvailabilityMessage;
+
+    public string? MicrophoneRecordingStatus
+    {
+        get => microphoneRecordingStatus;
+        private set
+        {
+            if (EqualityComparer<string?>.Default.Equals(microphoneRecordingStatus, value))
+                return;
+            SetField(ref microphoneRecordingStatus, value);
+            OnPropertyChanged(nameof(MicrophoneStatusMessage));
+        }
+    }
+
+    public string MicrophoneStatusMessage => microphoneCaptureService.IsSupported
+        ? MicrophoneRecordingStatus ?? string.Empty
+        : MicrophoneAvailabilityMessage;
+
+    public bool CanUseMicrophone => IsMicrophoneRecording ||
+        (microphoneCaptureService.IsSupported && activeTranscription is null && !IsBatchActive);
+
+    public async Task ToggleMicrophoneRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsMicrophoneRecording)
+        {
+            try
+            {
+                var recordingPath = await microphoneCaptureService.StopAsync(cancellationToken);
+                isMicrophoneRecording = false;
+                OnPropertyChanged(nameof(IsMicrophoneRecording));
+                OnPropertyChanged(nameof(MicrophoneActionLabel));
+                OnPropertyChanged(nameof(CanUseMicrophone));
+                AddFiles([recordingPath]);
+                MicrophoneRecordingStatus = "Recording added to the queue.";
+                RefreshQueueActionState();
+                return;
+            }
+            catch
+            {
+                isMicrophoneRecording = false;
+                OnPropertyChanged(nameof(IsMicrophoneRecording));
+                OnPropertyChanged(nameof(MicrophoneActionLabel));
+                OnPropertyChanged(nameof(CanUseMicrophone));
+                MicrophoneRecordingStatus = null;
+                RefreshQueueActionState();
+                throw;
+            }
+        }
+
+        if (!microphoneCaptureService.IsSupported)
+            return;
+
+        MicrophoneRecordingStatus = null;
+        await microphoneCaptureService.StartAsync(cancellationToken);
+        isMicrophoneRecording = true;
+        OnPropertyChanged(nameof(IsMicrophoneRecording));
+        OnPropertyChanged(nameof(MicrophoneActionLabel));
+        OnPropertyChanged(nameof(CanUseMicrophone));
+        MicrophoneRecordingStatus = "Recording from the selected microphone…";
+        RefreshQueueActionState();
+    }
+
     public bool IsBatchActive
     {
         get => isBatchActive;
-        private set => SetField(ref isBatchActive, value);
+        private set
+        {
+            if (isBatchActive == value)
+                return;
+            SetField(ref isBatchActive, value);
+            OnPropertyChanged(nameof(CanUseMicrophone));
+        }
     }
 
     public bool CanReorderQueue => activeTranscription is null && !IsBatchActive;
-    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && QueueRows.Any();
+    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && !IsMicrophoneRecording && QueueRows.Any();
     public bool CanCopyAll => QueueRows.Any(row => row.CanCopy);
 
     public string? TranscriptionGuidance
@@ -524,6 +601,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         activeTranscription = cancellation;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         OnPropertyChanged(nameof(CanCancelTranscription));
+        OnPropertyChanged(nameof(CanUseMicrophone));
         RefreshQueueActionState();
         try { await operation(cancellation.Token); }
         finally
@@ -531,6 +609,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
             ApplicationAcceptanceProbe.RecordRun(this, timer.Elapsed);
             activeTranscription = null;
             OnPropertyChanged(nameof(CanCancelTranscription));
+            OnPropertyChanged(nameof(CanUseMicrophone));
             RefreshQueueActionState();
         }
     }
@@ -1017,6 +1096,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 IsSelectedModelAvailable &&
                 activeTranscription is null &&
                 !IsBatchActive &&
+                !IsMicrophoneRecording &&
                 !row.IsProcessing &&
                 row.AiEnhancementState != AiEnhancementState.Improving;
             row.CanEnhance =

@@ -47,6 +47,30 @@
     <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)" DestinationFolder="$(PublishDir)ffmpeg/win-x64" SkipUnchangedFiles="true" Condition="'$(PublishDir)' != ''" />
   </Target>
 
+  <Target Name="BuildMicrophonePermissionBridge"
+          BeforeTargets="CoreCompile"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <MakeDir Directories="$(IntermediateOutputPath)native" />
+    <Exec Command="xcrun --sdk macosx clang -dynamiclib -fobjc-arc -framework AVFoundation -framework Foundation -Wl,-install_name,@rpath/libparakeetdrop_microphone.dylib &quot;$(MSBuildProjectDirectory)/../../native/microphone/permission.m&quot; -o &quot;$(IntermediateOutputPath)native/libparakeetdrop_microphone.dylib&quot;" />
+  </Target>
+
+  <Target Name="CopyMicrophonePermissionBridge" AfterTargets="Build;Publish">
+    <ItemGroup>
+      <_MicrophonePermissionBridge Include="$(IntermediateOutputPath)native/libparakeetdrop_microphone.dylib"
+                                   Condition="Exists('$(IntermediateOutputPath)native/libparakeetdrop_microphone.dylib')" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutDir)native" Condition="'@(_MicrophonePermissionBridge)' != ''" />
+    <Copy SourceFiles="@(_MicrophonePermissionBridge)"
+          DestinationFolder="$(OutDir)native"
+          SkipUnchangedFiles="true"
+          Condition="'@(_MicrophonePermissionBridge)' != ''" />
+    <MakeDir Directories="$(PublishDir)native" Condition="'$(PublishDir)' != '' and '@(_MicrophonePermissionBridge)' != ''" />
+    <Copy SourceFiles="@(_MicrophonePermissionBridge)"
+          DestinationFolder="$(PublishDir)native"
+          SkipUnchangedFiles="true"
+          Condition="'$(PublishDir)' != '' and '@(_MicrophonePermissionBridge)' != ''" />
+  </Target>
+
   <ItemGroup>
     <Content Include="../../THIRD-PARTY-NOTICES.md"
              Link="THIRD-PARTY-NOTICES.md"
@@ -73,16 +97,18 @@
        and the application runtime selectors expect them. -->
   <Target Name="CopyBundledRuntimesToMacOsApp"
           AfterTargets="_UnoPublishAppBundle"
-          DependsOnTargets="PublishFFmpegBinaries;CopyBundledParakeetRuntime;RemoveBundledFfmpegCliFromPublish"
+          DependsOnTargets="PublishFFmpegBinaries;CopyBundledParakeetRuntime;RemoveBundledFfmpegCliFromPublish;CopyMicrophonePermissionBridge"
           Condition="'$(PackageFormat)' == 'app' and ('$(RuntimeIdentifier)' == 'osx-arm64' )">
     <ItemGroup>
       <_MacAppFfmpegLibrary Include="$(PublishDir)ffmpeg/$(RuntimeIdentifier)/*.dylib" />
       <_MacAppParakeetLibrary Include="$(PublishDir)parakeet/osx-arm64/*" />
+      <_MacAppMicrophoneBridge Include="$(PublishDir)native/libparakeetdrop_microphone.dylib" />
     </ItemGroup>
-    <Error Condition="'@(_MacAppFfmpegLibrary)' == '' or '@(_MacAppParakeetLibrary)' == ''"
-           Text="Native media and Parakeet libraries are required in the macOS app bundle." />
+    <Error Condition="'@(_MacAppFfmpegLibrary)' == '' or '@(_MacAppParakeetLibrary)' == '' or '@(_MacAppMicrophoneBridge)' == ''"
+           Text="Native media, Parakeet, and microphone permission libraries are required in the macOS app bundle." />
     <Copy SourceFiles="@(_MacAppFfmpegLibrary)" DestinationFolder="$(AppBundlePath)/Contents/Resources/ffmpeg/$(RuntimeIdentifier)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_MacAppParakeetLibrary)" DestinationFolder="$(AppBundlePath)/Contents/Resources/parakeet/osx-arm64" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_MacAppMicrophoneBridge)" DestinationFolder="$(AppBundlePath)/Contents/Resources/native" SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="PrepareWindowsRuntimeAppIcon"
