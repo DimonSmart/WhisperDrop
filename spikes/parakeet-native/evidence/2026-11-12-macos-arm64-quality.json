@@ -1,0 +1,790 @@
+{
+  "dateUtc": "2026-11-12",
+  "replacementGate": "closed",
+  "scope": "Local isolated spike measurements and automatic boundary consistency triage; no application or packaging changes.",
+  "host": {
+    "os": "macOS 26.7.2 (25G332)",
+    "kernel": "Darwin 25.6.0 arm64",
+    "cpu": "Apple M4 Pro, 14 cores (10 performance + 4 efficiency)",
+    "gpu": "Apple M4 Pro 20-core, Metal 4",
+    "ramBytes": 51539607552,
+    "dotnetSdk": "10.0.400",
+    "dotnetRuntime": "10.0.11",
+    "cmake": "4.2.3",
+    "compiler": "Apple clang 21.0.0 (clang-2100.4.1.1)",
+    "xcode": "27.2 (27B52)",
+    "macosSdk": "27.2"
+  },
+  "pins": {
+    "transcribeRepository": "https://github.com/handy-computer/transcribe.cpp.git",
+    "transcribeCommit": "275cd50d2c4104c204009a197ac091b9687668e5",
+    "headerVersion": "0.4.2",
+    "headerSha256": "5c8267936370f40d911866df8617cb320dda6dba951e5ba89287645988105dbf",
+    "ggmlStorage": "vendored, not a Git submodule",
+    "ggmlBaseCommit": "d7cb574130e6f01ad25b3289685489200febcd74",
+    "ggmlPatches": [
+      "0001-fix-threadpool-oversubscription.patch",
+      "0002-backend-reg-filter.patch",
+      "0003-metal-mapped-buffer-null.patch",
+      "0004-cpu-x86-score-os-xsave-check.patch"
+    ],
+    "modelRevision": "a1539be1b849ea7463b88343e5277b373d0c4ea9",
+    "modelFile": "parakeet-ultra-Q8_0.gguf",
+    "modelUrl": "https://huggingface.co/handy-computer/parakeet-ultra-gguf/resolve/a1539be1b849ea7463b88343e5277b373d0c4ea9/parakeet-ultra-Q8_0.gguf",
+    "modelBytes": 740363168,
+    "modelSha256": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+    "modelLicense": "CC-BY-4.0",
+    "cmakeVersionUsed": "4.2.3",
+    "replacementGate": "closed"
+  },
+  "modelBytesMeasured": 740363168,
+  "modelSha256Measured": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+  "nativeManifest": {
+    "libggml-cpu.so": {
+      "bytes": 994304,
+      "sha256": "fd6f7997b7bf5e44e7f3dfece378eae48fbed57b5bac2fa10577240134b12e43"
+    },
+    "libggml.0.dylib": {
+      "bytes": 78176,
+      "sha256": "018ecb2e4aca78b81dde3f90b151060c26776539a1c250835792da4255c01029"
+    },
+    "libtranscribe.dylib": {
+      "bytes": 1973280,
+      "sha256": "37ca433e4d7da9b929cbbbea8ae12086c4ff8f6963d9a6bcf11dc48aec2bcb51"
+    },
+    "libggml-metal.so": {
+      "bytes": 5520080,
+      "sha256": "11e5293d95d4d4cf5500a0f16086d029173638b2feef5e1e680a2e8dfe29e1e4"
+    },
+    "libggml-base.0.dylib": {
+      "bytes": 767088,
+      "sha256": "9803c4922331324eac1716842ef25c5d5c1fdfbc5e5121051019f08c3f710650"
+    }
+  },
+  "preparation": {
+    "decodeWallSeconds": 1.9030924999970011,
+    "sourceBytes": 81937025,
+    "preparedBytes": 247354708,
+    "preparedSha256": "767759046254a0e66b7eb6caaef914e7e5148a229018526fd155a1dfbcb2af57"
+  },
+  "longFormRerun": {
+    "format": "16000 Hz mono little-endian float32",
+    "samples": 61838677,
+    "audioSeconds": 3864.9173125,
+    "reports": [
+      {
+        "Cycle": 0,
+        "Iteration": 0,
+        "Backend": "metal",
+        "NativeBackend": "MTL0",
+        "Device": "Apple M4 Pro",
+        "Architecture": "parakeet",
+        "LoadedLibraries": [
+          "libggml-base.0.dylib",
+          "libggml-cpu.so",
+          "libggml-metal.so",
+          "libggml.0.dylib",
+          "libtranscribe.dylib"
+        ],
+        "NoMmap": false,
+        "Context": 0,
+        "CancelAfterMs": -1,
+        "CancelAfterPolls": -1,
+        "Outcome": "Completed",
+        "RunPassed": true,
+        "Samples": 61838677,
+        "AudioSeconds": 3864.9173125,
+        "LoadMs": 27.0856,
+        "Status": 0,
+        "Aborted": false,
+        "Truncated": false,
+        "WallMs": 35812.7843,
+        "Rtf": 0.009266119144172504,
+        "Timings": {
+          "Load": 25.324,
+          "Mel": 248.439,
+          "Encode": 29198.385,
+          "Decode": 5987.572
+        },
+        "Language": "",
+        "TimestampKind": 4,
+        "Characters": 62972,
+        "Segments": 158,
+        "Words": 11646,
+        "Tokens": 22223,
+        "TimestampErrors": 0,
+        "SegmentTextMatches": true,
+        "TextEqualToFirst": null,
+        "LastTimestampMs": 3864720,
+        "PeakWorkingSetBytes": 0,
+        "WorkingSetBytes": 603717632,
+        "ManagedBytes": 249984504,
+        "AbortPolls": 349
+      },
+      {
+        "Cycle": 0,
+        "Iteration": 1,
+        "Backend": "metal",
+        "NativeBackend": "MTL0",
+        "Device": "Apple M4 Pro",
+        "Architecture": "parakeet",
+        "LoadedLibraries": [
+          "libggml-base.0.dylib",
+          "libggml-cpu.so",
+          "libggml-metal.so",
+          "libggml.0.dylib",
+          "libtranscribe.dylib"
+        ],
+        "NoMmap": false,
+        "Context": 0,
+        "CancelAfterMs": -1,
+        "CancelAfterPolls": -1,
+        "Outcome": "Completed",
+        "RunPassed": true,
+        "Samples": 61838677,
+        "AudioSeconds": 3864.9173125,
+        "LoadMs": 27.0856,
+        "Status": 0,
+        "Aborted": false,
+        "Truncated": false,
+        "WallMs": 35818.7505,
+        "Rtf": 0.009267662825322088,
+        "Timings": {
+          "Load": 25.324,
+          "Mel": 246.564,
+          "Encode": 29204.707,
+          "Decode": 5991.922
+        },
+        "Language": "",
+        "TimestampKind": 4,
+        "Characters": 62972,
+        "Segments": 158,
+        "Words": 11646,
+        "Tokens": 22223,
+        "TimestampErrors": 0,
+        "SegmentTextMatches": true,
+        "TextEqualToFirst": true,
+        "LastTimestampMs": 3864720,
+        "PeakWorkingSetBytes": 0,
+        "WorkingSetBytes": 613498880,
+        "ManagedBytes": 252669168,
+        "AbortPolls": 349
+      }
+    ],
+    "memory": {
+      "tool": "/usr/bin/time -l",
+      "maxResidentSetBytes": 630571008,
+      "peakMemoryFootprintBytes": 628131688,
+      "limitation": "Not a measurement of simultaneous combined parent/worker/GPU allocations; process layouts differ."
+    },
+    "textEqualAcrossBothRuns": true,
+    "segmentsEqualAcrossBothRuns": true,
+    "coldDiskLoadMeasured": false
+  },
+  "qualityAudit": {
+    "method": "Automated signal/timestamp/text consistency triage only. Excerpt ASR is not independent ground truth. No human listening or human reference annotation was performed. Matched word fractions measure self-consistency, not WER/accuracy.",
+    "rowCount": 158,
+    "languageSwitchSelection": "common-word heuristic over model text; candidate locations only, not verified speech language annotations",
+    "languageSwitchCandidates0": [
+      3,
+      4,
+      9,
+      12,
+      19,
+      21,
+      34,
+      43,
+      46,
+      58,
+      59,
+      61,
+      76,
+      90,
+      95,
+      105,
+      110,
+      119,
+      123,
+      129,
+      130
+    ],
+    "repeatCandidates": [
+      {
+        "leftIndex0": 131,
+        "rightIndex0": 132,
+        "sharedTokenCount": 3,
+        "boundarySeconds": 3246.0
+      }
+    ],
+    "pauseDetector": {
+      "noiseDb": -38,
+      "minimumSeconds": 2,
+      "intervalsSeconds": [
+        [
+          3446.287125,
+          3448.891938
+        ]
+      ],
+      "notVADOrGroundTruth": true
+    },
+    "excerpts": [
+      {
+        "kind": "beginning",
+        "startSeconds": 0.0,
+        "endSeconds": 65.0,
+        "fullSegmentIndices0": [
+          0
+        ],
+        "fullFocusWordCount": 87,
+        "excerptWordCount": 160,
+        "fullFocusExactSubstringInExcerpt": true,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.6249849000000001,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "end",
+        "startSeconds": 3799.9173125,
+        "endSeconds": 3864.9173125,
+        "fullSegmentIndices0": [
+          157
+        ],
+        "fullFocusWordCount": 40,
+        "excerptWordCount": 213,
+        "fullFocusExactSubstringInExcerpt": true,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.6285729999999999,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "repetition_candidate",
+        "startSeconds": 3211.0,
+        "endSeconds": 3286.0,
+        "fullSegmentIndices0": [
+          131,
+          132
+        ],
+        "fullFocusWordCount": 176,
+        "excerptWordCount": 239,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9602272727272727,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7267918,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "low_energy_pause",
+        "startSeconds": 3411.287125,
+        "endSeconds": 3483.8919375,
+        "fullSegmentIndices0": [
+          139,
+          140
+        ],
+        "fullFocusWordCount": 136,
+        "excerptWordCount": 191,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9632352941176471,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.6919352,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "language_switch_candidate",
+        "startSeconds": 33.5199375,
+        "endSeconds": 108.52,
+        "fullSegmentIndices0": [
+          2,
+          3
+        ],
+        "fullFocusWordCount": 113,
+        "excerptWordCount": 184,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9469026548672567,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "en"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.6977863,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "language_switch_candidate",
+        "startSeconds": 62.2399375,
+        "endSeconds": 137.24,
+        "fullSegmentIndices0": [
+          3,
+          4
+        ],
+        "fullFocusWordCount": 151,
+        "excerptWordCount": 200,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9470198675496688,
+        "fullFocusLanguagesHeuristic": [
+          "en",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7002621,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "language_switch_candidate",
+        "startSeconds": 193.08,
+        "endSeconds": 268.08,
+        "fullSegmentIndices0": [
+          8,
+          9
+        ],
+        "fullFocusWordCount": 157,
+        "excerptWordCount": 217,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9745222929936306,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "en"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7212457000000001,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "language_switch_candidate",
+        "startSeconds": 272.08,
+        "endSeconds": 347.08,
+        "fullSegmentIndices0": [
+          11,
+          12
+        ],
+        "fullFocusWordCount": 181,
+        "excerptWordCount": 256,
+        "fullFocusExactSubstringInExcerpt": true,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "en",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7260352,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 0.0,
+        "endSeconds": 69.96,
+        "fullSegmentIndices0": [
+          0,
+          1
+        ],
+        "fullFocusWordCount": 138,
+        "excerptWordCount": 175,
+        "fullFocusExactSubstringInExcerpt": true,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.6695762,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 554.48,
+        "endSeconds": 629.48,
+        "fullSegmentIndices0": [
+          24,
+          25
+        ],
+        "fullFocusWordCount": 167,
+        "excerptWordCount": 255,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9760479041916168,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7426237,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 1161.12,
+        "endSeconds": 1236.12,
+        "fullSegmentIndices0": [
+          49,
+          50
+        ],
+        "fullFocusWordCount": 86,
+        "excerptWordCount": 260,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9418604651162791,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7524871000000001,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 1780.76,
+        "endSeconds": 1855.76,
+        "fullSegmentIndices0": [
+          74,
+          75
+        ],
+        "fullFocusWordCount": 130,
+        "excerptWordCount": 216,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9615384615384616,
+        "fullFocusLanguagesHeuristic": [
+          "en",
+          "en"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7219152,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 2400.76,
+        "endSeconds": 2475.76,
+        "fullSegmentIndices0": [
+          99,
+          100
+        ],
+        "fullFocusWordCount": 170,
+        "excerptWordCount": 241,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7304533,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 3029.08,
+        "endSeconds": 3104.08,
+        "fullSegmentIndices0": [
+          124,
+          125
+        ],
+        "fullFocusWordCount": 133,
+        "excerptWordCount": 201,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 0.9774436090225563,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7087091,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      },
+      {
+        "kind": "short_boundary",
+        "startSeconds": 3629.48,
+        "endSeconds": 3704.48,
+        "fullSegmentIndices0": [
+          149,
+          150
+        ],
+        "fullFocusWordCount": 173,
+        "excerptWordCount": 264,
+        "fullFocusExactSubstringInExcerpt": false,
+        "fullFocusMatchedWordFraction": 1.0,
+        "fullFocusLanguagesHeuristic": [
+          "es",
+          "es"
+        ],
+        "excerptAdjacentRepeatedSuffixPrefix": false,
+        "nativeStatus": 0,
+        "wallInferenceSeconds": 0.7304722,
+        "timestampErrors": 0,
+        "segmentTextMatches": true
+      }
+    ],
+    "groundTruthReferenceAvailable": false,
+    "wer": null,
+    "cer": null,
+    "manualCompletenessVerified": false,
+    "repeatReview": {
+      "candidateOneBasedSegments": [
+        132,
+        133
+      ],
+      "boundarySeconds": 3246,
+      "sharedPhraseTokenCount": 3,
+      "fullAdjacentSegmentsPhraseOccurrences": 2,
+      "excerptPhraseOccurrences": 2,
+      "interpretation": "Context-dependent ASR discrepancy; cannot distinguish natural repetition from hallucination/omission without listening/reference."
+    },
+    "excerptCount": 15,
+    "allExcerptNativeStatusesSuccessful": true,
+    "exactFocusSubstringCount": 4,
+    "matchingMethod": "Unicode word regex, lowercase, then Python difflib.SequenceMatcher(autojunk=False) matched word count divided by full focus words; not a Levenshtein reference error rate.",
+    "methodScriptSha256": "5fbe2b4250de05b8b6c8ee22bbc3a3ce21a341ec356747a3c82b9a149746c66e",
+    "qualityAcceptance": "NOT VERIFIED: no human listening, no human reference; natural repetition versus hallucination/omission, proper names, numbers, negations, actual language-switch alignment and complete pause coverage unresolved."
+  },
+  "handyInvestigation": {
+    "version": "0.10.0",
+    "binarySha256": "aa356164a4919c52992d347e1ead001b55536d378a80ea0dff5d1f480e35e236",
+    "modelDirectoryEntryCount": 0,
+    "selectedModel": "handy-computer/parakeet-ultra-gguf/parakeet-ultra-Q8_0.gguf",
+    "vadEnabled": true,
+    "vadBackend": "silero",
+    "longFormChunking": true,
+    "gpuDevice": null,
+    "languageDetection": "when_needed",
+    "modelArtifactVerified": true,
+    "runtimeCommitVerified": false,
+    "backendActuallyUsedVerified": true,
+    "preparedPcmEquivalent": "same prepared PCM16 input by documented headless reader; internal worker PCM not instrumented",
+    "sharedCacheArtifact": {
+      "repositoryRevision": "39eeb55181f0d354fd934f06e92fd8d5037fed8e",
+      "bytes": 740363168,
+      "sha256": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+      "sameBytesAsPinnedArtifact": true
+    },
+    "actualBoundBackend": "MTL0",
+    "requestedDeviceIndex": 0,
+    "deviceListing": [
+      "index=0 kind=metal name=Apple M4 Pro vram=38338MB",
+      "index=1 kind=cpu name=Apple M4 Pro vram=49152MB"
+    ],
+    "tagSourceCommit": "82dfab9fda18c4bc24e1f6e56d36474d38eca0bc",
+    "sourceBuildIdentityOfInstalledBinaryVerified": false,
+    "sourceProvenance": {
+      "tagUrl": "https://github.com/cjpais/Handy/tree/82dfab9fda18c4bc24e1f6e56d36474d38eca0bc",
+      "transcribeCppSysCrateVersion": "0.4.0",
+      "crateArchiveSha256": "7f0976932ee2a0d9bcfb7a90947d0a73771cee383b163bd7189a8e0d67da1157",
+      "crateVcsCommit": "f1dcd15858c4bbba87ca97862b4e448b2cf15b8f",
+      "crateHeaderVersion": "0.4.0",
+      "crateHeaderSha256": "7773ecf9f56d33dea2017ab99ad3acdb23d24d8dbb2cec48ae7c8b65e4a470f3",
+      "crateHeaderAndParakeetModelSourceDifferFromHarnessPin": true,
+      "installedNativeCommitReadBack": null,
+      "qualification": "Release-tag and Cargo.lock/crate provenance only; installed binary has not exposed a native commit accessor through its CLI."
+    },
+    "sourceHashes": {
+      "src-tauri/src/lib.rs": "b20bb2d5bccdd8ed911be0f961958d7d1417d2f55637e71a187ab8e659502223",
+      "src-tauri/src/cli.rs": "1bcea3ab9f22e256c48d8f33b0f45b8aed2c9237b3aaf40d41df2b5619442620",
+      "src-tauri/src/audio_toolkit/audio/utils.rs": "d69e310a8dc7edc8d26b8edfce5ea9325172407640537f6b6fc06228acf492de",
+      "src-tauri/src/audio_toolkit/audio/decode.rs": "d1c176dd75febed95d6c8a23d3846cdd5d1f22857c06d10329fce6dd2330219e",
+      "src-tauri/src/managers/transcription/policy.rs": "e9c1368e546db587b580eb1518e078d4f398c9b57a019f48a498d88874a652ff",
+      "src-tauri/Cargo.lock": "2ca882b2b037d6a6433057e70e43136cf0e36a0ea5ade3faf5f1eea079547d90"
+    },
+    "measurements": {
+      "audioSeconds": 3864.9173125,
+      "modelLoadWallMs": 227,
+      "inferenceWrapperWallMs": [
+        36997,
+        37242
+      ],
+      "rtfSecondsPerAudioSecond": [
+        0.009572520447033496,
+        0.009635911195189379
+      ],
+      "rawCliRtfIsInverseSpeedup": 104.46569485363679,
+      "nativeTranscribeGetTimings": null,
+      "nativeTimingsLimitation": "Not exposed by the installed Handy CLI.",
+      "characters": 62935,
+      "memory": {
+        "tool": "/usr/bin/time -l",
+        "maxResidentSetBytes": 1535082496,
+        "peakMemoryFootprintBytes": 761677216,
+        "limitation": "Not a measurement of simultaneous combined parent/worker/GPU allocations; process layouts differ."
+      },
+      "loadQualification": "Fresh CLI process; model pages already cached. Includes worker/model setup, not native-only or cold-disk loading."
+    },
+    "attempts": {
+      "installedHeadless": "succeeded, no history entry or transcript file requested from Handy; stdout retained only in ignored temporary artifacts",
+      "isolatedCopiedBinary": "not usable: terminated by signal 9/exit 137 before device output; no copied-binary measurements used",
+      "userSettingsWrittenByWorker": false
+    }
+  },
+  "supplementaryCommonInputExperiment": {
+    "status": "NOT VERIFIED as a fully matched Handy comparison",
+    "reason": "Model bytes, same host, Metal backend and a documented common PCM preparation were established. Exact installed Handy native build/source provenance, internal worker PCM and equal language/text-transform work were not independently verified. Release-tag source uses a different native revision. Timings remain supplementary wrapper-vs-PInvoke measurements; no attribution or 25-percent gate conclusion.",
+    "preparation": {
+      "samples": 61838677,
+      "audioSeconds": 3864.9173125,
+      "wavBytes": 123677432,
+      "float32Bytes": 247354708,
+      "float32Sha256": "9d995722710af6e7566d343e382308abc9715b1bf75ee26bac78375bfdc29afe",
+      "derivedFromPreparedPcmNotSecondSourceDecode": true,
+      "sampleNormalization": "signed16 / 32767 -> float32, matching Handy v0.10.0 read_wav_samples",
+      "conversionWallSeconds": 3.939079333009431
+    },
+    "harnessEnvironment": {
+      "GGML_METAL_NO_RESIDENCY": "1",
+      "reason": "Matches Handy v0.10.0 default source setting; first unquantized quality run used the normal harness environment."
+    },
+    "harnessReports": [
+      {
+        "Cycle": 0,
+        "Iteration": 0,
+        "Backend": "metal",
+        "NativeBackend": "MTL0",
+        "Device": "Apple M4 Pro",
+        "Architecture": "parakeet",
+        "LoadedLibraries": [
+          "libggml-base.0.dylib",
+          "libggml-cpu.so",
+          "libggml-metal.so",
+          "libggml.0.dylib",
+          "libtranscribe.dylib"
+        ],
+        "NoMmap": false,
+        "Context": 0,
+        "CancelAfterMs": -1,
+        "CancelAfterPolls": -1,
+        "Outcome": "Completed",
+        "RunPassed": true,
+        "Samples": 61838677,
+        "AudioSeconds": 3864.9173125,
+        "LoadMs": 18.4918,
+        "Status": 0,
+        "Aborted": false,
+        "Truncated": false,
+        "WallMs": 36957.3776,
+        "Rtf": 0.009562268636503979,
+        "Timings": {
+          "Load": 15.55,
+          "Mel": 248.322,
+          "Encode": 30167.424,
+          "Decode": 6154.218
+        },
+        "Language": "",
+        "TimestampKind": 4,
+        "Characters": 63010,
+        "Segments": 158,
+        "Words": 11650,
+        "Tokens": 22234,
+        "TimestampErrors": 0,
+        "SegmentTextMatches": true,
+        "TextEqualToFirst": null,
+        "LastTimestampMs": 3864720,
+        "PeakWorkingSetBytes": 0,
+        "WorkingSetBytes": 598573056,
+        "ManagedBytes": 249985480,
+        "AbortPolls": 349
+      },
+      {
+        "Cycle": 0,
+        "Iteration": 1,
+        "Backend": "metal",
+        "NativeBackend": "MTL0",
+        "Device": "Apple M4 Pro",
+        "Architecture": "parakeet",
+        "LoadedLibraries": [
+          "libggml-base.0.dylib",
+          "libggml-cpu.so",
+          "libggml-metal.so",
+          "libggml.0.dylib",
+          "libtranscribe.dylib"
+        ],
+        "NoMmap": false,
+        "Context": 0,
+        "CancelAfterMs": -1,
+        "CancelAfterPolls": -1,
+        "Outcome": "Completed",
+        "RunPassed": true,
+        "Samples": 61838677,
+        "AudioSeconds": 3864.9173125,
+        "LoadMs": 18.4918,
+        "Status": 0,
+        "Aborted": false,
+        "Truncated": false,
+        "WallMs": 36825.1041,
+        "Rtf": 0.009528044489050112,
+        "Timings": {
+          "Load": 15.55,
+          "Mel": 242.874,
+          "Encode": 30132.473,
+          "Decode": 6064.455
+        },
+        "Language": "",
+        "TimestampKind": 4,
+        "Characters": 63010,
+        "Segments": 158,
+        "Words": 11650,
+        "Tokens": 22234,
+        "TimestampErrors": 0,
+        "SegmentTextMatches": true,
+        "TextEqualToFirst": true,
+        "LastTimestampMs": 3864720,
+        "PeakWorkingSetBytes": 0,
+        "WorkingSetBytes": 611106816,
+        "ManagedBytes": 252669936,
+        "AbortPolls": 349
+      }
+    ],
+    "harnessMemory": {
+      "tool": "/usr/bin/time -l",
+      "maxResidentSetBytes": 628047872,
+      "peakMemoryFootprintBytes": 625821568,
+      "limitation": "Not a measurement of simultaneous combined parent/worker/GPU allocations; process layouts differ."
+    },
+    "handyHarnessRawTextEqual": false,
+    "handyHarnessWhitespaceNormalizedTextEqual": false,
+    "accuracyGroundTruth": false
+  },
+  "notVerified": [
+    "Human source listening and reference annotation of requested boundaries",
+    "Full-recording absence of omissions/repetitions; proper names/numbers/negations",
+    "Private-recording WER/CER: no suitable reference available",
+    "Strict matched Handy native runtime/preparation/processing equivalence",
+    "All previously unavailable target/backend and release acceptance paths"
+  ]
+}

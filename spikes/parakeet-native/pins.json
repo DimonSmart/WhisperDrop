@@ -1,0 +1,17 @@
+{
+  "transcribeRepository": "https://github.com/handy-computer/transcribe.cpp.git",
+  "transcribeCommit": "275cd50d2c4104c204009a197ac091b9687668e5",
+  "headerVersion": "0.4.2",
+  "headerSha256": "5c8267936370f40d911866df8617cb320dda6dba951e5ba89287645988105dbf",
+  "ggmlStorage": "vendored, not a Git submodule",
+  "ggmlBaseCommit": "d7cb574130e6f01ad25b3289685489200febcd74",
+  "ggmlPatches": ["0001-fix-threadpool-oversubscription.patch", "0002-backend-reg-filter.patch", "0003-metal-mapped-buffer-null.patch", "0004-cpu-x86-score-os-xsave-check.patch"],
+  "modelRevision": "a1539be1b849ea7463b88343e5277b373d0c4ea9",
+  "modelFile": "parakeet-ultra-Q8_0.gguf",
+  "modelUrl": "https://huggingface.co/handy-computer/parakeet-ultra-gguf/resolve/a1539be1b849ea7463b88343e5277b373d0c4ea9/parakeet-ultra-Q8_0.gguf",
+  "modelBytes": 740363168,
+  "modelSha256": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+  "modelLicense": "CC-BY-4.0",
+  "cmakeVersionUsed": "4.2.3",
+  "replacementGate": "closed"
+}

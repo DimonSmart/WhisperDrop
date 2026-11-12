@@ -1,0 +1,16 @@
+version: 1
+
+factory:
+  executionProfiles:
+    economy:
+      codex:
+        model: gpt-6-luna
+        reasoningEffort: high
+    standard:
+      codex:
+        model: gpt-6-luna
+        reasoningEffort: max
+    strong:
+      codex:
+        model: gpt-6.1-sol
+        reasoningEffort: high

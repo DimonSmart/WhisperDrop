@@ -1,0 +1,3495 @@
+{
+  "dateUtc": "2026-11-12",
+  "replacementGate": "closed",
+  "host": {
+    "os": "macOS 26.7.2 (25G332)",
+    "kernel": "Darwin 25.6.0 arm64",
+    "cpu": "Apple M4 Pro, 14 cores (10 performance + 4 efficiency)",
+    "gpu": "Apple M4 Pro 20-core, Metal 4",
+    "ramBytes": 51539607552,
+    "dotnetSdk": "10.0.400",
+    "dotnetRuntime": "10.0.11",
+    "cmake": "4.2.3",
+    "compiler": "Apple clang 21.0.0 (clang-2100.4.1.1)",
+    "xcode": "27.2 (27B52)",
+    "macosSdk": "27.2"
+  },
+  "input": {
+    "label": "explicitly specified locally available recording; no source content retained in repository",
+    "sourceBytes": 81937025,
+    "containerSeconds": 3864.918,
+    "samples": 61838677,
+    "preparedBytes": 247354708,
+    "preparedSeconds": 3864.9173125,
+    "format": "16000 Hz mono little-endian float32",
+    "decodeTool": "local FFmpeg 9.0.2; developer fixture preparation only",
+    "decodeWallSeconds": 1.89
+  },
+  "pins": {
+    "transcribeRepository": "https://github.com/handy-computer/transcribe.cpp.git",
+    "transcribeCommit": "275cd50d2c4104c204009a197ac091b9687668e5",
+    "headerVersion": "0.4.2",
+    "headerSha256": "5c8267936370f40d911866df8617cb320dda6dba951e5ba89287645988105dbf",
+    "ggmlStorage": "vendored, not a Git submodule",
+    "ggmlBaseCommit": "d7cb574130e6f01ad25b3289685489200febcd74",
+    "ggmlPatches": [
+      "0001-fix-threadpool-oversubscription.patch",
+      "0002-backend-reg-filter.patch",
+      "0003-metal-mapped-buffer-null.patch",
+      "0004-cpu-x86-score-os-xsave-check.patch"
+    ],
+    "modelRevision": "a1539be1b849ea7463b88343e5277b373d0c4ea9",
+    "modelFile": "parakeet-ultra-Q8_0.gguf",
+    "modelUrl": "https://huggingface.co/handy-computer/parakeet-ultra-gguf/resolve/a1539be1b849ea7463b88343e5277b373d0c4ea9/parakeet-ultra-Q8_0.gguf",
+    "modelBytes": 740363168,
+    "modelSha256": "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+    "modelLicense": "CC-BY-4.0",
+    "cmakeVersionUsed": "4.2.3",
+    "replacementGate": "closed"
+  },
+  "nativeBuilds": {
+    "gpu": {
+      "configuration": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TRANSCRIBE_BUILD_SHARED": "ON",
+        "TRANSCRIBE_GGML_BACKEND_DL": "ON",
+        "TRANSCRIBE_BUILD_TESTS": "OFF",
+        "TRANSCRIBE_BUILD_EXAMPLES": "OFF",
+        "TRANSCRIBE_BUILD_TOOLS": "OFF",
+        "TRANSCRIBE_BUILD_REAL_MODEL_TESTS": "OFF",
+        "TRANSCRIBE_INSTALL": "ON",
+        "TRANSCRIBE_METAL": "ON",
+        "TRANSCRIBE_VULKAN": "OFF",
+        "TRANSCRIBE_CUDA": "OFF",
+        "TRANSCRIBE_HIP": "OFF",
+        "TRANSCRIBE_USE_OPENMP": "OFF",
+        "TRANSCRIBE_USE_SYSTEM_BLAS": "OFF",
+        "TRANSCRIBE_ENABLE_VALIDATION_HOOKS": "OFF",
+        "GGML_NATIVE": "OFF",
+        "GGML_METAL_EMBED_LIBRARY": "ON",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0",
+        "CMAKE_INSTALL_RPATH": "@loader_path"
+      },
+      "manifest": {
+        "libggml-cpu.so": {
+          "bytes": 994304,
+          "sha256": "fd6f7997b7bf5e44e7f3dfece378eae48fbed57b5bac2fa10577240134b12e43"
+        },
+        "libggml.0.dylib": {
+          "bytes": 78176,
+          "sha256": "018ecb2e4aca78b81dde3f90b151060c26776539a1c250835792da4255c01029"
+        },
+        "libtranscribe.dylib": {
+          "bytes": 1973280,
+          "sha256": "37ca433e4d7da9b929cbbbea8ae12086c4ff8f6963d9a6bcf11dc48aec2bcb51"
+        },
+        "libggml-metal.so": {
+          "bytes": 5520080,
+          "sha256": "11e5293d95d4d4cf5500a0f16086d029173638b2feef5e1e680a2e8dfe29e1e4"
+        },
+        "libggml-base.0.dylib": {
+          "bytes": 767088,
+          "sha256": "9803c4922331324eac1716842ef25c5d5c1fdfbc5e5121051019f08c3f710650"
+        }
+      },
+      "dependencies": {
+        "libggml-cpu.so": [
+          "@loader_path/libggml-base.0.dylib",
+          "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libggml.0.dylib": [
+          "@loader_path/libggml.0.dylib",
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libtranscribe.dylib": [
+          "@loader_path/libtranscribe.dylib",
+          "@loader_path/libggml.0.dylib",
+          "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libggml-metal.so": [
+          "@loader_path/libggml-base.0.dylib",
+          "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+          "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+          "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+          "/usr/lib/libobjc.A.dylib"
+        ],
+        "libggml-base.0.dylib": [
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib"
+        ]
+      },
+      "buildTreeRpaths": false,
+      "architecture": "arm64",
+      "signature": "local ad-hoc; no distribution-signing assertion"
+    },
+    "cpu": {
+      "configuration": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TRANSCRIBE_BUILD_SHARED": "ON",
+        "TRANSCRIBE_GGML_BACKEND_DL": "ON",
+        "TRANSCRIBE_BUILD_TESTS": "OFF",
+        "TRANSCRIBE_BUILD_EXAMPLES": "OFF",
+        "TRANSCRIBE_BUILD_TOOLS": "OFF",
+        "TRANSCRIBE_BUILD_REAL_MODEL_TESTS": "OFF",
+        "TRANSCRIBE_INSTALL": "ON",
+        "TRANSCRIBE_METAL": "OFF",
+        "TRANSCRIBE_VULKAN": "OFF",
+        "TRANSCRIBE_CUDA": "OFF",
+        "TRANSCRIBE_HIP": "OFF",
+        "TRANSCRIBE_USE_OPENMP": "OFF",
+        "TRANSCRIBE_USE_SYSTEM_BLAS": "OFF",
+        "TRANSCRIBE_ENABLE_VALIDATION_HOOKS": "OFF",
+        "GGML_NATIVE": "OFF",
+        "GGML_METAL_EMBED_LIBRARY": "ON",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0",
+        "CMAKE_INSTALL_RPATH": "@loader_path"
+      },
+      "manifest": {
+        "libggml-cpu.so": {
+          "bytes": 994304,
+          "sha256": "6d1cd1e0f732ac0116d724215526c831b55eb1386f9345be43a39e90c6548d43"
+        },
+        "libggml.0.dylib": {
+          "bytes": 78176,
+          "sha256": "8a73e6e1a7e4bc35afe37040585f15f2a1e91b644df937d8fa68c402ab63d590"
+        },
+        "libtranscribe.dylib": {
+          "bytes": 1973280,
+          "sha256": "1f3144d8a96ddde855a6ca0e124f04da5ac774308764fc881f2debe572b25359"
+        },
+        "libggml-base.0.dylib": {
+          "bytes": 767088,
+          "sha256": "9803c4922331324eac1716842ef25c5d5c1fdfbc5e5121051019f08c3f710650"
+        }
+      },
+      "dependencies": {
+        "libggml-cpu.so": [
+          "@loader_path/libggml-base.0.dylib",
+          "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libggml.0.dylib": [
+          "@loader_path/libggml.0.dylib",
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libtranscribe.dylib": [
+          "@loader_path/libtranscribe.dylib",
+          "@loader_path/libggml.0.dylib",
+          "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libc++.1.dylib",
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "libggml-base.0.dylib": [
+          "@loader_path/libggml-base.0.dylib",
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib"
+        ]
+      },
+      "buildTreeRpaths": false,
+      "architecture": "arm64",
+      "signature": "local ad-hoc; no distribution-signing assertion"
+    }
+  },
+  "checks": {
+    "metal-abi": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "BadStructSize": 14,
+        "MissingModel": 3,
+        "InvalidGguf": 4
+      },
+      "maxResidentBytes": 132497408,
+      "peakFootprintBytes": 153060216
+    },
+    "metal-short": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 35.4704,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 178.6521,
+            "Rtf": 0.008932605,
+            "Timings": {
+              "Load": 33.601,
+              "Mel": 1.538,
+              "Encode": 136.198,
+              "Decode": 35.603
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 304807936,
+            "ManagedBytes": 1653600,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 35.4704,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 161.2974,
+            "Rtf": 0.00806487,
+            "Timings": {
+              "Load": 33.601,
+              "Mel": 1.624,
+              "Encode": 119.04,
+              "Decode": 34.584
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 310689792,
+            "ManagedBytes": 2014624,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 2,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 35.4704,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 167.1914,
+            "Rtf": 0.00835957,
+            "Timings": {
+              "Load": 33.601,
+              "Mel": 1.239,
+              "Encode": 118.817,
+              "Decode": 41.79
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 311427072,
+            "ManagedBytes": 2006256,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 0,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 23.951,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 160.5261,
+            "Rtf": 0.008026305000000001,
+            "Timings": {
+              "Load": 22.838,
+              "Mel": 1.251,
+              "Encode": 119.086,
+              "Decode": 34.746
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 315867136,
+            "ManagedBytes": 1998336,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 1,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 23.951,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 163.3597,
+            "Rtf": 0.008167985,
+            "Timings": {
+              "Load": 22.838,
+              "Mel": 1.357,
+              "Encode": 118.406,
+              "Decode": 37.882
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 321011712,
+            "ManagedBytes": 2191600,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 2,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 23.951,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 159.8761,
+            "Rtf": 0.007993805000000001,
+            "Timings": {
+              "Load": 22.838,
+              "Mel": 1.399,
+              "Encode": 117.311,
+              "Decode": 34.763
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 321372160,
+            "ManagedBytes": 2001016,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 331513856,
+      "peakFootprintBytes": 329205320
+    },
+    "metal-silence": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 28.9409,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 48.2296,
+            "Rtf": 0.009645919999999999,
+            "Timings": {
+              "Load": 27.147,
+              "Mel": 0.598,
+              "Encode": 42.392,
+              "Decode": 2.559
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 294895616,
+            "ManagedBytes": 693360,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 28.9409,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 45.1893,
+            "Rtf": 0.00903786,
+            "Timings": {
+              "Load": 27.147,
+              "Mel": 0.565,
+              "Encode": 39.616,
+              "Decode": 2.443
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 301154304,
+            "ManagedBytes": 1032600,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 2,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 28.9409,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 46.9992,
+            "Rtf": 0.009399840000000001,
+            "Timings": {
+              "Load": 27.147,
+              "Mel": 0.458,
+              "Encode": 41.425,
+              "Decode": 2.346
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 301203456,
+            "ManagedBytes": 1203080,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 305037312,
+      "peakFootprintBytes": 302941744
+    },
+    "metal-cancel-recover": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Cancelled",
+            "RunPassed": true,
+            "Samples": 61838677,
+            "AudioSeconds": 3864.9173125,
+            "LoadMs": 26.6888,
+            "Status": 13,
+            "Aborted": true,
+            "Truncated": false,
+            "WallMs": 1603.9656,
+            "Rtf": 0.00041500644653183635,
+            "Timings": {
+              "Load": 25.022,
+              "Mel": 0,
+              "Encode": 0,
+              "Decode": 0
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 550961152,
+            "ManagedBytes": 247787824,
+            "AbortPolls": 8
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 61838677,
+            "AudioSeconds": 3864.9173125,
+            "LoadMs": 26.6888,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 135162.3732,
+            "Rtf": 0.034971607998664,
+            "Timings": {
+              "Load": 25.022,
+              "Mel": 389.697,
+              "Encode": 2960539.5,
+              "Decode": 92173.914
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 62972,
+            "Segments": 158,
+            "Words": 11646,
+            "Tokens": 22223,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": false,
+            "LastTimestampMs": 3864720,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 528089088,
+            "ManagedBytes": 250388248,
+            "AbortPolls": 349
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 617480192,
+      "peakFootprintBytes": 619382632
+    },
+    "metal-long": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 61838677,
+            "AudioSeconds": 3864.9173125,
+            "LoadMs": 39.671,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 38126.5841,
+            "Rtf": 0.009864786492764068,
+            "Timings": {
+              "Load": 37.437,
+              "Mel": 256.491,
+              "Encode": 49482.652,
+              "Decode": 7848.24
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 62972,
+            "Segments": 158,
+            "Words": 11646,
+            "Tokens": 22223,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 3864720,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 558202880,
+            "ManagedBytes": 249984392,
+            "AbortPolls": 349
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "metal",
+            "NativeBackend": "MTL0",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml-metal.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 61838677,
+            "AudioSeconds": 3864.9173125,
+            "LoadMs": 39.671,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 37029.5679,
+            "Rtf": 0.009580946992122747,
+            "Timings": {
+              "Load": 37.437,
+              "Mel": 250.499,
+              "Encode": 29648.14,
+              "Decode": 6739.241
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 62972,
+            "Segments": 158,
+            "Words": 11646,
+            "Tokens": 22223,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 3864720,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 537952256,
+            "ManagedBytes": 252669056,
+            "AbortPolls": 349
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 614809600,
+      "peakFootprintBytes": 630589264
+    },
+    "cpu-abi": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "BadStructSize": 14,
+        "MissingModel": 3,
+        "InvalidGguf": 4
+      },
+      "maxResidentBytes": 54034432,
+      "peakFootprintBytes": 32178872
+    },
+    "cpu-short": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 64.3202,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 422.0017,
+            "Rtf": 0.021100085,
+            "Timings": {
+              "Load": 62.029,
+              "Mel": 1.546,
+              "Encode": 381.54,
+              "Decode": 35.987
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1240416256,
+            "ManagedBytes": 1595704,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 64.3202,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 400.2813,
+            "Rtf": 0.020014065,
+            "Timings": {
+              "Load": 62.029,
+              "Mel": 1.338,
+              "Encode": 360.474,
+              "Decode": 36.192
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1241776128,
+            "ManagedBytes": 1735456,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 2,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 64.3202,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 396.5207,
+            "Rtf": 0.019826035,
+            "Timings": {
+              "Load": 62.029,
+              "Mel": 1.287,
+              "Encode": 358.858,
+              "Decode": 34.04
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1247887360,
+            "ManagedBytes": 1585984,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 0,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 59.7477,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 398.99,
+            "Rtf": 0.019949500000000002,
+            "Timings": {
+              "Load": 58.586,
+              "Mel": 1.388,
+              "Encode": 361.809,
+              "Decode": 33.333
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1255636992,
+            "ManagedBytes": 1728128,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 1,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 59.7477,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 392.5264,
+            "Rtf": 0.01962632,
+            "Timings": {
+              "Load": 58.586,
+              "Mel": 1.319,
+              "Encode": 356.459,
+              "Decode": 32.402
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1255669760,
+            "ManagedBytes": 1593472,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 1,
+            "Iteration": 2,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 59.7477,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 394.1667,
+            "Rtf": 0.019708335,
+            "Timings": {
+              "Load": 58.586,
+              "Mel": 1.327,
+              "Encode": 356.683,
+              "Decode": 33.662
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1255686144,
+            "ManagedBytes": 1719496,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 1345536000,
+      "peakFootprintBytes": 581846696
+    },
+    "cpu-silence": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 63.6539,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 98.5504,
+            "Rtf": 0.019710079999999998,
+            "Timings": {
+              "Load": 61.89,
+              "Mel": 0.477,
+              "Encode": 95.196,
+              "Decode": 1.76
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1230700544,
+            "ManagedBytes": 622728,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 63.6539,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 90.5576,
+            "Rtf": 0.01811152,
+            "Timings": {
+              "Load": 61.89,
+              "Mel": 0.485,
+              "Encode": 87.252,
+              "Decode": 1.775
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1232945152,
+            "ManagedBytes": 755656,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 2,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 80000,
+            "AudioSeconds": 5,
+            "LoadMs": 63.6539,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 90.2286,
+            "Rtf": 0.01804572,
+            "Timings": {
+              "Load": 61.89,
+              "Mel": 0.427,
+              "Encode": 86.874,
+              "Decode": 1.874
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": true,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1233518592,
+            "ManagedBytes": 602984,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 1257275392,
+      "peakFootprintBytes": 493913696
+    },
+    "cpu-cancel-recover": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Cancelled",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 64.0372,
+            "Status": 13,
+            "Aborted": true,
+            "Truncated": false,
+            "WallMs": 0.1938,
+            "Rtf": 9.69e-06,
+            "Timings": {
+              "Load": 62.264,
+              "Mel": 0,
+              "Encode": 0,
+              "Decode": 0
+            },
+            "Language": "",
+            "TimestampKind": 0,
+            "Characters": 0,
+            "Segments": 0,
+            "Words": 0,
+            "Tokens": 0,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 0,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 663060480,
+            "ManagedBytes": 1646912,
+            "AbortPolls": 1
+          },
+          {
+            "Cycle": 0,
+            "Iteration": 1,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": false,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 64.0372,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 403.1704,
+            "Rtf": 0.02015852,
+            "Timings": {
+              "Load": 62.264,
+              "Mel": 1.638,
+              "Encode": 364.851,
+              "Decode": 34.221
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": false,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1238958080,
+            "ManagedBytes": 1799016,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 1328627712,
+      "peakFootprintBytes": 565053048
+    },
+    "cpu-no-mmap": {
+      "exitCode": 0,
+      "result": {
+        "Version": "0.4.2",
+        "Commit": "275cd50d",
+        "Abi": [
+          {
+            "Type": "LoadParams",
+            "Size": 32,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Backend": 8,
+              "Device": 16,
+              "NoMmap": 24
+            }
+          },
+          {
+            "Type": "SessionParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Threads": 8,
+              "KvType": 12,
+              "Context": 16
+            }
+          },
+          {
+            "Type": "RunParams",
+            "Size": 104,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Task": 8,
+              "Timestamps": 12,
+              "Pnc": 16,
+              "Itn": 20,
+              "Diarize": 24,
+              "Language": 32,
+              "TargetLanguage": 40,
+              "KeepSpecialTags": 48,
+              "Family": 56,
+              "SpecDrafts": 64,
+              "Vocabulary": 72,
+              "VocabularyCount": 80,
+              "Prompt": 88,
+              "Prefix": 96
+            }
+          },
+          {
+            "Type": "Timings",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Load": 8,
+              "Mel": 12,
+              "Encode": 16,
+              "Decode": 20
+            }
+          },
+          {
+            "Type": "Segment",
+            "Size": 56,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "FirstWord": 24,
+              "Words": 28,
+              "FirstToken": 32,
+              "Tokens": 36,
+              "Text": 40,
+              "Speaker": 48
+            }
+          },
+          {
+            "Type": "Word",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Start": 8,
+              "End": 16,
+              "Segment": 24,
+              "FirstToken": 28,
+              "Tokens": 32,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "Token",
+            "Size": 48,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Id": 8,
+              "Probability": 12,
+              "Start": 16,
+              "End": 24,
+              "Segment": 32,
+              "Word": 36,
+              "Text": 40
+            }
+          },
+          {
+            "Type": "BackendParams",
+            "Size": 24,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Directory": 8,
+              "Allowed": 16
+            }
+          },
+          {
+            "Type": "DeviceInfo",
+            "Size": 64,
+            "Align": 8,
+            "Offsets": {
+              "Size": 0,
+              "Name": 8,
+              "Description": 16,
+              "Kind": 24,
+              "Id": 32,
+              "MemoryTotal": 40,
+              "MemoryFree": 48,
+              "Type": 56
+            }
+          }
+        ],
+        "Reports": [
+          {
+            "Cycle": 0,
+            "Iteration": 0,
+            "Backend": "cpu",
+            "NativeBackend": "CPU",
+            "Device": "Apple M4 Pro",
+            "Architecture": "parakeet",
+            "LoadedLibraries": [
+              "libggml-base.0.dylib",
+              "libggml-cpu.so",
+              "libggml.0.dylib",
+              "libtranscribe.dylib"
+            ],
+            "NoMmap": true,
+            "Outcome": "Completed",
+            "RunPassed": true,
+            "Samples": 320000,
+            "AudioSeconds": 20,
+            "LoadMs": 196.5246,
+            "Status": 0,
+            "Aborted": false,
+            "Truncated": false,
+            "WallMs": 402.6957,
+            "Rtf": 0.020134785,
+            "Timings": {
+              "Load": 194.812,
+              "Mel": 1.587,
+              "Encode": 363.978,
+              "Decode": 33.774
+            },
+            "Language": "",
+            "TimestampKind": 4,
+            "Characters": 367,
+            "Segments": 1,
+            "Words": 63,
+            "Tokens": 124,
+            "TimestampErrors": 0,
+            "SegmentTextMatches": true,
+            "TextEqualToFirst": null,
+            "LastTimestampMs": 19840,
+            "PeakWorkingSetBytes": 0,
+            "WorkingSetBytes": 1238384640,
+            "ManagedBytes": 1600136,
+            "AbortPolls": 1
+          }
+        ],
+        "DoubleDispose": "pass",
+        "UseAfterDispose": "rejected",
+        "EmptyNativeInput": "rejected: 1",
+        "ZeroRunStruct": "rejected: 14"
+      },
+      "maxResidentBytes": 1324990464,
+      "peakFootprintBytes": 1301825120
+    }
+  },
+  "independentCOffsetsMatch": true,
+  "unicodeModelPath": {
+    "result": {
+      "Version": "0.4.2",
+      "Commit": "275cd50d",
+      "Abi": [
+        {
+          "Type": "LoadParams",
+          "Size": 32,
+          "Align": 8
+        },
+        {
+          "Type": "SessionParams",
+          "Size": 24,
+          "Align": 8
+        },
+        {
+          "Type": "RunParams",
+          "Size": 104,
+          "Align": 8
+        },
+        {
+          "Type": "Timings",
+          "Size": 24,
+          "Align": 8
+        },
+        {
+          "Type": "Segment",
+          "Size": 56,
+          "Align": 8
+        },
+        {
+          "Type": "Word",
+          "Size": 48,
+          "Align": 8
+        },
+        {
+          "Type": "Token",
+          "Size": 48,
+          "Align": 8
+        },
+        {
+          "Type": "BackendParams",
+          "Size": 24,
+          "Align": 8
+        },
+        {
+          "Type": "DeviceInfo",
+          "Size": 64,
+          "Align": 8
+        }
+      ],
+      "Reports": [
+        {
+          "Cycle": 0,
+          "Iteration": 0,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 27.1763,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 510.4517,
+          "Rtf": 0.025522585000000004,
+          "Timings": {
+            "Load": 25.44,
+            "Mel": 1.46,
+            "Encode": 467.955,
+            "Decode": 35.039
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": null,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 301613056,
+          "ManagedBytes": 1460696,
+          "AbortPolls": 1
+        },
+        {
+          "Cycle": 0,
+          "Iteration": 1,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 27.1763,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 165.1823,
+          "Rtf": 0.008259115000000001,
+          "Timings": {
+            "Load": 25.44,
+            "Mel": 1.491,
+            "Encode": 117.965,
+            "Decode": 33.822
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": true,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 303890432,
+          "ManagedBytes": 1507920,
+          "AbortPolls": 1
+        },
+        {
+          "Cycle": 0,
+          "Iteration": 2,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 27.1763,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 158.8825,
+          "Rtf": 0.007944125,
+          "Timings": {
+            "Load": 25.44,
+            "Mel": 1.186,
+            "Encode": 117.309,
+            "Decode": 33.736
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": true,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 304709632,
+          "ManagedBytes": 1548200,
+          "AbortPolls": 1
+        },
+        {
+          "Cycle": 1,
+          "Iteration": 0,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 25.467,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 157.1275,
+          "Rtf": 0.007856375,
+          "Timings": {
+            "Load": 24.417,
+            "Mel": 1.22,
+            "Encode": 115.939,
+            "Decode": 34.751
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": null,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 306954240,
+          "ManagedBytes": 1601272,
+          "AbortPolls": 1
+        },
+        {
+          "Cycle": 1,
+          "Iteration": 1,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 25.467,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 160.0834,
+          "Rtf": 0.008004170000000001,
+          "Timings": {
+            "Load": 24.417,
+            "Mel": 1.282,
+            "Encode": 116.048,
+            "Decode": 36.796
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": true,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 311607296,
+          "ManagedBytes": 1649424,
+          "AbortPolls": 1
+        },
+        {
+          "Cycle": 1,
+          "Iteration": 2,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "Samples": 320000,
+          "AudioSeconds": 20,
+          "LoadMs": 25.467,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 156.4266,
+          "Rtf": 0.00782133,
+          "Timings": {
+            "Load": 24.417,
+            "Mel": 1.455,
+            "Encode": 115.39,
+            "Decode": 33.499
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 367,
+          "Segments": 1,
+          "Words": 63,
+          "Tokens": 124,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": true,
+          "LastTimestampMs": 19840,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 312459264,
+          "ManagedBytes": 1471096,
+          "AbortPolls": 1
+        }
+      ],
+      "DoubleDispose": "pass",
+      "UseAfterDispose": "rejected"
+    },
+    "form": "UTF-8 Cyrillic and accented Latin model symlink; six runs across two loads; source path omitted"
+  },
+  "cpuAutoFallback": {
+    "Version": "0.4.2",
+    "Commit": "275cd50d",
+    "Abi": [
+      {
+        "Type": "LoadParams",
+        "Size": 32,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Backend": 8,
+          "Device": 16,
+          "NoMmap": 24
+        }
+      },
+      {
+        "Type": "SessionParams",
+        "Size": 24,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Threads": 8,
+          "KvType": 12,
+          "Context": 16
+        }
+      },
+      {
+        "Type": "RunParams",
+        "Size": 104,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Task": 8,
+          "Timestamps": 12,
+          "Pnc": 16,
+          "Itn": 20,
+          "Diarize": 24,
+          "Language": 32,
+          "TargetLanguage": 40,
+          "KeepSpecialTags": 48,
+          "Family": 56,
+          "SpecDrafts": 64,
+          "Vocabulary": 72,
+          "VocabularyCount": 80,
+          "Prompt": 88,
+          "Prefix": 96
+        }
+      },
+      {
+        "Type": "Timings",
+        "Size": 24,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Load": 8,
+          "Mel": 12,
+          "Encode": 16,
+          "Decode": 20
+        }
+      },
+      {
+        "Type": "Segment",
+        "Size": 56,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Start": 8,
+          "End": 16,
+          "FirstWord": 24,
+          "Words": 28,
+          "FirstToken": 32,
+          "Tokens": 36,
+          "Text": 40,
+          "Speaker": 48
+        }
+      },
+      {
+        "Type": "Word",
+        "Size": 48,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Start": 8,
+          "End": 16,
+          "Segment": 24,
+          "FirstToken": 28,
+          "Tokens": 32,
+          "Text": 40
+        }
+      },
+      {
+        "Type": "Token",
+        "Size": 48,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Id": 8,
+          "Probability": 12,
+          "Start": 16,
+          "End": 24,
+          "Segment": 32,
+          "Word": 36,
+          "Text": 40
+        }
+      },
+      {
+        "Type": "BackendParams",
+        "Size": 24,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Directory": 8,
+          "Allowed": 16
+        }
+      },
+      {
+        "Type": "DeviceInfo",
+        "Size": 64,
+        "Align": 8,
+        "Offsets": {
+          "Size": 0,
+          "Name": 8,
+          "Description": 16,
+          "Kind": 24,
+          "Id": 32,
+          "MemoryTotal": 40,
+          "MemoryFree": 48,
+          "Type": 56
+        }
+      }
+    ],
+    "Reports": [
+      {
+        "Cycle": 0,
+        "Iteration": 0,
+        "Backend": "cpu",
+        "NativeBackend": "CPU",
+        "Device": "Apple M4 Pro",
+        "Architecture": "parakeet",
+        "LoadedLibraries": [
+          "libggml-base.0.dylib",
+          "libggml-cpu.so",
+          "libggml.0.dylib",
+          "libtranscribe.dylib"
+        ],
+        "Samples": 320000,
+        "AudioSeconds": 20,
+        "LoadMs": 61.3843,
+        "Status": 0,
+        "Aborted": false,
+        "Truncated": false,
+        "WallMs": 404.4328,
+        "Rtf": 0.02022164,
+        "Timings": {
+          "Load": 59.575,
+          "Mel": 1.664,
+          "Encode": 364.655,
+          "Decode": 33.618
+        },
+        "Language": "",
+        "TimestampKind": 4,
+        "Characters": 367,
+        "Segments": 1,
+        "Words": 63,
+        "Tokens": 124,
+        "TimestampErrors": 0,
+        "SegmentTextMatches": true,
+        "TextEqualToFirst": null,
+        "LastTimestampMs": 19840,
+        "PeakWorkingSetBytes": 0,
+        "WorkingSetBytes": 1237614592,
+        "ManagedBytes": 1599456,
+        "AbortPolls": 1
+      }
+    ],
+    "DoubleDispose": "pass",
+    "UseAfterDispose": "rejected"
+  },
+  "forcedUnavailableVulkan": {
+    "exitCode": 1,
+    "diagnostic": "InvalidOperationException: Native status 8: backend error"
+  },
+  "syntheticReference": {
+    "result": {
+      "Version": "0.4.2",
+      "Commit": "275cd50d",
+      "Abi": [
+        {
+          "Type": "LoadParams",
+          "Size": 32,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Backend": 8,
+            "Device": 16,
+            "NoMmap": 24
+          }
+        },
+        {
+          "Type": "SessionParams",
+          "Size": 24,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Threads": 8,
+            "KvType": 12,
+            "Context": 16
+          }
+        },
+        {
+          "Type": "RunParams",
+          "Size": 104,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Task": 8,
+            "Timestamps": 12,
+            "Pnc": 16,
+            "Itn": 20,
+            "Diarize": 24,
+            "Language": 32,
+            "TargetLanguage": 40,
+            "KeepSpecialTags": 48,
+            "Family": 56,
+            "SpecDrafts": 64,
+            "Vocabulary": 72,
+            "VocabularyCount": 80,
+            "Prompt": 88,
+            "Prefix": 96
+          }
+        },
+        {
+          "Type": "Timings",
+          "Size": 24,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Load": 8,
+            "Mel": 12,
+            "Encode": 16,
+            "Decode": 20
+          }
+        },
+        {
+          "Type": "Segment",
+          "Size": 56,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Start": 8,
+            "End": 16,
+            "FirstWord": 24,
+            "Words": 28,
+            "FirstToken": 32,
+            "Tokens": 36,
+            "Text": 40,
+            "Speaker": 48
+          }
+        },
+        {
+          "Type": "Word",
+          "Size": 48,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Start": 8,
+            "End": 16,
+            "Segment": 24,
+            "FirstToken": 28,
+            "Tokens": 32,
+            "Text": 40
+          }
+        },
+        {
+          "Type": "Token",
+          "Size": 48,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Id": 8,
+            "Probability": 12,
+            "Start": 16,
+            "End": 24,
+            "Segment": 32,
+            "Word": 36,
+            "Text": 40
+          }
+        },
+        {
+          "Type": "BackendParams",
+          "Size": 24,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Directory": 8,
+            "Allowed": 16
+          }
+        },
+        {
+          "Type": "DeviceInfo",
+          "Size": 64,
+          "Align": 8,
+          "Offsets": {
+            "Size": 0,
+            "Name": 8,
+            "Description": 16,
+            "Kind": 24,
+            "Id": 32,
+            "MemoryTotal": 40,
+            "MemoryFree": 48,
+            "Type": 56
+          }
+        }
+      ],
+      "Reports": [
+        {
+          "Cycle": 0,
+          "Iteration": 0,
+          "Backend": "metal",
+          "NativeBackend": "MTL0",
+          "Device": "Apple M4 Pro",
+          "Architecture": "parakeet",
+          "LoadedLibraries": [
+            "libggml-base.0.dylib",
+            "libggml-cpu.so",
+            "libggml-metal.so",
+            "libggml.0.dylib",
+            "libtranscribe.dylib"
+          ],
+          "NoMmap": false,
+          "Outcome": "Completed",
+          "RunPassed": true,
+          "Samples": 650764,
+          "AudioSeconds": 40.67275,
+          "LoadMs": 34.6578,
+          "Status": 0,
+          "Aborted": false,
+          "Truncated": false,
+          "WallMs": 390.3665,
+          "Rtf": 0.009597740501933112,
+          "Timings": {
+            "Load": 32.854,
+            "Mel": 3.354,
+            "Encode": 341.472,
+            "Decode": 40.408
+          },
+          "Language": "",
+          "TimestampKind": 4,
+          "Characters": 290,
+          "Segments": 2,
+          "Words": 52,
+          "Tokens": 123,
+          "TimestampErrors": 0,
+          "SegmentTextMatches": true,
+          "TextEqualToFirst": null,
+          "LastTimestampMs": 34200,
+          "PeakWorkingSetBytes": 0,
+          "WorkingSetBytes": 309985280,
+          "ManagedBytes": 2984296,
+          "AbortPolls": 5
+        }
+      ],
+      "DoubleDispose": "pass",
+      "UseAfterDispose": "rejected",
+      "EmptyNativeInput": "rejected: 1",
+      "ZeroRunStruct": "rejected: 14"
+    },
+    "score": {
+      "referenceWords": 54,
+      "hypothesisWords": 52,
+      "wordEdits": 13,
+      "wer": 0.24074074074074073,
+      "characterEdits": 35,
+      "cer": 0.11627906976744186,
+      "normalization": "Unicode word characters; lower case; punctuation removed; digits not expanded",
+      "allLanguagesHaveText": true
+    },
+    "voices": [
+      "Samantha en_US",
+      "Monica es_ES",
+      "Milena ru_RU"
+    ],
+    "rateWordsPerMinute": 160,
+    "pauseAfterEachLanguageSeconds": 7,
+    "reference": "../reference_texts.json",
+    "accuracyLimit": "Synthetic speech only; does not measure private recording accuracy or 25-language coverage"
+  },
+  "longComparison": {
+    "repeatedTextEqual": true,
+    "recoveredTextEqualFresh": true,
+    "recoveredSegmentsEqualFresh": true,
+    "adjacentExactDuplicateSegments": 0,
+    "suffixPrefixRepeatCandidates": [
+      {
+        "boundaryIndex": 132,
+        "matchingWords": 3
+      }
+    ],
+    "manualReferenceAccuracy": "not verified",
+    "boundaryOmissions": "not verified",
+    "repetitionCause": "not verified"
+  },
+  "notVerified": [
+    "Windows x64 Vulkan real GPU",
+    "Windows x64 CPU without Vulkan runtime/SDK",
+    "macOS x64 physical Intel CPU without GPU module",
+    "native OUTPUT_TRUNCATED and OUTPUT_REPETITION induction",
+    "native mid-encoder cancellation",
+    "long recording manual WER/CER and completeness",
+    "Handy comparison on identical model/revision/backend/preparation",
+    "25-language accuracy",
+    "AI chunking adaptation",
+    "clean installation and Uno app-bundle loading",
+    "unbounded leak freedom or sanitizer verification"
+  ],
+  "licenseHashes": {
+    "modelLicense": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "modelNotice": "8999f96f7a130b258418abd74c119b470efd906d25027759cddaea074831f1e1",
+    "transcribeLicense": "86a53633b56f6b029d3cb42158bcc7aac0cdff898aceb13e83b93e368bbc4ac6",
+    "ggmlLicense": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+  },
+  "invalidManagedPcm": {
+    "empty": {
+      "exitCode": 1,
+      "diagnostic": "InvalidOperationException: Invalid raw mono float32 sample length"
+    },
+    "unaligned": {
+      "exitCode": 1,
+      "diagnostic": "InvalidOperationException: Invalid raw mono float32 sample length"
+    },
+    "nan": {
+      "exitCode": 1,
+      "diagnostic": "InvalidOperationException: PCM must be finite and normalized"
+    },
+    "out-of-range": {
+      "exitCode": 1,
+      "diagnostic": "InvalidOperationException: PCM must be finite and normalized"
+    }
+  },
+  "ggmlVendoredTree": "09259938849bc5f871148aa50d823ade83140df9",
+  "ggmlPatchHashes": {
+    "0004-cpu-x86-score-os-xsave-check.patch": "f63ee409e8311939a1b056b5b767d3f2e306b19a16b20aedc1d591d85e6d4d68",
+    "0002-backend-reg-filter.patch": "ca2f38a9bc4dadac126e7b6f89005abc759bc23f448ad87ac74b001d718f5c11",
+    "0003-metal-mapped-buffer-null.patch": "ad4a304fd730748572d154d68fb7099e2bd52db9061d7d15085676462e48f395",
+    "0001-fix-threadpool-oversubscription.patch": "a67d843f8ef1476b9b356d5f5eed8c078ed8184063721b9df09a722e5b540946"
+  }
+}
