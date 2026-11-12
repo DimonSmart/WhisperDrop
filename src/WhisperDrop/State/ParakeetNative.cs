@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -9,18 +11,30 @@ namespace WhisperDrop.State;
 internal static class ParakeetNative
 {
     const string Lib = "transcribe";
+    private const uint LoadLibrarySearchDllLoadDir = 0x00000100;
+    private const uint LoadLibrarySearchUserDirs = 0x00000400;
+    private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
     internal static string Text(nint value) => Marshal.PtrToStringUTF8(value) ?? "";
     private static readonly Lazy<nint> Library = new(Initialize);
     private static readonly Log QuietLog = (_, _, _) => { }; // Native messages may include paths or recognized text.
-    internal static string DirectoryPath => Path.Combine(AppContext.BaseDirectory, "parakeet", "osx-arm64");
+    internal static string DirectoryPath => OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+        ? Path.Combine(AppContext.BaseDirectory, "parakeet", "osx-arm64")
+        : OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.X64
+            ? Path.Combine(AppContext.BaseDirectory, "parakeet", "win-x64")
+            : throw new RecognitionConfigurationException("Parakeet recognition requires macOS ARM64 or Windows x64.");
     internal static void Load() => _ = Library.Value;
     private static nint Initialize()
     {
-        if (!OperatingSystem.IsMacOS() || RuntimeInformation.ProcessArchitecture != Architecture.Arm64)
-            throw new RecognitionConfigurationException("Parakeet recognition currently requires macOS on Apple Silicon.");
+        if (!(OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64) &&
+            !(OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.X64))
+            throw new RecognitionConfigurationException("Parakeet recognition requires macOS ARM64 or Windows x64.");
         if (Environment.GetEnvironmentVariable("GGML_BACKEND_PATH") is not null || Environment.GetEnvironmentVariable("TRANSCRIBE_BACKENDS") is not null)
             throw new RecognitionConfigurationException("Remove GGML_BACKEND_PATH and TRANSCRIBE_BACKENDS overrides to use the bundled runtime.");
-        var library = NativeLibrary.Load(Path.Combine(DirectoryPath, "libtranscribe.dylib"));
+        var nativeLibrary = OperatingSystem.IsWindows() ? "transcribe.dll" : "libtranscribe.dylib";
+        var libraryPath = Path.Combine(DirectoryPath, nativeLibrary);
+        var library = OperatingSystem.IsWindows()
+            ? LoadWindowsLibrary(DirectoryPath, libraryPath)
+            : NativeLibrary.Load(libraryPath);
         // The registry owns backend modules for the process lifetime. Never unload or retry a failed initialization.
         NativeLibrary.SetDllImportResolver(typeof(ParakeetNative).Assembly, (name, _, _) => name == Lib ? library : 0);
         transcribe_log_set(QuietLog, 0);
@@ -33,7 +47,7 @@ internal static class ParakeetNative
         try
         {
             init.Directory = directory;
-            init.Allowed = 3; // App-local CPU and Metal modules only.
+            init.Allowed = OperatingSystem.IsWindows() ? 5u : 3u; // App-local CPU and the platform GPU backend only.
             Check(transcribe_init_backends_ex(ref init));
         }
         finally { Marshal.FreeCoTaskMem(directory); }
@@ -42,9 +56,46 @@ internal static class ParakeetNative
     }
     [DllImport("/usr/lib/libSystem.B.dylib")] private static extern uint _dyld_image_count();
     [DllImport("/usr/lib/libSystem.B.dylib")] private static extern nint _dyld_get_image_name(uint index);
+    private static nint LoadWindowsLibrary(string directory, string libraryPath)
+    {
+        if (!SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs))
+            throw new RecognitionConfigurationException("Windows could not configure safe app-local native library loading.",
+                new Win32Exception(Marshal.GetLastWin32Error()));
+        if (AddDllDirectory(Path.GetFullPath(directory)) == 0)
+            throw new RecognitionConfigurationException("The bundled Parakeet runtime directory is unavailable.",
+                new Win32Exception(Marshal.GetLastWin32Error()));
+        var library = LoadLibraryEx(Path.GetFullPath(libraryPath), 0,
+            LoadLibrarySearchDllLoadDir | LoadLibrarySearchUserDirs | LoadLibrarySearchDefaultDirs);
+        if (library == 0)
+            throw new RecognitionConfigurationException("The bundled Windows Parakeet runtime could not be loaded. Rebuild or reinstall ParakeetDrop.",
+                new Win32Exception(Marshal.GetLastWin32Error()));
+        return library;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetDefaultDllDirectories(uint directoryFlags);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern nint AddDllDirectory(string newDirectory);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern nint LoadLibraryEx(string fileName, nint file, uint flags);
+
     internal static void AssertAppLocalLibraries()
     {
         var directory = Path.GetFullPath(DirectoryPath) + Path.DirectorySeparatorChar;
+        if (OperatingSystem.IsWindows())
+        {
+            using var process = Process.GetCurrentProcess();
+            foreach (ProcessModule module in process.Modules)
+            {
+                var name = module.ModuleName;
+                if ((name.StartsWith("ggml", StringComparison.OrdinalIgnoreCase) || name.StartsWith("transcribe", StringComparison.OrdinalIgnoreCase)) &&
+                    !Path.GetFullPath(module.FileName).StartsWith(directory, StringComparison.OrdinalIgnoreCase))
+                    throw new RecognitionConfigurationException("A recognition library was loaded outside the application. Reinstall ParakeetDrop and remove native-library overrides.");
+            }
+            return;
+        }
+
         for (uint i = 0; i < _dyld_image_count(); i++)
         {
             var path = Text(_dyld_get_image_name(i));

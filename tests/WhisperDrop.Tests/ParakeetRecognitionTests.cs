@@ -37,41 +37,45 @@ public sealed class ParakeetRecognitionTests
     public void Backend_failure_has_CPU_guidance() => Assert.Contains("CPU",
         Assert.Throws<RecognitionConfigurationException>(() => ParakeetRuntime.CheckRunStatus(8, false, false, default)).Message);
     [Fact]
-    public void Device_selection_prefers_Metal_then_CPU_and_forced_CPU_never_asks_for_GPU()
+    public void Device_selection_prefers_platform_GPU_then_CPU_and_forced_CPU_never_asks_for_GPU()
     {
-        Assert.Equal([2, 1], ParakeetRuntimeSelector.BackendOrder(ProcessingDevice.Auto));
+        var gpuBackend = OperatingSystem.IsWindows() ? 3 : 2;
+        Assert.Equal([gpuBackend, 1], ParakeetRuntimeSelector.BackendOrder(ProcessingDevice.Auto));
         Assert.Equal([1], ParakeetRuntimeSelector.BackendOrder(ProcessingDevice.Cpu));
-        Assert.Equal([2], ParakeetRuntimeSelector.BackendOrder(ProcessingDevice.Gpu));
+        Assert.Equal([gpuBackend], ParakeetRuntimeSelector.BackendOrder(ProcessingDevice.Gpu));
         var selector = new ParakeetRuntimeSelector();
         selector.MarkInitialized(ProcessingDevice.Auto, "cpu");
         Assert.Equal(ProcessingDevice.Cpu, selector.ActiveDevice);
         Assert.False(selector.RequiresModelReload(ProcessingDevice.Auto));
         Assert.True(selector.RequiresModelReload(ProcessingDevice.Gpu));
+        selector.MarkInitialized(ProcessingDevice.Gpu, OperatingSystem.IsWindows() ? "vulkan" : "metal");
+        Assert.Equal(ProcessingDevice.Gpu, selector.ActiveDevice);
     }
     [Fact]
-    public void Auto_falls_back_when_Metal_is_unavailable_and_GPU_reports_guidance()
+    public void Auto_falls_back_when_platform_GPU_is_unavailable_and_GPU_reports_guidance()
     {
+        var gpuBackend = OperatingSystem.IsWindows() ? 3 : 2;
         var attempts = new List<int>();
         var model = ParakeetRuntime.SelectBackend(ProcessingDevice.Auto, backend =>
         {
             attempts.Add(backend);
-            return backend == 2 ? (8, null) : (0, new StubModel());
+            return backend == gpuBackend ? (8, null) : (0, new StubModel());
         });
-        Assert.Equal([2, 1], attempts);
+        Assert.Equal([gpuBackend, 1], attempts);
         Assert.Equal("cpu", model.Backend);
         attempts.Clear();
         var error = Assert.Throws<RecognitionConfigurationException>(() => ParakeetRuntime.SelectBackend(ProcessingDevice.Gpu, backend =>
         {
             attempts.Add(backend); return (8, null);
         }));
-        Assert.Equal([2], attempts);
+        Assert.Equal([gpuBackend], attempts);
         Assert.Contains("Auto or CPU", error.Message);
         attempts.Clear();
         Assert.Throws<RecognitionConfigurationException>(() => ParakeetRuntime.SelectBackend(ProcessingDevice.Auto, backend =>
         {
             attempts.Add(backend); return (4, null);
         }));
-        Assert.Equal([2], attempts); // An invalid artifact is not a backend-availability failure.
+        Assert.Equal([gpuBackend], attempts); // An invalid artifact is not a backend-availability failure.
     }
     private sealed class StubModel : IParakeetModel
     {
@@ -80,7 +84,7 @@ public sealed class ParakeetRecognitionTests
         public void Dispose() { }
     }
     [Fact]
-    public void Managed_ABI_matches_pinned_ARM64_header_layout()
+    public void Managed_ABI_matches_pinned_header_layout_on_supported_architectures()
     {
         Assert.Equal(32, Marshal.SizeOf<ParakeetNative.LoadParams>());
         Assert.Equal(24, Marshal.SizeOf<ParakeetNative.SessionParams>());

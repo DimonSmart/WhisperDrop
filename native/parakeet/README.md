@@ -11,8 +11,8 @@ identifiers. It does not substitute an independently checked-out ggml base.
 
 ## Developer build
 
-On macOS Apple Silicon, use .NET 10, Python 3.11+, Git, Xcode command-line tools,
-and CMake 4.2.3. A local developer CMake installation can live in ignored artifacts:
+On macOS Apple Silicon, use .NET 10, Python 3.10+, Git, Xcode command-line tools,
+and CMake. A local developer CMake installation can live in ignored artifacts:
 
 ```sh
 python3 -m venv artifacts/parakeet-tools
@@ -22,13 +22,30 @@ dotnet build WhisperDrop.sln -c Release -p:ContinuousIntegrationBuild=true
 dotnet test tests/WhisperDrop.Tests/WhisperDrop.Tests.csproj -c Release
 ```
 
-The script stages ARM64 shared libraries in `artifacts/parakeet/osx-arm64/`.
-It builds dynamic CPU and Metal modules, embeds Metal shaders, disables system
-BLAS and OpenMP, rewrites dependencies to `@loader_path`, removes build-tree
-RPATHs, and applies local ad-hoc signatures. The script verifies and stages the
+On Windows x64, use .NET 10, Python 3.10+, Git, Visual Studio C++ Build Tools,
+and CMake. The script finds CMake in `PATH` or in the installed Visual Studio
+instance. Its default build includes CPU; when `VULKAN_SDK` is set, it also
+builds the Vulkan backend. You can request Vulkan explicitly with `--vulkan`.
+The Vulkan SDK is a build-time prerequisite; Windows GPU drivers provide the
+runtime loader used by the packaged backend.
+
+```powershell
+python native/parakeet/build.py
+dotnet build WhisperDrop.sln -c Release
+dotnet test tests/WhisperDrop.Tests/WhisperDrop.Tests.csproj -c Release
+```
+
+The script stages shared libraries in `artifacts/parakeet/osx-arm64/` or
+`artifacts/parakeet/win-x64/`. On macOS it builds dynamic CPU and Metal modules,
+embeds Metal shaders, disables system BLAS and OpenMP, rewrites dependencies to
+`@loader_path`, removes build-tree RPATHs, and applies local ad-hoc signatures.
+On Windows it builds app-local CPU and, when requested, Vulkan DLLs with the
+static MSVC runtime. The script verifies and stages the
 MIT runtime licenses and pinned CC BY 4.0 model license/NOTICE. It records file
 hashes and the CMake configuration. Application build/publish targets copy the
-stage under `parakeet/osx-arm64/`, including into a macOS bundle's Resources.
+matching stage under `parakeet/<RID>/`; macOS bundles place their runtime in
+Resources. Windows native libraries are not loaded from the working directory
+or from an installed SDK.
 The build script downloads source code, and never downloads model weights.
 `scripts/package_macos.py` creates and verifies the final ARM64 `.app` archive, including this stage and its native manifest, after extraction. Release packages remain unsigned and not notarized; local ad-hoc native signatures are not a Developer ID signature.
 
@@ -40,9 +57,10 @@ are serialized; sessions and rooted abort callbacks live until inference returns
 and sessions are released before models. A requested device change reloads the
 model on the next run. Device reporting comes from the initialized model device.
 
-CPU forces the CPU backend; Auto tries Metal and falls back on backend-unavailable
-status; forced GPU reports guidance when Metal is unavailable. Model inspection
-is offline, and model loads are deferred until transcription. The download UI
+CPU forces the CPU backend; Auto tries Metal on macOS or Vulkan on Windows and
+falls back on backend-unavailable status; forced GPU reports guidance when the
+platform GPU backend is unavailable. Model inspection is offline, and model
+loads are deferred until transcription. The download UI
 explicitly starts the pinned artifact transfer and uses hash/size verification
 before atomic installation. No WhisperDrop settings or model folders are read.
 
@@ -61,7 +79,7 @@ PARAKEETDROP_LOCAL_MODEL='/absolute/path/parakeet-ultra-Q8_0.gguf' \
 ```
 
 The test exercises the production media preparation and recognition service with
-`Fixtures/parakeet-speech.wav`, checks real CPU/Metal/Auto devices, repeat runs,
+`Fixtures/parakeet-speech.wav`, checks CPU/Metal or CPU/Vulkan/Auto devices, repeat runs,
 reloads, Unicode audio paths, cancellation with GC pressure, and successful
 recovery. Its output records actual backends and elapsed times without transcript
 text or user paths. The optional `PARAKEETDROP_LOCAL_AUDIO` selects another local
@@ -84,5 +102,4 @@ or multilingual quality. Native truncation/repetition remains uninduced in the
 preserved spike; production mapping of non-success, aborted and incomplete
 results is covered by unit tests. Cancellation is observed at the pinned native
 runtime's safe polling points; it does not imply interruption within an individual
-encoder/decoder operation. Windows is deferred; Intel macOS and Rosetta are not
-supported.
+encoder/decoder operation. Intel macOS and Rosetta are not supported.

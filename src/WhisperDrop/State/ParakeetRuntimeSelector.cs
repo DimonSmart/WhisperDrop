@@ -21,7 +21,7 @@ public sealed class ParakeetRuntimeSelector : IRecognitionRuntimeSelector
 {
     private ProcessingDevice requested;
     public bool IsInitialized { get; private set; }
-    public ProcessingDevice ActiveDevice => Backend == "metal" ? ProcessingDevice.Gpu : ProcessingDevice.Cpu;
+    public ProcessingDevice ActiveDevice => Backend is "metal" or "vulkan" ? ProcessingDevice.Gpu : ProcessingDevice.Cpu;
     public string? Backend { get; private set; }
     public bool RequiresModelReload(ProcessingDevice requestedDevice) => IsInitialized && requested != requestedDevice;
     public void MarkInitialized(ProcessingDevice requestedDevice, string backend)
@@ -30,11 +30,15 @@ public sealed class ParakeetRuntimeSelector : IRecognitionRuntimeSelector
         Backend = backend;
         IsInitialized = true;
     }
-    internal static int[] BackendOrder(ProcessingDevice device) => device switch
+    internal static int[] BackendOrder(ProcessingDevice device)
     {
-        ProcessingDevice.Cpu => [1],
-        ProcessingDevice.Gpu => [2],
-        ProcessingDevice.Auto => [2, 1],
-        _ => throw new ArgumentOutOfRangeException(nameof(device))
-    };
+        var gpuBackend = OperatingSystem.IsWindows() ? 3 : 2;
+        return device switch
+        {
+            ProcessingDevice.Cpu => [1],
+            ProcessingDevice.Gpu => [gpuBackend],
+            ProcessingDevice.Auto => [gpuBackend, 1],
+            _ => throw new ArgumentOutOfRangeException(nameof(device))
+        };
+    }
 }

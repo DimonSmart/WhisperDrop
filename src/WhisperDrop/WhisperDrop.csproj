@@ -32,7 +32,8 @@
 
   <Target Name="CopyBundledParakeetRuntime" AfterTargets="Build;Publish" >
     <ItemGroup>
-      <_ParakeetLibrary Include="$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/*" />
+      <_MacParakeetLibrary Include="$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/*" />
+      <_WindowsParakeetLibrary Include="$(MSBuildProjectDirectory)/../../artifacts/parakeet/win-x64/*" />
     </ItemGroup>
     <Error Condition="$([MSBuild]::IsOSPlatform('OSX')) and
                       (!Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libtranscribe.dylib') or
@@ -41,8 +42,15 @@
                        !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml-cpu.so') or
                        !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/osx-arm64/libggml-metal.so'))"
            Text="Build the pinned native runtime first: python3 native/parakeet/build.py" />
-    <Copy SourceFiles="@(_ParakeetLibrary)" DestinationFolder="$(OutDir)parakeet/osx-arm64" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(_ParakeetLibrary)" DestinationFolder="$(PublishDir)parakeet/osx-arm64" SkipUnchangedFiles="true" Condition="'$(PublishDir)' != ''" />
+    <Error Condition="$([MSBuild]::IsOSPlatform('Windows')) and
+                      (!Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/win-x64/transcribe.dll') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/win-x64/ggml-base.dll') or
+                       !Exists('$(MSBuildProjectDirectory)/../../artifacts/parakeet/win-x64/ggml-cpu.dll'))"
+           Text="Build the pinned Windows native runtime first with python native/parakeet/build.py and CMake available." />
+    <Copy SourceFiles="@(_MacParakeetLibrary)" DestinationFolder="$(OutDir)parakeet/osx-arm64" SkipUnchangedFiles="true" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+    <Copy SourceFiles="@(_MacParakeetLibrary)" DestinationFolder="$(PublishDir)parakeet/osx-arm64" SkipUnchangedFiles="true" Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(PublishDir)' != ''" />
+    <Copy SourceFiles="@(_WindowsParakeetLibrary)" DestinationFolder="$(OutDir)parakeet/win-x64" SkipUnchangedFiles="true" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Copy SourceFiles="@(_WindowsParakeetLibrary)" DestinationFolder="$(PublishDir)parakeet/win-x64" SkipUnchangedFiles="true" Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(PublishDir)' != ''" />
     <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)" DestinationFolder="$(OutDir)ffmpeg/win-x64" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(FfmpegWindowsRuntimeDependency)" DestinationFolder="$(PublishDir)ffmpeg/win-x64" SkipUnchangedFiles="true" Condition="'$(PublishDir)' != ''" />
   </Target>

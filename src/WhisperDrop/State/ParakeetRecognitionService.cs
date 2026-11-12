@@ -81,7 +81,7 @@ public sealed class ParakeetRecognitionService : IRecognitionService
         }
         catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
-            throw new RecognitionConfigurationException("The app-local Parakeet runtime could not be loaded. Reinstall the Apple Silicon build.", error);
+            throw new RecognitionConfigurationException("The app-local Parakeet runtime could not be loaded. Rebuild or reinstall the application for this platform.", error);
         }
         finally { NativeGate.Release(); }
     }
@@ -166,14 +166,16 @@ internal sealed class ParakeetRuntime : IParakeetRuntime
 
     internal static IParakeetModel SelectBackend(ProcessingDevice device, Func<int, (int Status, IParakeetModel? Model)> load)
     {
+        var gpuBackend = OperatingSystem.IsWindows() ? 3 : 2;
+        var gpuName = OperatingSystem.IsWindows() ? "Vulkan" : "Metal";
         foreach (var backend in ParakeetRuntimeSelector.BackendOrder(device))
         {
             var (status, model) = load(backend);
             if (status == 0 && model is not null) return model;
             model?.Dispose();
-            if (backend == 2 && status == 8 && device == ProcessingDevice.Auto) continue;
-            if (backend == 2 && status == 8)
-                throw new RecognitionConfigurationException("Metal is unavailable. Select Auto or CPU, or reinstall the Apple Silicon build.");
+            if (backend == gpuBackend && status == 8 && device == ProcessingDevice.Auto) continue;
+            if (backend == gpuBackend && status == 8)
+                throw new RecognitionConfigurationException($"{gpuName} is unavailable. Select Auto or CPU, or reinstall the application for this platform.");
             if (status != 0)
                 throw new RecognitionConfigurationException($"Parakeet model load failed (native status {status}). Select CPU or repair the model in Models.");
             throw new RecognitionConfigurationException("The native runtime returned no model.");
@@ -191,7 +193,8 @@ internal sealed class ParakeetRuntime : IParakeetRuntime
             ParakeetNative.transcribe_device_info_init(out var info);
             ParakeetNative.Check(ParakeetNative.transcribe_device_get_info(ParakeetNative.transcribe_model_device(handle), ref info));
             Backend = ParakeetNative.Text(info.Kind);
-            if ((requested == 1 && Backend != "cpu") || (requested == 2 && Backend != "metal"))
+            var expectedBackend = requested == 1 ? "cpu" : requested == 2 ? "metal" : "vulkan";
+            if (Backend != expectedBackend)
                 throw new RecognitionConfigurationException("The native runtime initialized an unexpected device. Select CPU or reinstall the application.");
         }
         public IParakeetSession CreateSession(int? threads)

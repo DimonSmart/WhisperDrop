@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import platform
 import shutil
@@ -16,15 +17,44 @@ def run(*args):
 
 
 def digest(path):
+    value = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            value.update(chunk)
+    return value.hexdigest()
+
+
+def resolve_cmake(value):
+    found = shutil.which(value)
+    if found:
+        return found
+    if platform.system() == "Windows" and value == "cmake":
+        installer = pathlib.Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        vswhere = installer / "Microsoft Visual Studio/Installer/vswhere.exe"
+        if vswhere.is_file():
+            installs = subprocess.check_output(
+                [str(vswhere), "-latest", "-products", "*", "-requires",
+                 "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+                text=True).splitlines()
+            if installs:
+                candidate = pathlib.Path(installs[0]) / "Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
+                if candidate.is_file():
+                    return str(candidate)
+    return value
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--cmake", default="cmake")
+parser.add_argument("--vulkan", action="store_true", help="Build the Windows Vulkan backend (requires the Vulkan SDK).")
 args = parser.parse_args()
-if platform.system() != "Darwin" or platform.machine() != "arm64":
-    parser.error("Build on macOS Apple Silicon")
+cmake = resolve_cmake(args.cmake)
+system = platform.system()
+machine = platform.machine().lower()
+if not ((system == "Darwin" and machine in ("arm64", "aarch64")) or
+        (system == "Windows" and machine in ("amd64", "x86_64"))):
+    parser.error("Build on macOS Apple Silicon or Windows x64")
+if args.vulkan and system != "Windows":
+    parser.error("--vulkan is supported only for Windows x64")
 artifacts = ROOT.parent.parent / "artifacts" / "parakeet"
 artifacts.mkdir(parents=True, exist_ok=True)
 source = artifacts / "source"
@@ -42,8 +72,10 @@ if PINS["ggmlBaseCommit"] not in (source / "ggml/UPSTREAM").read_text():
 for name, expected in PINS["ggmlPatchHashes"].items():
     if digest(source / "patches/ggml" / name) != expected:
         raise RuntimeError("Downstream ggml patch mismatch: " + name)
-build = artifacts / "build-osx-arm64"
-stage = artifacts / "osx-arm64"
+rid = "osx-arm64" if system == "Darwin" else "win-x64"
+vulkan = args.vulkan or (system == "Windows" and bool(os.environ.get("VULKAN_SDK")))
+build = artifacts / f"build-{rid}"
+stage = artifacts / rid
 if stage.exists():
     shutil.rmtree(stage) # owned generated stage only; never a user model directory
 flags = {
@@ -51,35 +83,54 @@ flags = {
     "TRANSCRIBE_GGML_BACKEND_DL": "ON", "TRANSCRIBE_BUILD_TESTS": "OFF",
     "TRANSCRIBE_BUILD_EXAMPLES": "OFF", "TRANSCRIBE_BUILD_TOOLS": "OFF",
     "TRANSCRIBE_BUILD_REAL_MODEL_TESTS": "OFF", "TRANSCRIBE_INSTALL": "ON",
-    "TRANSCRIBE_METAL": "ON",
-    "TRANSCRIBE_VULKAN": "OFF",
+    "TRANSCRIBE_METAL": "ON" if system == "Darwin" else "OFF",
+    "TRANSCRIBE_VULKAN": "ON" if vulkan else "OFF",
     "TRANSCRIBE_CUDA": "OFF", "TRANSCRIBE_HIP": "OFF", "TRANSCRIBE_USE_OPENMP": "OFF",
     "TRANSCRIBE_USE_SYSTEM_BLAS": "OFF", "TRANSCRIBE_ENABLE_VALIDATION_HOOKS": "OFF",
-    "GGML_NATIVE": "OFF", "GGML_METAL_EMBED_LIBRARY": "ON",
+    "GGML_NATIVE": "OFF",
 }
-flags.update(CMAKE_OSX_ARCHITECTURES="arm64", CMAKE_OSX_DEPLOYMENT_TARGET="14.0", CMAKE_INSTALL_RPATH="@loader_path")
-run(args.cmake, "-S", source, "-B", build, *(f"-D{k}={v}" for k, v in flags.items()))
-run(args.cmake, "--build", build, "--config", "Release", "-j", "10")
+configure = [cmake, "-S", source, "-B", build]
+if system == "Darwin":
+    flags["GGML_METAL_EMBED_LIBRARY"] = "ON"
+    flags["CMAKE_INSTALL_RPATH"] = "@loader_path"
+    flags["CMAKE_OSX_ARCHITECTURES"] = "arm64"
+    flags["CMAKE_OSX_DEPLOYMENT_TARGET"] = "14.0"
+else:
+    flags["CMAKE_MSVC_RUNTIME_LIBRARY"] = "MultiThreaded"
+    configure.extend(["-A", "x64"])
+run(*configure, *(f"-D{k}={v}" for k, v in flags.items()))
+run(cmake, "--build", build, "--config", "Release", "-j", "10")
 stage.mkdir(parents=True)
-inputs = [(build / "src/libtranscribe.0.4.2.dylib", "libtranscribe.dylib"),
-          (build / "ggml/src/libggml.0.26.0.dylib", "libggml.0.dylib"),
-          (build / "ggml/src/libggml-base.0.26.0.dylib", "libggml-base.0.dylib"),
-          (build / "bin/libggml-cpu.so", "libggml-cpu.so")]
-inputs.append((build / "bin/libggml-metal.so", "libggml-metal.so"))
-for src, name in inputs:
-    dst = stage / name
-    shutil.copy2(src, dst)
-    run("install_name_tool", "-id", "@loader_path/" + name, dst)
-    for line in subprocess.check_output(["otool", "-L", str(dst)], text=True).splitlines()[1:]:
-        dep = line.strip().split(" (")[0]
-        if dep.startswith("@rpath/"):
-            run("install_name_tool", "-change", dep, "@loader_path/" + dep.split("/")[-1], dst)
-    commands = subprocess.check_output(["otool", "-l", str(dst)], text=True).splitlines()
-    for i, line in enumerate(commands):
-        if line.strip() == "cmd LC_RPATH":
-            path = commands[i + 2].strip().split(" (")[0].removeprefix("path ")
-            run("install_name_tool", "-delete_rpath", path, dst)
-    run("codesign", "--force", "--sign", "-", dst)  # local ad-hoc test signature only
+if system == "Darwin":
+    inputs = [(build / "src/libtranscribe.0.4.2.dylib", "libtranscribe.dylib"),
+              (build / "ggml/src/libggml.0.26.0.dylib", "libggml.0.dylib"),
+              (build / "ggml/src/libggml-base.0.26.0.dylib", "libggml-base.0.dylib"),
+              (build / "bin/libggml-cpu.so", "libggml-cpu.so"),
+              (build / "bin/libggml-metal.so", "libggml-metal.so")]
+    for src, name in inputs:
+        dst = stage / name
+        shutil.copy2(src, dst)
+        run("install_name_tool", "-id", "@loader_path/" + name, dst)
+        for line in subprocess.check_output(["otool", "-L", str(dst)], text=True).splitlines()[1:]:
+            dep = line.strip().split(" (")[0]
+            if dep.startswith("@rpath/"):
+                run("install_name_tool", "-change", dep, "@loader_path/" + dep.split("/")[-1], dst)
+        commands = subprocess.check_output(["otool", "-l", str(dst)], text=True).splitlines()
+        for i, line in enumerate(commands):
+            if line.strip() == "cmd LC_RPATH":
+                path = commands[i + 2].strip().split(" (")[0].removeprefix("path ")
+                run("install_name_tool", "-delete_rpath", path, dst)
+        run("codesign", "--force", "--sign", "-", dst)  # local ad-hoc test signature only
+else:
+    output = build / "bin" / "Release"
+    required = ["transcribe.dll", "ggml.dll", "ggml-base.dll", "ggml-cpu.dll"]
+    if vulkan:
+        required.append("ggml-vulkan.dll")
+    missing = [name for name in required if not (output / name).is_file()]
+    if missing:
+        raise RuntimeError("Windows native build is missing required libraries: " + ", ".join(missing))
+    for src in output.glob("*.dll"):
+        shutil.copy2(src, stage / src.name)
 licenses = [
     (source / "LICENSE", "transcribe-LICENSE", "transcribeLicense"),
     (source / "ggml/LICENSE", "ggml-LICENSE", "ggmlLicense"),

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using WhisperDrop.Media;
@@ -28,10 +29,15 @@ public sealed class LocalParakeetFactAttribute : FactAttribute
 public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
 {
     [LocalParakeetFact]
-    public async Task Production_recognition_service_runs_CPU_Metal_repeat_reload_and_unicode_audio()
+    public async Task Production_recognition_service_runs_supported_devices_repeat_reload_and_unicode_audio()
     {
-        Assert.True(OperatingSystem.IsMacOS());
+        Assert.True(OperatingSystem.IsMacOS() || (OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.X64));
         var model = Environment.GetEnvironmentVariable("PARAKEETDROP_LOCAL_MODEL")!;
+        var verifyWindowsGpu = OperatingSystem.IsWindows() && Environment.GetEnvironmentVariable("PARAKEETDROP_LOCAL_GPU_TESTS") == "1";
+        var devices = OperatingSystem.IsWindows() && !verifyWindowsGpu
+            ? new[] { ProcessingDevice.Cpu, ProcessingDevice.Auto }
+            : new[] { ProcessingDevice.Cpu, ProcessingDevice.Gpu, ProcessingDevice.Auto };
+        var gpuBackend = OperatingSystem.IsWindows() ? "vulkan" : "metal";
         var source = Environment.GetEnvironmentVariable("PARAKEETDROP_LOCAL_AUDIO") ?? Path.Combine(AppContext.BaseDirectory, "Fixtures", "parakeet-speech.wav");
         var root = Path.Combine(Path.GetTempPath(), "ParakeetDrop-integration-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -49,7 +55,7 @@ public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
                 writer.Complete();
             }
             using var service = new ParakeetRecognitionService();
-            foreach (var device in new[] { ProcessingDevice.Cpu, ProcessingDevice.Gpu, ProcessingDevice.Auto })
+            foreach (var device in devices)
             {
                 string? first = null;
                 for (var run = 0; run < 2; run++)
@@ -63,7 +69,12 @@ public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
                     Assert.Equal(0, segmentCalls);
                     Assert.True(result.IsComplete);
                     Assert.False(string.IsNullOrWhiteSpace(result.Transcript));
-                    Assert.Equal(device == ProcessingDevice.Cpu ? "cpu" : "metal", result.Backend);
+                    if (device == ProcessingDevice.Cpu)
+                        Assert.Equal("cpu", result.Backend);
+                    else if (device == ProcessingDevice.Auto && OperatingSystem.IsWindows() && !verifyWindowsGpu)
+                        Assert.Contains(result.Backend, new[] { "cpu", "vulkan" });
+                    else
+                        Assert.Equal(gpuBackend, result.Backend);
                     Assert.All(result.Segments, s => Assert.Null(s.Probability));
                     if (first is not null) Assert.Equal(first, result.Transcript);
                     first = result.Transcript;
@@ -78,7 +89,12 @@ public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
                 await Assert.ThrowsAsync<OperationCanceledException>(() => cancelledRun);
                 var recovery = await service.TranscribeAsync(model, new() { ProcessingDevice = device, CpuThreads = 2 }, prepared.AudioPath);
                 Assert.True(recovery.IsComplete);
-                Assert.Equal(device == ProcessingDevice.Cpu ? "cpu" : "metal", recovery.Backend);
+                if (device == ProcessingDevice.Cpu)
+                    Assert.Equal("cpu", recovery.Backend);
+                else if (device == ProcessingDevice.Auto && OperatingSystem.IsWindows() && !verifyWindowsGpu)
+                    Assert.Contains(recovery.Backend, new[] { "cpu", "vulkan" });
+                else
+                    Assert.Equal(gpuBackend, recovery.Backend);
                 output.WriteLine($"Requested={device}; actual={recovery.Backend}; cancellationAndRecovery=pass; elapsedMs={cancellationTimer.ElapsedMilliseconds}");
                 service.UnloadModel();
             }
