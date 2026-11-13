@@ -100,7 +100,6 @@ public sealed class WindowsDictationCoordinator : IDisposable
         if (stopping || !recording) return;
         stopping = true;
         recording = false;
-        platform.SetRecordingOverlay(false); // Hide as soon as recording has ended.
         var finished = DateTimeOffset.Now;
         var target = recordingTarget;
         recordingTarget = null;
@@ -135,6 +134,8 @@ public sealed class WindowsDictationCoordinator : IDisposable
         }
         finally
         {
+            // The indicator must remain visible until capture actually stops.
+            platform.SetRecordingOverlay(false);
             if (!disposed) state.SetDictationRecording(false);
             stopping = false;
         }
