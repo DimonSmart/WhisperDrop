@@ -112,7 +112,7 @@ public sealed class TranscriptionWorkspaceTests
 
         await state.TranscribeAsync(state.QueueRows[0]);
 
-        Assert.Equal(InitialApplicationState.TranscribeTabIndex, state.SelectedTabIndex);
+        Assert.False(state.IsSelectedModelAvailable);
         Assert.Equal("Download the selected model before transcription.", state.TranscriptionGuidance);
         Assert.Empty(recognition.Paths);
     }
