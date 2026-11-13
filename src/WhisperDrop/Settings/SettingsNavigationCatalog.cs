@@ -21,13 +21,13 @@ public static class SettingsNavigationCatalog
         new Dictionary<SettingsSection, string[]>
         {
             [SettingsSection.Recognition] =
-                ["recognition", "transcription", "model selection", "parakeet", "processing device", "cpu", "gpu", "threads", "metal", "vulkan", "performance"],
+                ["recognition", "recognition model", "recognition performance", "transcription", "model selection", "parakeet", "processing device", "cpu threads", "cpu", "gpu", "threads", "metal", "vulkan", "performance"],
             [SettingsSection.Models] =
-                ["models", "storage", "models folder", "download", "delete", "installed models", "disk usage", "browse", "location", "files"],
+                ["models", "models & storage", "storage", "models folder", "download", "download model", "downloaded models", "delete", "delete all", "installed models", "disk usage", "browse", "location", "files"],
             [SettingsSection.Dictation] =
-                ["dictation", "push-to-talk", "microphone", "hotkey", "shortcut", "record", "background", "insert text", "windows"],
+                ["dictation", "push-to-talk", "push-to-talk dictation", "microphone", "hotkey", "shortcut", "hold shortcut to record", "record", "background", "enable background dictation", "insert text", "insert text into the original field after recognition", "windows"],
             [SettingsSection.Ai] =
-                ["ai", "post-processing", "improve transcript", "correction", "instructions", "ollama", "provider", "model", "endpoint", "api key", "context size", "test connection"]
+                ["ai", "ai post-processing", "post-processing", "improve transcript", "improve transcript with ai", "custom correction instructions", "technical settings", "correction", "instructions", "ollama", "provider", "model", "ai model", "endpoint", "api key", "context size", "test connection"]
         };
 
     public static bool Matches(SettingsSection section, string? query)
