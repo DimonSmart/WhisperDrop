@@ -146,8 +146,8 @@ public sealed class WindowsTextInputTarget : IDisposable
                 index++;
             if (ch is '\r' or '\n')
             {
-                inputs.Add(Key(0x0D, 0, 0));
-                inputs.Add(Key(0x0D, 0, 0x0002));
+                inputs.Add(Key(0x0D, '\0', 0));
+                inputs.Add(Key(0x0D, '\0', 0x0002));
             }
             else
             {
