@@ -282,9 +282,9 @@ public sealed class WindowsDictationPlatform : IDisposable
 
     private static bool IsHeld(HotkeySpec hotkey) =>
         Down((int)hotkey.Key) &&
-        (!(hotkey.Modifiers & HotkeySpec.Ctrl) != 0 || Down(0x11)) &&
-        (!(hotkey.Modifiers & HotkeySpec.Shift) != 0 || Down(0x10)) &&
-        (!(hotkey.Modifiers & HotkeySpec.Alt) != 0 || Down(0x12));
+        ((hotkey.Modifiers & HotkeySpec.Ctrl) == 0 || Down(0x11)) &&
+        ((hotkey.Modifiers & HotkeySpec.Shift) == 0 || Down(0x10)) &&
+        ((hotkey.Modifiers & HotkeySpec.Alt) == 0 || Down(0x12));
 
     private static bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
 
