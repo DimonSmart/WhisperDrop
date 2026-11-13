@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WhisperDrop.Models;
+using WhisperDrop.Media;
 using WhisperDrop.Settings;
 using WhisperDrop.State;
 using Xunit;
@@ -13,6 +14,31 @@ namespace WhisperDrop.Tests;
 
 public sealed class TranscriptionWorkspaceTests
 {
+    [Fact]
+    public async Task Microphone_start_is_serialized_and_stop_queues_audio_for_explicit_transcription()
+    {
+        var recognition = new FakeRecognitionService();
+        var microphone = new FakeMicrophone();
+        var state = CreateState(recognition, true, microphone: microphone);
+        var starting = state.ToggleMicrophoneRecordingAsync();
+        Assert.False(state.CanUseMicrophone);
+        await state.ToggleMicrophoneRecordingAsync();
+        Assert.Equal(1, microphone.StartCount);
+        microphone.Started.SetResult("microphone.wav");
+        await starting;
+        Assert.True(state.IsMicrophoneRecording);
+        Assert.Empty(state.QueueRows);
+        await state.ToggleMicrophoneRecordingAsync();
+        Assert.False(state.IsMicrophoneRecording);
+        var row = Assert.Single(state.QueueRows);
+        Assert.Equal("Pending", row.Status);
+        Assert.Empty(recognition.Paths);
+        Assert.True(row.CanTranscribe);
+        await state.TranscribeAsync(row);
+        Assert.Equal("Completed", row.Status);
+        Assert.Single(recognition.Paths);
+    }
+
     [Fact]
     public void Partial_transcript_preview_is_available_after_first_segment_and_captured_as_a_snapshot()
     {
@@ -172,7 +198,8 @@ public sealed class TranscriptionWorkspaceTests
     private static InitialApplicationState CreateState(
         FakeRecognitionService service,
         bool available,
-        IRecognitionRuntimeSelector? runtimeSelector = null)
+        IRecognitionRuntimeSelector? runtimeSelector = null,
+        IMicrophoneCaptureService? microphone = null)
     {
         var folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -191,7 +218,23 @@ public sealed class TranscriptionWorkspaceTests
             new RecognitionLanguageCatalog(),
             new SelectedModelAvailability(catalog),
             recognitionService: service,
-            runtimeSelector: runtimeSelector);
+            runtimeSelector: runtimeSelector,
+            microphoneCaptureService: microphone);
+    }
+
+    private sealed class FakeMicrophone : IMicrophoneCaptureService
+    {
+        public bool IsSupported => true;
+        public string AvailabilityMessage => "Microphone available";
+        public int StartCount { get; private set; }
+        public TaskCompletionSource<string> Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<string> StartAsync(CancellationToken cancellationToken = default)
+        {
+            StartCount++;
+            return Started.Task;
+        }
+        public Task<string> StopAsync(CancellationToken cancellationToken = default) => Task.FromResult("microphone.wav");
+        public void CleanupSession() { }
     }
 
     private sealed class FakeRecognitionService(params string[] failures) : IRecognitionService

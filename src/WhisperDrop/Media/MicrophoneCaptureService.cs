@@ -23,7 +23,7 @@ public sealed class UnsupportedMicrophoneCaptureService : IMicrophoneCaptureServ
 {
     public bool IsSupported => false;
 
-    public string AvailabilityMessage => "Microphone recording is not yet available on Windows.";
+    public string AvailabilityMessage => "Microphone recording is unavailable on this platform.";
 
     public void CleanupSession() { }
 

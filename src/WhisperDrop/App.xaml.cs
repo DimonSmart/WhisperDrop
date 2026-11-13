@@ -37,7 +37,9 @@ public partial class App : Application
                 services.AddSingleton<IMediaPreparationService, MediaPreparationService>();
                 services.AddSingleton<IMicrophoneCaptureService>(_ => OperatingSystem.IsMacOS()
                     ? new MacOsMicrophoneCaptureService()
-                    : new UnsupportedMicrophoneCaptureService());
+                    : OperatingSystem.IsWindows()
+                        ? new WindowsMicrophoneCaptureService()
+                        : new UnsupportedMicrophoneCaptureService());
                 services.AddSingleton<IRecognitionService, ParakeetRecognitionService>();
                 services.AddSingleton<TranscriptChunker>();
                 services.AddSingleton<ITranscriptEnhancementDiagnostics, TranscriptEnhancementDiagnostics>();

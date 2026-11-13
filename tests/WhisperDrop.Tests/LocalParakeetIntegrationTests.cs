@@ -24,10 +24,51 @@ public sealed class LocalParakeetFactAttribute : FactAttribute
     }
 }
 
+public sealed class WindowsMicrophoneFactAttribute : FactAttribute
+{
+    public WindowsMicrophoneFactAttribute()
+    {
+        if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("PARAKEETDROP_MICROPHONE_TEST") != "1" ||
+            Environment.GetEnvironmentVariable("PARAKEETDROP_LOCAL_MODEL") is null)
+            Skip = "Opt in on Windows with PARAKEETDROP_MICROPHONE_TEST=1 and PARAKEETDROP_LOCAL_MODEL; records the default input for three seconds.";
+    }
+}
+
 [Collection("LocalParakeet")]
 [Trait("Category", "LocalParakeet")]
 public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
 {
+    [WindowsMicrophoneFact]
+    public async Task Windows_microphone_records_normalizes_and_runs_local_recognition()
+    {
+        var capture = new WindowsMicrophoneCaptureService();
+        try
+        {
+            Assert.True(capture.IsSupported);
+            await capture.StartAsync();
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            var path = await capture.StopAsync();
+            Assert.True(new FileInfo(path).Length > 44);
+            var media = new MediaPreparationService(new FfmpegRuntime());
+            await using var prepared = await media.PrepareAsync(path);
+            var bytes = await File.ReadAllBytesAsync(prepared.AudioPath);
+            var peak = 0;
+            for (var i = 44; i + 1 < bytes.Length; i += 2)
+                peak = Math.Max(peak, Math.Abs((int)BitConverter.ToInt16(bytes, i)));
+            using var recognition = new ParakeetRecognitionService();
+            var result = await recognition.TranscribeAsync(Environment.GetEnvironmentVariable("PARAKEETDROP_LOCAL_MODEL")!,
+                new() { ProcessingDevice = ProcessingDevice.Cpu, CpuThreads = 2 }, prepared.AudioPath);
+            Assert.True(result.IsComplete);
+            Assert.Equal("cpu", result.Backend);
+            output.WriteLine($"Capture/preparation/recognition passed; PCM bytes={bytes.Length - 44}; peak={peak}; complete={result.IsComplete}; backend={result.Backend}; recognizedCharacters={result.Transcript.Length}");
+            // A second start also verifies that the device and previous WAV were released.
+            await capture.StartAsync();
+            await Task.Delay(300);
+            await capture.StopAsync();
+        }
+        finally { capture.CleanupSession(); }
+    }
+
     [LocalParakeetFact]
     public async Task Production_recognition_service_runs_supported_devices_repeat_reload_and_unicode_audio()
     {

@@ -43,6 +43,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private string? aiConnectionStatus;
     private bool isAiConnectionTesting;
     private bool isMicrophoneRecording;
+    private bool isMicrophoneTransitioning;
     private string? microphoneRecordingStatus;
     private CancellationTokenSource? activeTranscription;
 
@@ -346,10 +347,29 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ? MicrophoneRecordingStatus ?? string.Empty
         : MicrophoneAvailabilityMessage;
 
-    public bool CanUseMicrophone => IsMicrophoneRecording ||
-        (microphoneCaptureService.IsSupported && activeTranscription is null && !IsBatchActive);
+    public bool CanUseMicrophone => !isMicrophoneTransitioning && (IsMicrophoneRecording ||
+        (microphoneCaptureService.IsSupported && activeTranscription is null && !IsBatchActive));
 
     public async Task ToggleMicrophoneRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        if (!CanUseMicrophone)
+            return;
+        isMicrophoneTransitioning = true;
+        OnPropertyChanged(nameof(CanUseMicrophone));
+        RefreshQueueActionState();
+        try
+        {
+            await ToggleMicrophoneRecordingCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            isMicrophoneTransitioning = false;
+            OnPropertyChanged(nameof(CanUseMicrophone));
+            RefreshQueueActionState();
+        }
+    }
+
+    private async Task ToggleMicrophoneRecordingCoreAsync(CancellationToken cancellationToken)
     {
         if (IsMicrophoneRecording)
         {
@@ -403,7 +423,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     }
 
     public bool CanReorderQueue => activeTranscription is null && !IsBatchActive;
-    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && !IsMicrophoneRecording && QueueRows.Any();
+    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && !IsMicrophoneRecording && !isMicrophoneTransitioning && QueueRows.Any();
     public bool CanCopyAll => QueueRows.Any(row => row.CanCopy);
 
     public string? TranscriptionGuidance
@@ -1097,6 +1117,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 activeTranscription is null &&
                 !IsBatchActive &&
                 !IsMicrophoneRecording &&
+                !isMicrophoneTransitioning &&
                 !row.IsProcessing &&
                 row.AiEnhancementState != AiEnhancementState.Improving;
             row.CanEnhance =
