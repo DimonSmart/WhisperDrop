@@ -43,6 +43,8 @@ public sealed class WindowsDictationCoordinator : IDisposable
         if (args.PropertyName is nameof(InitialApplicationState.DictationEnabled) or
             nameof(InitialApplicationState.DictationHotkey))
             ApplySettings();
+        else if (args.PropertyName == nameof(InitialApplicationState.DictationStatus))
+            platform.SetTrayStatus(state.DictationStatus);
     }
 
     private void ApplySettings()
