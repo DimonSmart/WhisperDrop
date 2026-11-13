@@ -37,7 +37,7 @@ jobs:
           global-json-file: global.json
 
       - name: Setup native build Python
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' || runner.os == 'Windows'
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -50,6 +50,12 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/parakeet-tools"
           "$RUNNER_TEMP/parakeet-tools/bin/pip" install cmake==4.2.3
           python3 native/parakeet/build.py --cmake "$RUNNER_TEMP/parakeet-tools/bin/cmake"
+
+      - name: Stage pinned Windows x64 native runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python native/parakeet/build.py
 
       - name: Restore
         run: dotnet restore WhisperDrop.sln --property:Configuration=Release
