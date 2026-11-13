@@ -12,13 +12,13 @@ namespace WhisperDrop.Dictation;
 /// </summary>
 public sealed class WindowsDictationPlatform : IDisposable
 {
-    private const uint WmAppTray = 0x8001, WmAppConfigure = 0x8002, WmAppOverlay = 0x8003;
+    private const uint WmAppTray = 0x8001, WmAppConfigure = 0x8002, WmAppOverlay = 0x8003, WmAppNotification = 0x8004;
     private const uint WmHotkey = 0x0312, WmTimer = 0x0113, WmClose = 0x0010;
     private const uint WmPowerBroadcast = 0x0218, WmWtsSessionChange = 0x02B1;
     private const uint WmKeyDown = 0x0100, WmSysKeyDown = 0x0104, WmKeyUp = 0x0101, WmSysKeyUp = 0x0105;
     private const int WhKeyboardLl = 13, HotkeyId = 10, TimerId = 10;
-    private const uint NifMessage = 1, NifIcon = 2, NifTip = 4;
-    private const uint NimAdd = 0, NimDelete = 2;
+    private const uint NifMessage = 1, NifIcon = 2, NifTip = 4, NifInfo = 0x10;
+    private const uint NimAdd = 0, NimModify = 1, NimDelete = 2;
     private const uint MfString = 0, MfSeparator = 0x800, TpmReturnCmd = 0x100, TpmRightButton = 0x2;
     private const int SwHide = 0, SwShowNoActivate = 8;
     private const uint WsPopup = 0x80000000, WsBorder = 0x00800000, SsCenter = 1, SsCenterImage = 0x200;
@@ -41,6 +41,18 @@ public sealed class WindowsDictationPlatform : IDisposable
     private HotkeySpec activeHotkey = HotkeySpec.Default;
     private TaskCompletionSource<bool>? configurationResult;
     private string? configurationError;
+    private string? pendingNotification;
+
+    public void ShowNotification(string message)
+    {
+        lock (gate)
+        {
+            if (disposed) return;
+            pendingNotification = message;
+            PostMessage(window, WmAppNotification, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+
 
     public WindowsDictationPlatform(Action<Action> dispatch, Action pressed, Action released,
         Action showWindow, Action toggleEnabled, Action exit, Action<string> report)
@@ -183,10 +195,29 @@ public sealed class WindowsDictationPlatform : IDisposable
                     lock (gate) visible = overlayWanted;
                     ShowWindow(overlay, visible ? SwShowNoActivate : SwHide);
                     return IntPtr.Zero;
+                case WmAppNotification:
+                    string? messageText;
+                    lock (gate) { messageText = pendingNotification; pendingNotification = null; }
+                    if (trayAdded && !string.IsNullOrWhiteSpace(messageText))
+                    {
+                        var balloon = new NotifyIconData
+                        {
+                            Size = (uint)Marshal.SizeOf<NotifyIconData>(),
+                            Window = window,
+                            Id = 1,
+                            Flags = NifInfo,
+                            Info = messageText.Length > 240 ? messageText[..240] : messageText,
+                            InfoTitle = "ParakeetDrop",
+                            Tip = "ParakeetDrop"
+                        };
+                        Shell_NotifyIcon(NimModify, ref balloon);
+                    }
+                    return IntPtr.Zero;
                 case WmAppTray:
                     switch ((uint)lparam.ToInt64())
                     {
                         case 0x0203: dispatch(showWindow); break; // WM_LBUTTONDBLCLK
+                        case 0x0405: dispatch(showWindow); break; // NIN_BALLOONUSERCLICK
                         case 0x0205: ShowTrayMenu(); break;       // WM_RBUTTONUP
                     }
                     return IntPtr.Zero;
