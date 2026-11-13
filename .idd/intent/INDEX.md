@@ -37,4 +37,4 @@ opened.
 | IDD-0007 | Spec | AI transcript post-processing | Optional Agent Framework correction, immutable raw result, OpenAI-compatible endpoints, chunking, structured validation, and AI failure semantics. | — |
 | IDD-0008 | ADR | Parakeet Ultra native runtime | Decision to use one pinned Parakeet Ultra GGUF with the transcribe.cpp C API, app-local native backends, and verified platform behavior. | — |
 | IDD-0009 | Spec | Push-to-Talk dictation | Windows background hotkey, tray, mandatory recording overlay, shared history, verified field identity, and fail-closed text insertion; macOS next. | — |
-| IDD-0010 | Spec | Settings window and search | Independent Settings window, sidebar categories, text search, and configuration without disrupting the transcription workspace. | — |
+| IDD-0010 | Spec | Settings window and search | Independent Settings window, sidebar categories including General close-to-tray preference, text search, and configuration without disrupting the transcription workspace. | — |
