@@ -333,6 +333,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool IsMicrophoneRecording => isMicrophoneRecording;
 
+    public bool IsWindowsDictationSupported => OperatingSystem.IsWindows();
+
     public bool DictationEnabled
     {
         get => settings.Dictation.Enabled;
@@ -1038,6 +1040,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         RecognitionOptions options,
         CancellationToken cancellationToken)
     {
+        if (item.DictationId.HasValue && item.TranscriptionState != TranscriptionState.Pending)
+        {
+            item.InsertionStatus = TextInsertionStatus.NotRequested;
+            item.InsertionError = null;
+        }
         item.TranscriptionState = TranscriptionState.Preparing;
         item.AiEnhancementState = AiEnhancementState.NotRequested;
         item.Progress = "—";
