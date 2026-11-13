@@ -59,7 +59,9 @@ artifacts = ROOT.parent.parent / "artifacts" / "parakeet"
 artifacts.mkdir(parents=True, exist_ok=True)
 source = artifacts / "source"
 if not source.exists():
-    run("git", "clone", PINS["transcribeRepository"], source)
+    # Preserve upstream bytes for pinned SHA-256 verification on Windows, where Git
+    # otherwise defaults to autocrlf and silently rewrites checked-out headers.
+    run("git", "clone", "-c", "core.autocrlf=false", PINS["transcribeRepository"], source)
 run("git", "-C", source, "checkout", "--detach", PINS["transcribeCommit"])
 if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain"], text=True).strip():
     raise RuntimeError("Upstream source must be clean")
