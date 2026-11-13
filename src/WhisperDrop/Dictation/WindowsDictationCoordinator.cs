@@ -65,7 +65,6 @@ public sealed class WindowsDictationCoordinator : IDisposable
 
         starting = true;
         releaseRequested = false;
-        recordingStarted = DateTimeOffset.Now;
         try
         {
             recordingTarget = state.DictationInsertAfterRecognition ? WindowsTextInputTarget.Capture() : null;
@@ -81,6 +80,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
         {
             await microphone.StartAsync();
             if (disposed) return;
+            recordingStarted = DateTimeOffset.Now;
             recording = true;
             state.SetDictationRecording(true);
             platform.SetRecordingOverlay(true);
