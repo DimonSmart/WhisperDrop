@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using WhisperDrop.Dictation;
 using WhisperDrop.State;
 
 namespace WhisperDrop.Models;
@@ -30,6 +31,36 @@ public enum AiEnhancementState
 
 public sealed class TranscriptionQueueItem : INotifyPropertyChanged
 {
+    private TextInsertionStatus insertionStatus = TextInsertionStatus.NotRequested;
+    private string? insertionError;
+
+    public Guid? DictationId { get; internal set; }
+    public DateTimeOffset? RecordingStartedAt { get; internal set; }
+    public DateTimeOffset? RecordingEndedAt { get; internal set; }
+    public string SourceLabel => DictationId.HasValue ? "Push-to-Talk" : "File / microphone";
+
+    public TextInsertionStatus InsertionStatus
+    {
+        get => insertionStatus;
+        internal set
+        {
+            if (Set(ref insertionStatus, value)) OnPropertyChanged(nameof(InsertionSummary));
+        }
+    }
+
+    public string? InsertionError
+    {
+        get => insertionError;
+        internal set
+        {
+            if (Set(ref insertionError, value)) OnPropertyChanged(nameof(InsertionSummary));
+        }
+    }
+
+    public string InsertionSummary => DictationId is null ? string.Empty :
+        InsertionError is not null ? $"Insert: {InsertionStatus} — {InsertionError}" :
+        $"Insert: {InsertionStatus}";
+
     private TranscriptionState transcriptionState = TranscriptionState.Pending;
     private AiEnhancementState aiEnhancementState = AiEnhancementState.NotRequested;
     private string progress = "—";
