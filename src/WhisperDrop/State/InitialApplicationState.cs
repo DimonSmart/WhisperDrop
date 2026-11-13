@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using WhisperDrop.Dictation;
 using WhisperDrop.Media;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
@@ -43,6 +44,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private string? aiConnectionStatus;
     private bool isAiConnectionTesting;
     private bool isMicrophoneRecording;
+    private bool isDictationRecording;
+    private string? dictationStatus;
+    private readonly Queue<TranscriptionQueueItem> pendingDictations = new();
+    private bool dictationPumpActive;
+    public event Action<TranscriptionQueueItem>? DictationTranscribed;
     private bool isMicrophoneTransitioning;
     private string? microphoneRecordingStatus;
     private CancellationTokenSource? activeTranscription;
@@ -327,6 +333,105 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public bool IsMicrophoneRecording => isMicrophoneRecording;
 
+    public bool DictationEnabled
+    {
+        get => settings.Dictation.Enabled;
+        set => UpdateSettings(settings with { Dictation = settings.Dictation with { Enabled = value } }, nameof(DictationEnabled));
+    }
+
+    public string DictationHotkey
+    {
+        get => settings.Dictation.Hotkey;
+        set => UpdateSettings(settings with { Dictation = settings.Dictation with { Hotkey = value } }, nameof(DictationHotkey));
+    }
+
+    public bool DictationInsertAfterRecognition
+    {
+        get => settings.Dictation.InsertAfterRecognition;
+        set => UpdateSettings(settings with { Dictation = settings.Dictation with { InsertAfterRecognition = value } }, nameof(DictationInsertAfterRecognition));
+    }
+
+    public string? DictationStatus => dictationStatus;
+
+    public void SetDictationStatus(string? message) => SetField(ref dictationStatus, message, nameof(DictationStatus));
+
+    public bool CanStartDictation => microphoneCaptureService.IsSupported &&
+        !IsMicrophoneRecording && !isMicrophoneTransitioning && !isDictationRecording;
+
+    public void SetDictationRecording(bool recording)
+    {
+        isDictationRecording = recording;
+        OnPropertyChanged(nameof(CanUseMicrophone));
+        RefreshQueueActionState();
+    }
+
+    public TranscriptionQueueItem AddDictationRecording(string path, DateTimeOffset started, DateTimeOffset finished)
+    {
+        var row = new TranscriptionQueueItem(Path.GetFullPath(path))
+        {
+            DictationId = Guid.NewGuid(),
+            RecordingStartedAt = started,
+            RecordingEndedAt = finished,
+            InsertionStatus = DictationInsertAfterRecognition ? TextInsertionStatus.Pending : TextInsertionStatus.NotRequested
+        };
+        QueueRows.Add(row);
+        return row;
+    }
+
+    public void QueueDictationRecognition(TranscriptionQueueItem row)
+    {
+        pendingDictations.Enqueue(row);
+        StartPendingDictations();
+    }
+
+    private void StartPendingDictations()
+    {
+        if (dictationPumpActive || activeTranscription is not null || pendingDictations.Count == 0)
+            return;
+        dictationPumpActive = true;
+        _ = ProcessPendingDictationsAsync();
+    }
+
+    private async Task ProcessPendingDictationsAsync()
+    {
+        try
+        {
+            while (activeTranscription is null && pendingDictations.Count > 0)
+            {
+                var row = pendingDictations.Dequeue();
+                if (!QueueRows.Contains(row))
+                    continue;
+
+                if (!TryCreateRecognitionRequest(out var modelPath, out var options, out var guidance))
+                {
+                    row.ErrorMessage = guidance;
+                    row.TranscriptionState = TranscriptionState.Error;
+                }
+                else
+                {
+                    try
+                    {
+                        await ExecuteTranscriptionAsync(
+                            token => TranscribeItemAsync(row, modelPath, options, token), CancellationToken.None);
+                    }
+                    catch (Exception exception)
+                    {
+                        row.TranscriptionState = TranscriptionState.Error;
+                        row.ErrorMessage = exception.Message;
+                    }
+                }
+                DictationTranscribed?.Invoke(row);
+            }
+        }
+        finally
+        {
+            dictationPumpActive = false;
+            if (activeTranscription is null && pendingDictations.Count > 0)
+                StartPendingDictations();
+        }
+    }
+
+
     public string MicrophoneActionLabel => IsMicrophoneRecording ? "Stop recording" : "Record microphone";
 
     public string MicrophoneAvailabilityMessage => microphoneCaptureService.AvailabilityMessage;
@@ -347,7 +452,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         ? MicrophoneRecordingStatus ?? string.Empty
         : MicrophoneAvailabilityMessage;
 
-    public bool CanUseMicrophone => !isMicrophoneTransitioning && (IsMicrophoneRecording ||
+    public bool CanUseMicrophone => !isDictationRecording && !isMicrophoneTransitioning && (IsMicrophoneRecording ||
         (microphoneCaptureService.IsSupported && activeTranscription is null && !IsBatchActive));
 
     public async Task ToggleMicrophoneRecordingAsync(CancellationToken cancellationToken = default)
@@ -423,7 +528,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     }
 
     public bool CanReorderQueue => activeTranscription is null && !IsBatchActive;
-    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && !IsMicrophoneRecording && !isMicrophoneTransitioning && QueueRows.Any();
+    public bool CanTranscribeAll => activeTranscription is null && IsSelectedModelAvailable && !IsBatchActive && !IsMicrophoneRecording && !isMicrophoneTransitioning && !isDictationRecording && QueueRows.Any();
     public bool CanCopyAll => QueueRows.Any(row => row.CanCopy);
 
     public string? TranscriptionGuidance
@@ -628,6 +733,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         {
             ApplicationAcceptanceProbe.RecordRun(this, timer.Elapsed);
             activeTranscription = null;
+            StartPendingDictations();
             OnPropertyChanged(nameof(CanCancelTranscription));
             OnPropertyChanged(nameof(CanUseMicrophone));
             RefreshQueueActionState();
@@ -1118,6 +1224,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
                 !IsBatchActive &&
                 !IsMicrophoneRecording &&
                 !isMicrophoneTransitioning &&
+                !isDictationRecording &&
                 !row.IsProcessing &&
                 row.AiEnhancementState != AiEnhancementState.Improving;
             row.CanEnhance =
