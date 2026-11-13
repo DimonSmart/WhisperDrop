@@ -72,7 +72,7 @@ public partial class App : Application
         SetWindowIcon(MainWindow);
         MainWindow.AppWindow.Closing += (_, close) =>
         {
-            if (OperatingSystem.IsWindows() && !isExiting)
+            if (OperatingSystem.IsWindows() && dictation is not null && !isExiting)
             {
                 close.Cancel = true;
                 MainWindow.AppWindow.Hide();
