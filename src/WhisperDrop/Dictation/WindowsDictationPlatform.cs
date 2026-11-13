@@ -249,7 +249,7 @@ public sealed class WindowsDictationPlatform : IDisposable
                 case WmAppTray:
                     switch ((uint)lparam.ToInt64())
                     {
-                        case 0x0203: dispatch(showWindow); break; // WM_LBUTTONDBLCLK
+                        case 0x0202: dispatch(showWindow); break; // WM_LBUTTONUP (single click)
                         case 0x0405: dispatch(showWindow); break; // NIN_BALLOONUSERCLICK
                         case 0x0205: ShowTrayMenu(); break;       // WM_RBUTTONUP
                     }
