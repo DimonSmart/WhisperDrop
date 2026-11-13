@@ -28,6 +28,13 @@ public sealed record AiPostProcessingSettings
     public int? ContextSize { get; init; }
 }
 
+public sealed record DictationSettings
+{
+    public bool Enabled { get; init; } = true;
+    public string Hotkey { get; init; } = "Ctrl+Shift+Space";
+    public bool InsertAfterRecognition { get; init; } = true;
+}
+
 public sealed record UserSettings
 {
     public string? ModelsFolder { get; init; }
@@ -39,4 +46,6 @@ public sealed record UserSettings
     public int? CpuThreads { get; init; }
 
     public AiPostProcessingSettings AiPostProcessing { get; init; } = new();
+
+    public DictationSettings Dictation { get; init; } = new();
 }
