@@ -42,6 +42,22 @@ public sealed class SettingsTests : IDisposable
         Assert.DoesNotContain("Language", json);
     }
     [Fact]
+    public void Dictation_settings_persist_and_default_to_enabled()
+    {
+        var store = new JsonUserSettingsStore(new ApplicationPaths(root));
+        Assert.True(store.Load().Dictation.Enabled);
+        Assert.Equal("Ctrl+Shift+Space", store.Load().Dictation.Hotkey);
+        store.Save(new UserSettings
+        {
+            Dictation = new() { Enabled = false, Hotkey = "Ctrl+Alt+D", InsertAfterRecognition = false }
+        });
+        var settings = store.Load().Dictation;
+        Assert.False(settings.Enabled);
+        Assert.Equal("Ctrl+Alt+D", settings.Hotkey);
+        Assert.False(settings.InsertAfterRecognition);
+    }
+
+    [Fact]
     public void Invalid_new_values_normalize_independently()
     {
         Directory.CreateDirectory(root);
