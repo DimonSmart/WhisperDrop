@@ -154,6 +154,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
                 row.InsertionStatus = TextInsertionStatus.Skipped;
                 row.InsertionError = "Recognition did not complete.";
                 state.SetDictationStatus("Dictation failed");
+                platform.ShowNotification("Recognition failed. The audio is available in history for retry.");
                 return;
             }
 
@@ -170,6 +171,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
                 row.InsertionStatus = TextInsertionStatus.Skipped;
                 row.InsertionError = "The original text field could not be identified.";
                 state.SetDictationStatus("Text not inserted — copy from history");
+                platform.ShowNotification("Text not inserted. Open ParakeetDrop to copy it from history.");
                 return;
             }
 
@@ -181,12 +183,15 @@ public sealed class WindowsDictationCoordinator : IDisposable
                 state.SetDictationStatus(row.InsertionStatus == TextInsertionStatus.Submitted
                     ? "Text submitted — check the target field"
                     : "Text not inserted — copy from history");
+                if (row.InsertionStatus != TextInsertionStatus.Submitted)
+                    platform.ShowNotification("Text not inserted. Open ParakeetDrop to copy it from history.");
             }
             catch (Exception exception)
             {
                 row.InsertionStatus = TextInsertionStatus.Failed;
                 row.InsertionError = exception.Message;
                 state.SetDictationStatus("Text not inserted — copy from history");
+                platform.ShowNotification("Text not inserted. Open ParakeetDrop to copy it from history.");
             }
         }
     }
