@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
+using WhisperDrop.Dictation;
 using WhisperDrop.Media;
 using WhisperDrop.Models;
 using WhisperDrop.Settings;
@@ -14,6 +15,8 @@ namespace WhisperDrop;
 public partial class App : Application
 {
     private readonly IHost host;
+    private WindowsDictationCoordinator? dictation;
+    private bool isExiting;
 
     internal static Window MainWindow { get; private set; } = null!;
 
@@ -67,18 +70,60 @@ public partial class App : Application
             Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
-        MainWindow.Closed += (_, _) => host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession();
+        MainWindow.AppWindow.Closing += (_, close) =>
+        {
+            if (OperatingSystem.IsWindows() && !isExiting)
+            {
+                close.Cancel = true;
+                MainWindow.AppWindow.Hide();
+            }
+        };
+        MainWindow.Closed += (_, _) =>
+        {
+            dictation?.Dispose();
+            host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession();
+            host.Dispose();
+        };
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();
         var state = host.Services.GetRequiredService<InitialApplicationState>();
         ApplicationAcceptanceProbe.Record("launch", new { queueCount = state.QueueRows.Count,
             modelAvailable = state.IsSelectedModelAvailable, aiEnabled = state.AiPostProcessingEnabled });
         MainWindow.Activate();
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                dictation = new WindowsDictationCoordinator(state,
+                    host.Services.GetRequiredService<IMicrophoneCaptureService>(),
+                    callback => MainWindow.DispatcherQueue.TryEnqueue(() => callback()),
+                    () =>
+                    {
+                        MainWindow.AppWindow.Show();
+                        MainWindow.Activate();
+                    },
+                    ExitFromTray);
+            }
+            catch (Exception exception)
+            {
+                state.SetDictationStatus("Background dictation unavailable: " + exception.Message);
+            }
+        }
     }
 
     internal static void CompleteApplicationUpdateRestart(MainPage page)
     {
         ArgumentNullException.ThrowIfNull(page);
-        page.DispatcherQueue.TryEnqueue(() => MainWindow.Close());
+        page.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (Current is App app) app.ExitFromTray();
+            else MainWindow.Close();
+        });
+    }
+
+    private void ExitFromTray()
+    {
+        isExiting = true;
+        MainWindow.Close();
     }
 
     private static void SetWindowIcon(Window window)
