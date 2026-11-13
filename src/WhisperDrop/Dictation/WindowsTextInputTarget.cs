@@ -49,8 +49,10 @@ public sealed class WindowsTextInputTarget : IDisposable
         IntPtr element = IntPtr.Zero;
         try
         {
-            Marshal.ThrowExceptionForHR(CoCreateInstance(ref AutomationClsid, IntPtr.Zero, 1,
-                ref AutomationIid, out automation));
+            var clsid = AutomationClsid;
+            var iid = AutomationIid;
+            Marshal.ThrowExceptionForHR(CoCreateInstance(ref clsid, IntPtr.Zero, 1,
+                ref iid, out automation));
             var getFocused = Method<GetFocusedElementDelegate>(automation, 8);
             Marshal.ThrowExceptionForHR(getFocused(automation, out element));
             if (element == IntPtr.Zero || !IsEditable(element, pid))
