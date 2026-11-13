@@ -12,7 +12,7 @@ namespace WhisperDrop.Dictation;
 /// </summary>
 public sealed class WindowsDictationPlatform : IDisposable
 {
-    private const uint WmAppTray = 0x8001, WmAppConfigure = 0x8002, WmAppOverlay = 0x8003, WmAppNotification = 0x8004;
+    private const uint WmAppTray = 0x8001, WmAppConfigure = 0x8002, WmAppOverlay = 0x8003, WmAppNotification = 0x8004, WmAppStatus = 0x8005;
     private const uint WmHotkey = 0x0312, WmTimer = 0x0113, WmClose = 0x0010;
     private const uint WmPowerBroadcast = 0x0218, WmWtsSessionChange = 0x02B1;
     private const uint WmKeyDown = 0x0100, WmSysKeyDown = 0x0104, WmKeyUp = 0x0101, WmSysKeyUp = 0x0105;
@@ -42,6 +42,18 @@ public sealed class WindowsDictationPlatform : IDisposable
     private TaskCompletionSource<bool>? configurationResult;
     private string? configurationError;
     private string? pendingNotification;
+    private string? pendingStatus;
+
+    public void SetTrayStatus(string? status)
+    {
+        lock (gate)
+        {
+            if (disposed) return;
+            pendingStatus = status;
+            PostMessage(window, WmAppStatus, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+
 
     public void ShowNotification(string message)
     {
@@ -195,6 +207,26 @@ public sealed class WindowsDictationPlatform : IDisposable
                     bool visible;
                     lock (gate) visible = overlayWanted;
                     ShowWindow(overlay, visible ? SwShowNoActivate : SwHide);
+                    return IntPtr.Zero;
+                case WmAppStatus:
+                    string? statusText;
+                    lock (gate) statusText = pendingStatus;
+                    if (trayAdded)
+                    {
+                        var tip = string.IsNullOrWhiteSpace(statusText)
+                            ? "ParakeetDrop"
+                            : "ParakeetDrop — " + statusText;
+                        var statusData = new NotifyIconData
+                        {
+                            Size = (uint)Marshal.SizeOf<NotifyIconData>(),
+                            Window = window,
+                            Id = 1,
+                            Flags = NifTip,
+                            Icon = icon,
+                            Tip = tip.Length > 120 ? tip[..120] : tip
+                        };
+                        Shell_NotifyIcon(NimModify, ref statusData);
+                    }
                     return IntPtr.Zero;
                 case WmAppNotification:
                     string? messageText;
