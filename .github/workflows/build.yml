@@ -66,6 +66,19 @@ jobs:
       - name: Test
         run: dotnet test WhisperDrop.sln --configuration Release --no-build --verbosity minimal
 
+      - name: Publish self-contained Windows x64 package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP 'parakeetdrop-win-x64'
+          dotnet publish src/WhisperDrop/WhisperDrop.csproj --configuration Release --runtime win-x64 --self-contained true --output $output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($relative in @('ParakeetDrop.exe', 'parakeet/win-x64/transcribe.dll', 'parakeet/win-x64/ggml-base.dll', 'parakeet/win-x64/ggml-cpu.dll')) {
+            if (-not (Test-Path (Join-Path $output $relative))) {
+              throw "Windows publish output is missing $relative"
+            }
+          }
+
       - name: Validate Homebrew Cask syntax
         if: runner.os == 'Linux'
         run: ruby -c Casks/parakeetdrop.rb
