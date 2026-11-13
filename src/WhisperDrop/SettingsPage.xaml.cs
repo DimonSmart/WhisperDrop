@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using WinRT.Interop;
 using Windows.Storage.Pickers;
 using WhisperDrop.Models;
@@ -47,20 +48,41 @@ public sealed partial class SettingsPage : Page
         {
             SelectSection(section);
         }
+        else
+        {
+            // Preserve selection when query is empty/unmatched without dimming it.
+            if (RecognitionNav.IsChecked == true) RecognitionNav.Opacity = 1;
+            if (ModelsNav.IsChecked == true) ModelsNav.Opacity = 1;
+            if (DictationNav.IsChecked == true) DictationNav.Opacity = 1;
+            if (AiNav.IsChecked == true) AiNav.Opacity = 1;
+        }
     }
 
     private void SelectSection(SettingsSection section)
     {
-        RecognitionNav.IsChecked = section == SettingsSection.Recognition;
-        ModelsNav.IsChecked = section == SettingsSection.Models;
-        DictationNav.IsChecked = section == SettingsSection.Dictation;
-        AiNav.IsChecked = section == SettingsSection.Ai;
+        SetNavigationVisual(RecognitionNav, section == SettingsSection.Recognition);
+        SetNavigationVisual(ModelsNav, section == SettingsSection.Models);
+        SetNavigationVisual(DictationNav, section == SettingsSection.Dictation);
+        SetNavigationVisual(AiNav, section == SettingsSection.Ai);
 
         RecognitionSection.Visibility = section == SettingsSection.Recognition ? Visibility.Visible : Visibility.Collapsed;
         ModelsSection.Visibility = section == SettingsSection.Models ? Visibility.Visible : Visibility.Collapsed;
         DictationSection.Visibility = section == SettingsSection.Dictation ? Visibility.Visible : Visibility.Collapsed;
         AiSection.Visibility = section == SettingsSection.Ai ? Visibility.Visible : Visibility.Collapsed;
         SettingsContentScroll.ChangeView(null, 0, null);
+    }
+
+    private static void SetNavigationVisual(ToggleButton button, bool selected)
+    {
+        button.IsChecked = selected;
+        button.Background = (Brush)Application.Current.Resources[
+            selected ? "AccentSubtleBrush" : "AppBackgroundBrush"];
+        button.BorderBrush = (Brush)Application.Current.Resources[
+            selected ? "AccentBrush" : "AppBackgroundBrush"];
+        button.Foreground = (Brush)Application.Current.Resources[
+            selected ? "PrimaryTextBrush" : "SecondaryTextBrush"];
+        // Search dims nonmatching categories, but must not obscure the current selection.
+        if (selected) button.Opacity = 1;
     }
 
     private async void BrowseModelsFolder_Click(object sender, RoutedEventArgs e)

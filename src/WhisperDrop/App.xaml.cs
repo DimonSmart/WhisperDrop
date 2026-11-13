@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using WinRT.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
@@ -16,7 +18,6 @@ public partial class App : Application
 {
     private readonly IHost host;
     private WindowsDictationCoordinator? dictation;
-    private bool isExiting;
     private Window? settingsWindow;
 
     internal static Window MainWindow { get; private set; } = null!;
@@ -71,14 +72,6 @@ public partial class App : Application
             Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
-        MainWindow.AppWindow.Closing += (_, close) =>
-        {
-            if (OperatingSystem.IsWindows() && dictation is not null && !isExiting)
-            {
-                close.Cancel = true;
-                MainWindow.AppWindow.Hide();
-            }
-        };
         MainWindow.Closed += (_, _) =>
         {
             settingsWindow?.Close();
@@ -98,11 +91,7 @@ public partial class App : Application
                 dictation = new WindowsDictationCoordinator(state,
                     host.Services.GetRequiredService<IMicrophoneCaptureService>(),
                     callback => MainWindow.DispatcherQueue.TryEnqueue(() => callback()),
-                    () =>
-                    {
-                        MainWindow.AppWindow.Show();
-                        MainWindow.Activate();
-                    },
+                    ShowMainWindow,
                     ExitFromTray);
             }
             catch (Exception exception)
@@ -110,6 +99,30 @@ public partial class App : Application
                 state.SetDictationStatus("Background dictation unavailable: " + exception.Message);
             }
         }
+    }
+
+    internal bool HideToTray()
+    {
+        // Closing the main window must exit. Hiding is possible only by explicit command.
+        if (!OperatingSystem.IsWindows() || dictation is null) return false;
+
+        var handle = WindowNative.GetWindowHandle(MainWindow);
+        if (handle == IntPtr.Zero) return false;
+
+        settingsWindow?.Close();
+        ShowWindow(handle, 0); // SW_HIDE. AppWindow.Hide is not implemented on Uno Desktop.
+        return true;
+    }
+
+    private void ShowMainWindow()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var handle = WindowNative.GetWindowHandle(MainWindow);
+            if (handle != IntPtr.Zero) ShowWindow(handle, 5); // SW_SHOW
+        }
+
+        MainWindow.Activate();
     }
 
     internal void ShowSettings()
@@ -142,11 +155,10 @@ public partial class App : Application
         });
     }
 
-    private void ExitFromTray()
-    {
-        isExiting = true;
-        MainWindow.Close();
-    }
+    private void ExitFromTray() => MainWindow.Close();
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     private static void SetWindowIcon(Window window)
     {

@@ -32,6 +32,8 @@ public sealed partial class MainPage : Page
         this.applicationUpdateInstaller = applicationUpdateInstaller;
         this.systemUriLauncher = systemUriLauncher;
         InitializeComponent();
+        HideToTrayMenuItem.Visibility = OperatingSystem.IsWindows()
+            ? Visibility.Visible : Visibility.Collapsed;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateQueuePresentation();
     }
@@ -41,6 +43,15 @@ public sealed partial class MainPage : Page
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         if (Application.Current is App app) app.ShowSettings();
+    }
+
+    private async void HideToTray_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app && !app.HideToTray())
+        {
+            await ShowErrorDialogAsync("Tray unavailable",
+                "Background dictation is unavailable, so the application cannot hide to the tray.");
+        }
     }
 
     private async void AddFiles_Click(object sender, RoutedEventArgs e)
