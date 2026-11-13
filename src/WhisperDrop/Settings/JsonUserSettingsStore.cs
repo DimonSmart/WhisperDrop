@@ -35,6 +35,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             var document = JsonNode.Parse(File.ReadAllText(paths.SettingsFilePath)) as JsonObject;
             if (document is null) return Defaults();
             if (document["AiPostProcessing"] is not null and not JsonObject) document["AiPostProcessing"] = null;
+            if (document["Dictation"] is not null and not JsonObject) document["Dictation"] = null;
             var settings = document.Deserialize<UserSettings>(SerializerOptions);
             return Normalize(settings);
         }
@@ -102,7 +103,14 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
             SelectedModelId = Models.ParakeetModelCatalog.ModelId,
             ProcessingDevice = processingDevice,
             CpuThreads = cpuThreads,
-            AiPostProcessing = aiPostProcessing
+            AiPostProcessing = aiPostProcessing,
+            Dictation = new DictationSettings
+            {
+                Enabled = settings?.Dictation?.Enabled ?? true,
+                Hotkey = string.IsNullOrWhiteSpace(settings?.Dictation?.Hotkey)
+                    ? "Ctrl+Shift+Space" : settings.Dictation.Hotkey.Trim(),
+                InsertAfterRecognition = settings?.Dictation?.InsertAfterRecognition ?? true
+            }
         };
     }
 
