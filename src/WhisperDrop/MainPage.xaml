@@ -338,11 +338,18 @@
                                                 Text="{Binding Status}" />
                                             <TextBlock Style="{StaticResource CaptionTextStyle}" Text="·" />
                                             <TextBlock Style="{StaticResource CaptionTextStyle}" Text="{Binding Language}" />
+                                             <TextBlock Style="{StaticResource CaptionTextStyle}" Text="·" />
+                                             <TextBlock Style="{StaticResource CaptionTextStyle}" Text="{Binding SourceLabel}" />
                                             <TextBlock
                                                 Style="{StaticResource CaptionTextStyle}"
                                                 Text="{Binding Progress}"
                                                 Visibility="{Binding Status, Converter={StaticResource StatusEqualsVisibilityConverter}, ConverterParameter=Preparing|Transcribing|Improving}" />
                                         </StackPanel>
+                                         <TextBlock
+                                             Style="{StaticResource CaptionTextStyle}"
+                                             Text="{Binding InsertionSummary}"
+                                             Visibility="{Binding InsertionSummary, Converter={StaticResource StringToVisibilityConverter}}" />
+
 
                                         <ProgressBar
                                             Height="3"
@@ -497,6 +504,26 @@
                 MaxWidth="720"
                 HorizontalAlignment="Left"
                 Spacing="{StaticResource SpacingMd}">
+                 <StackPanel Spacing="{StaticResource SpacingSm}">
+                     <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Push-to-Talk dictation (Windows)" />
+                     <ToggleSwitch Header="Enable background dictation"
+                                   IsEnabled="{x:Bind ViewModel.IsWindowsDictationSupported, Mode=OneWay}"
+                                   IsOn="{x:Bind ViewModel.DictationEnabled, Mode=TwoWay}" />
+                     <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Hold shortcut to record" />
+                     <TextBox Style="{StaticResource SettingsTextBoxStyle}"
+                              IsEnabled="{x:Bind ViewModel.IsWindowsDictationSupported, Mode=OneWay}"
+                              Text="{x:Bind ViewModel.DictationHotkey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                     <ToggleSwitch Header="Insert text into the original field after recognition"
+                                   IsEnabled="{x:Bind ViewModel.IsWindowsDictationSupported, Mode=OneWay}"
+                                   IsOn="{x:Bind ViewModel.DictationInsertAfterRecognition, Mode=TwoWay}" />
+                     <TextBlock Style="{StaticResource CaptionTextStyle}"
+                                Text="The recording indicator is always visible above other windows while the microphone is active."
+                                TextWrapping="Wrap" />
+                     <TextBlock Style="{StaticResource CaptionTextStyle}"
+                                Text="{x:Bind ViewModel.DictationStatus, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                 </StackPanel>
+
 
                 <StackPanel Spacing="{StaticResource SpacingSm}">
                     <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition performance" />
