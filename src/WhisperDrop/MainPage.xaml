@@ -12,7 +12,11 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid>
+        <Grid ColumnSpacing="{StaticResource SpacingMd}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Spacing="{StaticResource SpacingSm}">
@@ -21,6 +25,7 @@
                            Text="Parakeet Ultra Q8_0" />
                 <TextBlock VerticalAlignment="Center"
                            Style="{StaticResource CaptionTextStyle}"
+                           MaxWidth="320" TextTrimming="CharacterEllipsis"
                            Text="{x:Bind ViewModel.SelectedModelStatus, Mode=OneWay}" />
                 <Button Style="{StaticResource SecondaryButtonStyle}"
                         Click="DownloadSelectedModel_Click"
@@ -28,7 +33,7 @@
                         IsEnabled="{x:Bind ViewModel.CanDownloadSelectedModel, Mode=OneWay}"
                         Visibility="{x:Bind ViewModel.SelectedModelDownloadState, Mode=OneWay, Converter={StaticResource SelectedModelDownloadStateToVisibilityConverter}, ConverterParameter=DownloadAction}" />
             </StackPanel>
-            <Button HorizontalAlignment="Right"
+            <Button Grid.Column="1" HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     Style="{StaticResource SubtleButtonStyle}"
                     ToolTipService.ToolTip="Application menu"

@@ -28,19 +28,19 @@
                 <StackPanel Spacing="{StaticResource SpacingSm}">
                     <ToggleButton x:Name="RecognitionNav" Tag="Recognition" Content="Recognition"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                  Style="{StaticResource NavigationTabButtonStyle}"
+                                  Style="{StaticResource SettingsNavigationButtonStyle}"
                                   Click="Section_Click" />
                     <ToggleButton x:Name="ModelsNav" Tag="Models" Content="Models &amp; storage"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                  Style="{StaticResource NavigationTabButtonStyle}"
+                                  Style="{StaticResource SettingsNavigationButtonStyle}"
                                   Click="Section_Click" />
                     <ToggleButton x:Name="DictationNav" Tag="Dictation" Content="Dictation"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                  Style="{StaticResource NavigationTabButtonStyle}"
+                                  Style="{StaticResource SettingsNavigationButtonStyle}"
                                   Click="Section_Click" />
                     <ToggleButton x:Name="AiNav" Tag="Ai" Content="AI post-processing"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                  Style="{StaticResource NavigationTabButtonStyle}"
+                                  Style="{StaticResource SettingsNavigationButtonStyle}"
                                   Click="Section_Click" />
                 </StackPanel>
             </ScrollViewer>
@@ -48,7 +48,7 @@
             <Border Grid.Column="1"
                     Padding="{StaticResource SpacingMd}"
                     Background="{StaticResource FileQueueWorkspaceBackgroundBrush}"
-                    CornerRadius="{StaticResource ControlCornerRadius}">
+                    CornerRadius="{StaticResource CornerRadiusMedium}">
                 <ScrollViewer x:Name="SettingsContentScroll"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">

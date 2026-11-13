@@ -119,4 +119,45 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="SettingsNavigationButtonStyle" TargetType="ToggleButton">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="RootBorder" Background="{TemplateBinding Background}"
+                            CornerRadius="{StaticResource CornerRadiusMedium}">
+                        <Grid>
+                            <Border x:Name="SelectionIndicator" Width="3"
+                                    HorizontalAlignment="Left"
+                                    Background="{StaticResource AccentBrush}"
+                                    CornerRadius="2" Opacity="0" />
+                            <ContentPresenter Padding="12,8"
+                                              VerticalContentAlignment="Center"
+                                              HorizontalContentAlignment="Left"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Foreground="{TemplateBinding Foreground}" />
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CheckStates">
+                                    <VisualState x:Name="Unchecked" />
+                                    <VisualState x:Name="Checked">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootBorder.Background" Value="{StaticResource AccentSubtleBrush}" />
+                                            <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Indeterminate" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

@@ -37,9 +37,13 @@ public static class SettingsNavigationCatalog
             term.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
-    public static SettingsSection? FirstMatch(string? query) =>
-        Order.FirstOrDefault(section => Matches(section, query)) is var first &&
-        (!string.IsNullOrWhiteSpace(query) && Matches(first, query))
-            ? first
-            : null;
+    public static SettingsSection? FirstMatch(string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return null;
+        foreach (var section in Order)
+        {
+            if (Matches(section, query)) return section;
+        }
+        return null;
+    }
 }
