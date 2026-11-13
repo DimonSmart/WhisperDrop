@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Threading.Tasks;
 using WhisperDrop.Media;
@@ -32,6 +33,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
             showWindow, () => state.DictationEnabled = !state.DictationEnabled,
             exit, state.SetDictationStatus);
         state.PropertyChanged += OnSettingsChanged;
+        state.QueueRows.CollectionChanged += OnQueueChanged;
         state.DictationTranscribed += OnTranscribed;
         ApplySettings();
     }
@@ -138,6 +140,15 @@ public sealed class WindowsDictationCoordinator : IDisposable
         }
     }
 
+    private void OnQueueChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        foreach (var row in new List<TranscriptionQueueItem>(targets.Keys))
+        {
+            if (state.QueueRows.Contains(row)) continue;
+            if (targets.Remove(row, out var target)) target?.Dispose();
+        }
+    }
+
     private void OnTranscribed(TranscriptionQueueItem row)
     {
         if (!targets.Remove(row, out var target)) return;
@@ -201,6 +212,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
         if (disposed) return;
         disposed = true;
         state.PropertyChanged -= OnSettingsChanged;
+        state.QueueRows.CollectionChanged -= OnQueueChanged;
         state.DictationTranscribed -= OnTranscribed;
         platform.SetRecordingOverlay(false);
         platform.Dispose();
