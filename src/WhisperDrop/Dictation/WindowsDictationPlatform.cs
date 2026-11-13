@@ -35,7 +35,7 @@ public sealed class WindowsDictationPlatform : IDisposable
     private readonly KeyboardProc keyboardProc;
     private readonly string windowClassName = "ParakeetDrop.Dictation." + Guid.NewGuid().ToString("N");
 
-    private IntPtr window, overlay, hook, icon;
+    private IntPtr window, overlay, hook, icon, module;
     private bool ownsIcon, trayAdded, registered, held, enabled, overlayWanted, disposed;
     private HotkeySpec configured = HotkeySpec.Default;
     private HotkeySpec activeHotkey = HotkeySpec.Default;
@@ -102,17 +102,19 @@ public sealed class WindowsDictationPlatform : IDisposable
     {
         try
         {
+            module = GetModuleHandle(null);
             var wc = new WindowClass
             {
                 Size = (uint)Marshal.SizeOf<WindowClass>(),
                 WindowProc = windowProc,
+                Instance = module,
                 ClassName = windowClassName
             };
             if (RegisterClassEx(ref wc) == 0)
                 throw new InvalidOperationException("Unable to register the dictation message window.");
 
             window = CreateWindowEx(0, windowClassName, "ParakeetDrop background",
-                0, 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+                0, 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, module, IntPtr.Zero);
             if (window == IntPtr.Zero)
                 throw new InvalidOperationException("Unable to start the background message loop.");
 
@@ -135,7 +137,7 @@ public sealed class WindowsDictationPlatform : IDisposable
             if (!trayAdded)
                 throw new InvalidOperationException("Unable to create the ParakeetDrop tray icon.");
 
-            hook = SetWindowsHookEx(WhKeyboardLl, keyboardProc, IntPtr.Zero, 0);
+            hook = SetWindowsHookEx(WhKeyboardLl, keyboardProc, module, 0);
             if (hook == IntPtr.Zero)
                 throw new InvalidOperationException("Unable to install the global hotkey release monitor.");
             SetTimer(window, (IntPtr)TimerId, 250, IntPtr.Zero);
@@ -163,7 +165,7 @@ public sealed class WindowsDictationPlatform : IDisposable
             if (ownsIcon) DestroyIcon(icon);
             if (overlay != IntPtr.Zero) DestroyWindow(overlay);
             if (window != IntPtr.Zero) DestroyWindow(window);
-            UnregisterClass(windowClassName, IntPtr.Zero);
+            UnregisterClass(windowClassName, module);
         }
     }
 
@@ -428,6 +430,8 @@ public sealed class WindowsDictationPlatform : IDisposable
         public IntPtr BalloonIcon;
     }
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr GetModuleHandle(string? moduleName);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern ushort RegisterClassEx(ref WindowClass windowClass);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
