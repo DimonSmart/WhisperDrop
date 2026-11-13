@@ -137,6 +137,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public ObservableCollection<LocalModelInfo> InstalledModels { get; } = [];
 
+    public bool CanChangeModelStorage => !IsBatchActive && !QueueRows.Any(row => row.IsProcessing) && SelectedModelDownloadState != SelectedModelDownloadState.Downloading;
+
     public string ModelsFolder
     {
         get => settings.ModelsFolder!;

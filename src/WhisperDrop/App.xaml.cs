@@ -124,7 +124,7 @@ public partial class App : Application
         settingsWindow = window;
         SetWindowIcon(window);
         window.Content = new SettingsPage(host.Services.GetRequiredService<InitialApplicationState>(), window);
-        window.AppWindow.Resize(new Windows.Graphics.SizeInt32(920, 650));
+        window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 920, Height = 650 });
         window.Closed += (_, _) =>
         {
             if (ReferenceEquals(settingsWindow, window)) settingsWindow = null;
