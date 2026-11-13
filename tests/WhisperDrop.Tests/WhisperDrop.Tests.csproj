@@ -20,6 +20,7 @@
     <Compile Include="../../src/WhisperDrop/State/Parakeet*.cs" Link="State/%(Filename)%(Extension)" />
     <Compile Include="../../src/WhisperDrop/Models/ParakeetModelCatalog.cs" Link="Models/ParakeetModelCatalog.cs" />
     <Compile Include="../../src/WhisperDrop/Media/*.cs" Link="Media/%(Filename)%(Extension)" />
+    <Compile Include="../../src/WhisperDrop/Dictation/*.cs" Link="Dictation/%(Filename)%(Extension)" />
     <Compile Include="../../src/WhisperDrop/State/InitialApplicationState.cs" Link="State/InitialApplicationState.cs" />
     <Compile Include="../../src/WhisperDrop/State/ApplicationAcceptanceProbe.cs" Link="State/ApplicationAcceptanceProbe.cs" />
     <Compile Include="../../src/WhisperDrop/State/RecognitionOptions.cs" Link="State/RecognitionOptions.cs" />
