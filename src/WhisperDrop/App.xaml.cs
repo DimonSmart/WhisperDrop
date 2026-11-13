@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using WinRT.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
@@ -19,6 +18,7 @@ public partial class App : Application
     private readonly IHost host;
     private WindowsDictationCoordinator? dictation;
     private Window? settingsWindow;
+    private bool isExiting;
 
     internal static Window MainWindow { get; private set; } = null!;
 
@@ -72,6 +72,15 @@ public partial class App : Application
             Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
+        MainWindow.AppWindow.Closing += (_, args) =>
+        {
+            var state = host.Services.GetRequiredService<InitialApplicationState>();
+            if (WindowClosePolicy.ShouldHideOnClose(state.HideToTrayOnClose, dictation is not null, isExiting) &&
+                HideToTray())
+            {
+                args.Cancel = true;
+            }
+        };
         MainWindow.Closed += (_, _) =>
         {
             settingsWindow?.Close();
@@ -103,14 +112,17 @@ public partial class App : Application
 
     internal bool HideToTray()
     {
-        // Closing the main window must exit. Hiding is possible only by explicit command.
         if (!OperatingSystem.IsWindows() || dictation is null) return false;
 
-        var handle = WindowNative.GetWindowHandle(MainWindow);
-        if (handle == IntPtr.Zero) return false;
+        var handle = GetMainWindowHandle();
+        if (handle == IntPtr.Zero || !IsWindow(handle)) return false;
+
+        // WinRT.Interop.WindowNative returns an Uno AppWindow ID on Skia Desktop,
+        // not a Win32 HWND. Use the native host HWND for these Win32 calls.
+        ShowWindow(handle, 0); // SW_HIDE
+        if (IsWindowVisible(handle)) return false;
 
         settingsWindow?.Close();
-        ShowWindow(handle, 0); // SW_HIDE. AppWindow.Hide is not implemented on Uno Desktop.
         return true;
     }
 
@@ -118,12 +130,21 @@ public partial class App : Application
     {
         if (OperatingSystem.IsWindows())
         {
-            var handle = WindowNative.GetWindowHandle(MainWindow);
-            if (handle != IntPtr.Zero) ShowWindow(handle, 5); // SW_SHOW
+            var handle = GetMainWindowHandle();
+            if (handle != IntPtr.Zero && IsWindow(handle))
+            {
+                ShowWindow(handle, IsIconic(handle) ? 9 : 5); // SW_RESTORE / SW_SHOW
+                SetForegroundWindow(handle);
+            }
         }
 
         MainWindow.Activate();
     }
+
+    private static IntPtr GetMainWindowHandle() =>
+        Uno.UI.Xaml.WindowHelper.GetNativeWindow(MainWindow) is Uno.UI.NativeElementHosting.Win32NativeWindow native
+            ? native.Hwnd
+            : IntPtr.Zero;
 
     internal void ShowSettings()
     {
@@ -155,10 +176,28 @@ public partial class App : Application
         });
     }
 
-    private void ExitFromTray() => MainWindow.Close();
+    internal void ExitApplication()
+    {
+        isExiting = true;
+        MainWindow.Close();
+    }
+
+    private void ExitFromTray() => ExitApplication();
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     private static void SetWindowIcon(Window window)
     {

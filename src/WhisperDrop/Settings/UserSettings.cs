@@ -37,6 +37,8 @@ public sealed record DictationSettings
 
 public sealed record UserSettings
 {
+    public bool HideToTrayOnClose { get; init; }
+
     public string? ModelsFolder { get; init; }
 
     public string SelectedModelId { get; init; } = "parakeet-ultra-q8_0";

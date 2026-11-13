@@ -45,6 +45,11 @@ public sealed partial class MainPage : Page
         if (Application.Current is App app) app.ShowSettings();
     }
 
+    private void Exit_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app) app.ExitApplication();
+    }
+
     private async void HideToTray_Click(object sender, RoutedEventArgs e)
     {
         if (Application.Current is App app && !app.HideToTray())

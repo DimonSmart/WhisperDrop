@@ -99,6 +99,7 @@ public sealed class JsonUserSettingsStore : IUserSettingsStore
 
         return new UserSettings
         {
+            HideToTrayOnClose = settings?.HideToTrayOnClose ?? false,
             ModelsFolder = string.IsNullOrWhiteSpace(settings?.ModelsFolder) ? paths.DefaultModelsFolder : settings.ModelsFolder,
             SelectedModelId = Models.ParakeetModelCatalog.ModelId,
             ProcessingDevice = processingDevice,

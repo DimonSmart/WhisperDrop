@@ -46,6 +46,8 @@
                         <MenuFlyoutItem x:Name="HideToTrayMenuItem" Text="Hide to tray" Click="HideToTray_Click" />
                         <MenuFlyoutSeparator />
                         <MenuFlyoutItem Text="About ParakeetDrop…" Click="About_Click" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="Exit" Click="Exit_Click" />
                     </MenuFlyout>
                 </Button.Flyout>
             </Button>
