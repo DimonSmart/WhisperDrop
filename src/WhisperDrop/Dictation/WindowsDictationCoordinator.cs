@@ -59,6 +59,7 @@ public sealed class WindowsDictationCoordinator : IDisposable
         if (!state.CanStartDictation)
         {
             state.SetDictationStatus("Microphone is busy with another recording.");
+            platform.ShowNotification("Microphone is busy with a manual recording.");
             return;
         }
 
@@ -82,7 +83,11 @@ public sealed class WindowsDictationCoordinator : IDisposable
         {
             recordingTarget?.Dispose();
             recordingTarget = null;
-            if (!disposed) state.SetDictationStatus("Dictation failed: " + exception.Message);
+            if (!disposed)
+            {
+                state.SetDictationStatus("Dictation failed: " + exception.Message);
+                platform.ShowNotification("Dictation failed: " + exception.Message);
+            }
         }
         finally { starting = false; }
     }
@@ -130,7 +135,11 @@ public sealed class WindowsDictationCoordinator : IDisposable
         catch (Exception exception)
         {
             target?.Dispose();
-            if (!disposed) state.SetDictationStatus("Dictation failed: " + exception.Message);
+            if (!disposed)
+            {
+                state.SetDictationStatus("Dictation failed: " + exception.Message);
+                platform.ShowNotification("Dictation failed: " + exception.Message);
+            }
         }
         finally
         {
