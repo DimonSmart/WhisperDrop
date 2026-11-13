@@ -152,7 +152,8 @@ public sealed class WindowsDictationPlatform : IDisposable
             hook = SetWindowsHookEx(WhKeyboardLl, keyboardProc, module, 0);
             if (hook == IntPtr.Zero)
                 throw new InvalidOperationException("Unable to install the global hotkey release monitor.");
-            SetTimer(window, (IntPtr)TimerId, 250, IntPtr.Zero);
+            if (SetTimer(window, (IntPtr)TimerId, 250, IntPtr.Zero) == IntPtr.Zero)
+                throw new InvalidOperationException("Unable to monitor missed hotkey releases.");
             WTSRegisterSessionNotification(window, 0);
             started.TrySetResult(true);
 
