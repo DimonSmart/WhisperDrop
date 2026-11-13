@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using WhisperDrop.Dictation;
 using WhisperDrop.Models;
 using WhisperDrop.Media;
 using WhisperDrop.Settings;
@@ -190,6 +191,61 @@ public sealed class TranscriptionWorkspaceTests
         Assert.False(File.Exists(path));
         Assert.True(File.Exists(Path.Combine(state.ModelsFolder, "keep.txt")));
         Assert.False(state.IsSelectedModelAvailable);
+    }
+
+    [Theory]
+    [InlineData("Ctrl+Shift+Space", true)]
+    [InlineData("Ctrl+Alt+D", true)]
+    [InlineData("Shift+F12", true)]
+    [InlineData("Ctrl", false)]
+    [InlineData("Ctrl+Shift+Meta", false)]
+    [InlineData("Ctrl+Shift+Space+X", false)]
+    public void Hotkey_validation_is_predictable(string shortcut, bool expected) =>
+        Assert.Equal(expected, WindowsDictationPlatform.HotkeySpec.TryParse(shortcut, out _));
+
+    [Fact]
+    public async Task Dictation_uses_shared_queue_without_automatic_AI_and_keeps_insertion_pending()
+    {
+        var service = new FakeRecognitionService();
+        var state = CreateAvailableState(service);
+        state.AiPostProcessingEnabled = true;
+        var observed = new TaskCompletionSource<TranscriptionQueueItem>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.DictationTranscribed += row => observed.TrySetResult(row);
+        var start = DateTimeOffset.Now;
+        var item = state.AddDictationRecording("recording.wav", start, start.AddSeconds(2));
+
+        Assert.NotNull(item.DictationId);
+        Assert.Equal("Push-to-Talk", item.SourceLabel);
+        Assert.Equal(TextInsertionStatus.Pending, item.InsertionStatus);
+
+        state.QueueDictationRecognition(item);
+        Assert.Same(item, await observed.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(TranscriptionState.Completed, item.TranscriptionState);
+        Assert.Equal(AiEnhancementState.NotRequested, item.AiEnhancementState);
+        Assert.Equal(TextInsertionStatus.Pending, item.InsertionStatus);
+        Assert.Single(service.Paths);
+        Assert.Contains(item.RawTranscript!, state.GetCompletedTranscriptsForCopy());
+
+        state.AiPostProcessingEnabled = false;
+        item.InsertionStatus = TextInsertionStatus.Submitted;
+        await state.TranscribeAsync(item);
+        Assert.Equal(TextInsertionStatus.NotRequested, item.InsertionStatus);
+    }
+
+    [Fact]
+    public async Task Dictation_without_installed_model_keeps_audio_in_history()
+    {
+        var service = new FakeRecognitionService();
+        var state = CreateState(service, false);
+        var observed = new TaskCompletionSource<TranscriptionQueueItem>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.DictationTranscribed += row => observed.TrySetResult(row);
+        var item = state.AddDictationRecording("unrecognized.wav", DateTimeOffset.Now, DateTimeOffset.Now);
+        state.QueueDictationRecognition(item);
+        await observed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(TranscriptionState.Error, item.TranscriptionState);
+        Assert.Contains("Download", item.ErrorMessage);
+        Assert.Single(state.QueueRows);
+        Assert.Empty(service.Paths);
     }
 
     private static InitialApplicationState CreateAvailableState(FakeRecognitionService service) =>
