@@ -255,7 +255,7 @@ public sealed class WindowsDictationPlatform : IDisposable
             var message = (uint)wparam.ToInt64();
             if (message is WmKeyDown or WmSysKeyDown)
             {
-                if (registered && !held && info.Key == activeHotkey.Key && IsHeld(activeHotkey))
+                if (registered && !held && info.Key == activeHotkey.Key && ModifiersHeld(activeHotkey))
                 {
                     held = true; // Prevent OS-generated KeyDown repeat.
                     dispatch(pressed);
@@ -264,20 +264,25 @@ public sealed class WindowsDictationPlatform : IDisposable
             else if (message is WmKeyUp or WmSysKeyUp)
             {
                 if (held && (info.Key == activeHotkey.Key ||
-                    (activeHotkey.Modifiers.HasFlag(HotkeySpec.Ctrl) && info.Key is 0x11 or 0xA2 or 0xA3) ||
-                    (activeHotkey.Modifiers.HasFlag(HotkeySpec.Shift) && info.Key is 0x10 or 0xA0 or 0xA1) ||
-                    (activeHotkey.Modifiers.HasFlag(HotkeySpec.Alt) && info.Key is 0x12 or 0xA4 or 0xA5)))
+                    ((activeHotkey.Modifiers & HotkeySpec.Ctrl) != 0 && info.Key is 0x11 or 0xA2 or 0xA3) ||
+                    ((activeHotkey.Modifiers & HotkeySpec.Shift) != 0 && info.Key is 0x10 or 0xA0 or 0xA1) ||
+                    ((activeHotkey.Modifiers & HotkeySpec.Alt) != 0 && info.Key is 0x12 or 0xA4 or 0xA5)))
                     Release();
             }
         }
         return CallNextHookEx(hook, code, wparam, lparam);
     }
 
+    private static bool ModifiersHeld(HotkeySpec hotkey) =>
+        ((hotkey.Modifiers & HotkeySpec.Ctrl) == 0 || Down(0x11)) &&
+        ((hotkey.Modifiers & HotkeySpec.Shift) == 0 || Down(0x10)) &&
+        ((hotkey.Modifiers & HotkeySpec.Alt) == 0 || Down(0x12));
+
     private static bool IsHeld(HotkeySpec hotkey) =>
         Down((int)hotkey.Key) &&
-        (!hotkey.Modifiers.HasFlag(HotkeySpec.Ctrl) || Down(0x11)) &&
-        (!hotkey.Modifiers.HasFlag(HotkeySpec.Shift) || Down(0x10)) &&
-        (!hotkey.Modifiers.HasFlag(HotkeySpec.Alt) || Down(0x12));
+        (!(hotkey.Modifiers & HotkeySpec.Ctrl) != 0 || Down(0x11)) &&
+        (!(hotkey.Modifiers & HotkeySpec.Shift) != 0 || Down(0x10)) &&
+        (!(hotkey.Modifiers & HotkeySpec.Alt) != 0 || Down(0x12));
 
     private static bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
 
