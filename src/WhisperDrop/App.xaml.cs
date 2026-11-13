@@ -17,6 +17,7 @@ public partial class App : Application
     private readonly IHost host;
     private WindowsDictationCoordinator? dictation;
     private bool isExiting;
+    private Window? settingsWindow;
 
     internal static Window MainWindow { get; private set; } = null!;
 
@@ -80,6 +81,7 @@ public partial class App : Application
         };
         MainWindow.Closed += (_, _) =>
         {
+            settingsWindow?.Close();
             dictation?.Dispose();
             host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession();
             host.Dispose();
@@ -108,6 +110,26 @@ public partial class App : Application
                 state.SetDictationStatus("Background dictation unavailable: " + exception.Message);
             }
         }
+    }
+
+    internal void ShowSettings()
+    {
+        if (settingsWindow is not null)
+        {
+            settingsWindow.Activate();
+            return;
+        }
+
+        var window = new Window { Title = "ParakeetDrop — Settings" };
+        settingsWindow = window;
+        SetWindowIcon(window);
+        window.Content = new SettingsPage(host.Services.GetRequiredService<InitialApplicationState>(), window);
+        window.AppWindow.Resize(new Windows.Graphics.SizeInt32(920, 650));
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(settingsWindow, window)) settingsWindow = null;
+        };
+        window.Activate();
     }
 
     internal static void CompleteApplicationUpdateRestart(MainPage page)

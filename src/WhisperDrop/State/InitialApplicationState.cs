@@ -16,10 +16,6 @@ namespace WhisperDrop.State;
 
 public sealed class InitialApplicationState : INotifyPropertyChanged
 {
-    public const int TranscribeTabIndex = 0;
-    public const int ModelsTabIndex = 1;
-    public const int AiTabIndex = 2;
-    public const int SettingsTabIndex = ModelsTabIndex;
 
     private readonly IUserSettingsStore settingsStore;
     private readonly IRecognitionModelCatalog modelCatalog;
@@ -33,7 +29,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private readonly ILocalModelInventory localModelInventory;
     private readonly IRecognitionRuntimeSelector runtimeSelector;
     private UserSettings settings;
-    private int selectedTabIndex = TranscribeTabIndex;
     private string? unsupportedFormatMessage;
     private SelectedModelDownloadState selectedModelDownloadState;
     private string? selectedModelDownloadError;
@@ -117,7 +112,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
         RefreshInstalledModels();
         ReevaluateSelectedModel();
-        SelectedTabIndex = TranscribeTabIndex;
         QueueRows.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(IsTranscribeWorkspaceEmpty));
@@ -142,14 +136,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public ObservableCollection<TranscriptionQueueItem> QueueRows { get; } = [];
 
     public ObservableCollection<LocalModelInfo> InstalledModels { get; } = [];
-
-    public int SelectedTabIndex
-    {
-        get => selectedTabIndex;
-        set => SetField(ref selectedTabIndex, value);
-    }
-
-    public bool CanChangeModelStorage => !IsBatchActive && !QueueRows.Any(row => row.IsProcessing) && SelectedModelDownloadState != SelectedModelDownloadState.Downloading;
 
     public string ModelsFolder
     {

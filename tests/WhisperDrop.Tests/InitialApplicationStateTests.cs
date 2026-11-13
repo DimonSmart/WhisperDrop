@@ -11,17 +11,16 @@ namespace WhisperDrop.Tests;
 public sealed class InitialApplicationStateTests
 {
     [Fact]
-    public void Starts_on_the_Transcribe_tab_when_the_selected_model_is_not_available()
+    public void Starts_with_an_empty_transcription_workspace_when_the_selected_model_is_not_available()
     {
         var state = CreateState();
 
-        Assert.Equal(InitialApplicationState.TranscribeTabIndex, state.SelectedTabIndex);
         Assert.False(state.IsSelectedModelAvailable);
         Assert.True(state.IsTranscribeWorkspaceEmpty);
     }
 
     [Fact]
-    public void Starts_on_the_Transcribe_tab_when_the_selected_model_is_available()
+    public void Starts_with_an_empty_transcription_workspace_when_the_selected_model_is_available()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         var paths = new ApplicationPaths(root);
@@ -34,7 +33,6 @@ public sealed class InitialApplicationStateTests
 
         var state = new InitialApplicationState(settings, catalog, new RecognitionLanguageCatalog(), availability);
 
-        Assert.Equal(InitialApplicationState.TranscribeTabIndex, state.SelectedTabIndex);
         Assert.True(state.IsSelectedModelAvailable);
         Assert.True(state.IsTranscribeWorkspaceEmpty);
     }
