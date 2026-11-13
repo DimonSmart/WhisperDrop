@@ -26,6 +26,10 @@
 
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="{StaticResource SpacingSm}">
+                    <ToggleButton x:Name="GeneralNav" Tag="General" Content="General"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                  Style="{StaticResource SettingsNavigationButtonStyle}"
+                                  Click="Section_Click" />
                     <ToggleButton x:Name="RecognitionNav" Tag="Recognition" Content="Recognition"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                   Style="{StaticResource SettingsNavigationButtonStyle}"
@@ -55,6 +59,17 @@
                     <StackPanel HorizontalAlignment="Stretch"
                                 MaxWidth="720"
                                 Spacing="{StaticResource SpacingMd}">
+                        <StackPanel x:Name="GeneralSection" Spacing="{StaticResource SpacingMd}">
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="General" />
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Window behavior" />
+                            <ToggleSwitch Header="Hide to tray when closing the main window"
+                                          IsEnabled="{x:Bind ViewModel.IsWindowsDictationSupported, Mode=OneWay}"
+                                          IsOn="{x:Bind ViewModel.HideToTrayOnClose, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource CaptionTextStyle}"
+                                       Text="Windows only. When enabled, the X button hides the window instead of exiting. Use Exit in the application menu to close ParakeetDrop completely."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
                         <StackPanel x:Name="RecognitionSection" Spacing="{StaticResource SpacingMd}">
                             <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition" />
                 <StackPanel

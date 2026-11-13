@@ -21,6 +21,7 @@ public sealed class SettingsTests : IDisposable
         var settings = new JsonUserSettingsStore(paths).Load();
         Assert.Equal(ParakeetModelCatalog.ModelId, settings.SelectedModelId);
         Assert.Equal(ProcessingDevice.Auto, settings.ProcessingDevice);
+        Assert.False(settings.HideToTrayOnClose);
         Assert.Null(settings.CpuThreads);
         Assert.Equal(paths.DefaultModelsFolder, settings.ModelsFolder);
         Assert.Contains("ParakeetDrop", new ApplicationPaths().SettingsFilePath);
@@ -32,6 +33,7 @@ public sealed class SettingsTests : IDisposable
     {
         var store = new JsonUserSettingsStore(new ApplicationPaths(root));
         var settings = new UserSettings { ModelsFolder = root, CpuThreads = 1, ProcessingDevice = ProcessingDevice.Cpu,
+            HideToTrayOnClose = true,
             AiPostProcessing = new() { Model = "custom", Instructions = "verbatim", Enabled = true } };
         store.Save(settings);
         Assert.Equal(settings, store.Load());
@@ -41,6 +43,17 @@ public sealed class SettingsTests : IDisposable
         Assert.DoesNotContain("Vocabulary", json);
         Assert.DoesNotContain("Language", json);
     }
+    [Fact]
+    public void Invalid_tray_preference_does_not_discard_other_settings()
+    {
+        Directory.CreateDirectory(root);
+        File.WriteAllText(new ApplicationPaths(root).SettingsFilePath,
+            "{\"HideToTrayOnClose\":\"invalid\",\"ModelsFolder\":\"custom\"}");
+        var loaded = new JsonUserSettingsStore(new ApplicationPaths(root)).Load();
+        Assert.False(loaded.HideToTrayOnClose);
+        Assert.Equal("custom", loaded.ModelsFolder);
+    }
+
     [Fact]
     public void Dictation_settings_persist_and_default_to_enabled()
     {

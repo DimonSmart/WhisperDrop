@@ -22,7 +22,7 @@ public sealed partial class SettingsPage : Page
         ViewModel = viewModel;
         this.owner = owner;
         InitializeComponent();
-        SelectSection(SettingsSection.Recognition);
+        SelectSection(SettingsSection.General);
     }
 
     public InitialApplicationState ViewModel { get; }
@@ -39,6 +39,7 @@ public sealed partial class SettingsPage : Page
     private void SettingsSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
         var query = SettingsSearch.Text;
+        GeneralNav.Opacity = SettingsNavigationCatalog.Matches(SettingsSection.General, query) ? 1 : 0.35;
         RecognitionNav.Opacity = SettingsNavigationCatalog.Matches(SettingsSection.Recognition, query) ? 1 : 0.35;
         ModelsNav.Opacity = SettingsNavigationCatalog.Matches(SettingsSection.Models, query) ? 1 : 0.35;
         DictationNav.Opacity = SettingsNavigationCatalog.Matches(SettingsSection.Dictation, query) ? 1 : 0.35;
@@ -51,6 +52,7 @@ public sealed partial class SettingsPage : Page
         else
         {
             // Preserve selection when query is empty/unmatched without dimming it.
+            if (GeneralNav.IsChecked == true) GeneralNav.Opacity = 1;
             if (RecognitionNav.IsChecked == true) RecognitionNav.Opacity = 1;
             if (ModelsNav.IsChecked == true) ModelsNav.Opacity = 1;
             if (DictationNav.IsChecked == true) DictationNav.Opacity = 1;
@@ -60,11 +62,13 @@ public sealed partial class SettingsPage : Page
 
     private void SelectSection(SettingsSection section)
     {
+        SetNavigationVisual(GeneralNav, section == SettingsSection.General);
         SetNavigationVisual(RecognitionNav, section == SettingsSection.Recognition);
         SetNavigationVisual(ModelsNav, section == SettingsSection.Models);
         SetNavigationVisual(DictationNav, section == SettingsSection.Dictation);
         SetNavigationVisual(AiNav, section == SettingsSection.Ai);
 
+        GeneralSection.Visibility = section == SettingsSection.General ? Visibility.Visible : Visibility.Collapsed;
         RecognitionSection.Visibility = section == SettingsSection.Recognition ? Visibility.Visible : Visibility.Collapsed;
         ModelsSection.Visibility = section == SettingsSection.Models ? Visibility.Visible : Visibility.Collapsed;
         DictationSection.Visibility = section == SettingsSection.Dictation ? Visibility.Visible : Visibility.Collapsed;

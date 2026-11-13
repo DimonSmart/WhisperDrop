@@ -6,6 +6,9 @@ namespace WhisperDrop.Tests;
 public sealed class SettingsNavigationTests
 {
     [Theory]
+    [InlineData("tray", SettingsSection.General)]
+    [InlineData("close", SettingsSection.General)]
+    [InlineData("hide to tray", SettingsSection.General)]
     [InlineData("GPU", SettingsSection.Recognition)]
     [InlineData("threads", SettingsSection.Recognition)]
     [InlineData("CPU threads", SettingsSection.Recognition)]
@@ -25,7 +28,7 @@ public sealed class SettingsNavigationTests
     [Fact]
     public void Search_preserves_every_category_and_dims_only_non_matches()
     {
-        Assert.Equal(4, SettingsNavigationCatalog.Order.Count);
+        Assert.Equal(5, SettingsNavigationCatalog.Order.Count);
         Assert.True(SettingsNavigationCatalog.Matches(SettingsSection.Recognition, "model"));
         Assert.True(SettingsNavigationCatalog.Matches(SettingsSection.Ai, "model"));
         Assert.False(SettingsNavigationCatalog.Matches(SettingsSection.Dictation, "model"));

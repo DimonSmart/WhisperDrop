@@ -6,6 +6,7 @@ namespace WhisperDrop.Settings;
 
 public enum SettingsSection
 {
+    General,
     Recognition,
     Models,
     Dictation,
@@ -15,11 +16,13 @@ public enum SettingsSection
 public static class SettingsNavigationCatalog
 {
     public static IReadOnlyList<SettingsSection> Order { get; } =
-        [SettingsSection.Recognition, SettingsSection.Models, SettingsSection.Dictation, SettingsSection.Ai];
+        [SettingsSection.General, SettingsSection.Recognition, SettingsSection.Models, SettingsSection.Dictation, SettingsSection.Ai];
 
     private static readonly IReadOnlyDictionary<SettingsSection, string[]> SearchTerms =
         new Dictionary<SettingsSection, string[]>
         {
+            [SettingsSection.General] =
+                ["general", "window", "window behavior", "close", "closing", "exit", "tray", "hide to tray", "minimize to tray", "hide to tray when closing the main window", "x button", "background mode"],
             [SettingsSection.Recognition] =
                 ["recognition", "recognition model", "recognition performance", "transcription", "model selection", "parakeet", "processing device", "cpu threads", "cpu", "gpu", "threads", "metal", "vulkan", "performance"],
             [SettingsSection.Models] =
