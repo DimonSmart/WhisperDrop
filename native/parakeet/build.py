@@ -140,9 +140,15 @@ licenses = [
     (ROOT / "model-NOTICE", "model-NOTICE", "modelNotice"),
 ]
 for license_path, name, pin in licenses:
-    if digest(license_path) != PINS["licenseHashes"][pin]:
+    # actions/checkout may materialize repository text as CRLF on Windows.
+    # Only normalize line endings when the result matches the pinned bytes.
+    data = license_path.read_bytes()
+    expected = PINS["licenseHashes"][pin]
+    if system == "Windows" and hashlib.sha256(data).hexdigest() != expected:
+        data = data.replace(b"\r\n", b"\n")
+    if hashlib.sha256(data).hexdigest() != expected:
         raise RuntimeError("License/notice hash mismatch: " + name)
-    shutil.copy2(license_path, stage / name)
+    (stage / name).write_bytes(data)
 manifest = {
     "runtimeCommit": PINS["transcribeCommit"],
     "ggmlVendoredTree": PINS["ggmlVendoredTree"],
