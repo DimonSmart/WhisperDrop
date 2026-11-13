@@ -333,7 +333,7 @@ public sealed class WindowsDictationPlatform : IDisposable
         try
         {
             AppendMenu(menu, MfString, 100, "Open ParakeetDrop");
-            AppendMenu(menu, MfString, 101, registered ? "Disable Dictation" : "Enable Dictation");
+            AppendMenu(menu, MfString, 101, enabled ? "Disable Dictation" : "Enable Dictation");
             AppendMenu(menu, MfSeparator, 0, null);
             AppendMenu(menu, MfString, 102, "Exit");
             GetCursorPos(out var point);
