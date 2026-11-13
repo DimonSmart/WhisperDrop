@@ -69,9 +69,6 @@
                 RowSpacing="{StaticResource SpacingSm}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -149,42 +146,6 @@
                         Visibility="{x:Bind ViewModel.SelectedModelDownloadState, Mode=OneWay, Converter={StaticResource SelectedModelDownloadStateToVisibilityConverter}, ConverterParameter=DetailedStatus}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" Grid.ColumnSpan="4">
-                        <Grid ColumnSpacing="{StaticResource SpacingMd}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
-                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Processing device" />
-                                <ComboBox
-                                    MinWidth="0"
-                                    Style="{StaticResource SettingsComboBoxStyle}"
-                                    DisplayMemberPath="DisplayName"
-                                    ItemsSource="{x:Bind ViewModel.ProcessingDeviceOptions}"
-                                    SelectedValue="{x:Bind ViewModel.ProcessingDevice, Mode=TwoWay}"
-                                    SelectedValuePath="Value" />
-                                <TextBlock
-                                    Style="{StaticResource CaptionTextStyle}"
-                                    Text="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay}"
-                                    TextWrapping="Wrap"
-                                    Visibility="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-                                <TextBlock Style="{StaticResource CaptionTextStyle}"
-                                    Text="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
-                                <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
-                                <ComboBox
-                                    MinWidth="0"
-                                    Style="{StaticResource SettingsComboBoxStyle}"
-                                    DisplayMemberPath="DisplayName"
-                                    ItemsSource="{x:Bind ViewModel.CpuThreadOptions}"
-                                    SelectedValue="{x:Bind ViewModel.CpuThreads, Mode=TwoWay}"
-                                    SelectedValuePath="Value" />
-                            </StackPanel>
-                        </Grid>
-                </StackPanel>
             </Grid>
 
             <StackPanel Grid.Row="1" Spacing="{StaticResource SpacingXs}">
@@ -536,6 +497,45 @@
                 MaxWidth="720"
                 HorizontalAlignment="Left"
                 Spacing="{StaticResource SpacingMd}">
+
+                <StackPanel Spacing="{StaticResource SpacingSm}">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="Recognition performance" />
+                    <Grid ColumnSpacing="{StaticResource SpacingMd}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Processing device" />
+                            <ComboBox
+                                MinWidth="0"
+                                Style="{StaticResource SettingsComboBoxStyle}"
+                                DisplayMemberPath="DisplayName"
+                                ItemsSource="{x:Bind ViewModel.ProcessingDeviceOptions}"
+                                SelectedValue="{x:Bind ViewModel.ProcessingDevice, Mode=TwoWay}"
+                                SelectedValuePath="Value" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Text="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Visibility="{x:Bind ViewModel.ProcessingDeviceReloadMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Text="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.ProcessingBackendStatus, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" MinWidth="0" Spacing="{StaticResource SpacingXs}">
+                            <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="CPU threads" />
+                            <ComboBox
+                                MinWidth="0"
+                                Style="{StaticResource SettingsComboBoxStyle}"
+                                DisplayMemberPath="DisplayName"
+                                ItemsSource="{x:Bind ViewModel.CpuThreadOptions}"
+                                SelectedValue="{x:Bind ViewModel.CpuThreads, Mode=TwoWay}"
+                                SelectedValuePath="Value" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
 
                 <StackPanel Spacing="{StaticResource SpacingXs}">
                     <TextBlock Style="{StaticResource SettingsLabelTextStyle}" Text="Models folder" />
