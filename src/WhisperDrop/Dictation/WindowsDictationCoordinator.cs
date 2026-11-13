@@ -66,7 +66,16 @@ public sealed class WindowsDictationCoordinator : IDisposable
         starting = true;
         releaseRequested = false;
         recordingStarted = DateTimeOffset.Now;
-        recordingTarget = state.DictationInsertAfterRecognition ? WindowsTextInputTarget.Capture() : null;
+        try
+        {
+            recordingTarget = state.DictationInsertAfterRecognition ? WindowsTextInputTarget.Capture() : null;
+        }
+        catch (Exception)
+        {
+            // Accessibility providers are not always available. Recognition must still work.
+            // Without a trustworthy target we will keep the transcript and skip insertion.
+            recordingTarget = null;
+        }
 
         try
         {
