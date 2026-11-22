@@ -22,15 +22,16 @@ public sealed class WindowsMicrophoneCaptureService : IMicrophoneCaptureService
     private long capturedBytes;
 
     public WindowsMicrophoneCaptureService()
-        : this(CreateCapture, Path.Combine(Path.GetTempPath(), "ParakeetDrop", "recordings")) { }
+        : this(CreateCapture, Path.Combine(Path.GetTempPath(), "ParakeetDrop", "recordings", Guid.NewGuid().ToString("N"))) { }
 
     internal WindowsMicrophoneCaptureService(Func<IWaveIn> createCapture, string recordingsDirectory)
     {
         this.createCapture = createCapture;
         this.recordingsDirectory = recordingsDirectory;
         Directory.CreateDirectory(recordingsDirectory);
-        DeleteRecordings();
     }
+
+    internal string RecordingsDirectory => recordingsDirectory;
 
     public bool IsSupported => OperatingSystem.IsWindows();
 
@@ -153,6 +154,9 @@ public sealed class WindowsMicrophoneCaptureService : IMicrophoneCaptureService
             catch (Exception) { }
             recordingPath = null;
             DeleteRecordings();
+            try { Directory.Delete(recordingsDirectory); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 
@@ -165,6 +169,7 @@ public sealed class WindowsMicrophoneCaptureService : IMicrophoneCaptureService
 
     private void DeleteRecordings()
     {
+        if (!Directory.Exists(recordingsDirectory)) return;
         foreach (var path in Directory.EnumerateFiles(recordingsDirectory, "*.wav", SearchOption.TopDirectoryOnly))
             TryDelete(path);
     }

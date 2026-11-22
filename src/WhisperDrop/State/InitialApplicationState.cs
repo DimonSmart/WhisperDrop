@@ -47,6 +47,8 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private bool isMicrophoneTransitioning;
     private string? microphoneRecordingStatus;
     private CancellationTokenSource? activeTranscription;
+    private TaskCompletionSource? activeTranscriptionFinished;
+    private bool shuttingDown;
 
     public bool CanCancelTranscription => activeTranscription is not null && !activeTranscription.IsCancellationRequested;
 
@@ -54,6 +56,16 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         activeTranscription?.Cancel();
         OnPropertyChanged(nameof(CanCancelTranscription));
+    }
+
+    public async Task ShutdownAsync()
+    {
+        shuttingDown = true;
+        pendingDictations.Clear();
+        var finished = activeTranscriptionFinished?.Task;
+        CancelTranscription();
+        if (finished is not null)
+            await finished;
     }
 
     public InitialApplicationState(
@@ -376,13 +388,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public void QueueDictationRecognition(TranscriptionQueueItem row)
     {
+        if (shuttingDown) return;
         pendingDictations.Enqueue(row);
         StartPendingDictations();
     }
 
     private void StartPendingDictations()
     {
-        if (dictationPumpActive || activeTranscription is not null || pendingDictations.Count == 0)
+        if (shuttingDown || dictationPumpActive || activeTranscription is not null || pendingDictations.Count == 0)
             return;
         dictationPumpActive = true;
         _ = ProcessPendingDictationsAsync();
@@ -392,7 +405,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     {
         try
         {
-            while (activeTranscription is null && pendingDictations.Count > 0)
+            while (!shuttingDown && activeTranscription is null && pendingDictations.Count > 0)
             {
                 var row = pendingDictations.Dequeue();
                 if (!QueueRows.Contains(row))
@@ -715,11 +728,13 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     private async Task ExecuteTranscriptionAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
     {
-        if (activeTranscription is not null)
+        if (shuttingDown || activeTranscription is not null)
             return;
 
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         activeTranscription = cancellation;
+        activeTranscriptionFinished = finished;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         OnPropertyChanged(nameof(CanCancelTranscription));
         OnPropertyChanged(nameof(CanUseMicrophone));
@@ -727,12 +742,20 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         try { await operation(cancellation.Token); }
         finally
         {
-            ApplicationAcceptanceProbe.RecordRun(this, timer.Elapsed);
-            activeTranscription = null;
-            StartPendingDictations();
-            OnPropertyChanged(nameof(CanCancelTranscription));
-            OnPropertyChanged(nameof(CanUseMicrophone));
-            RefreshQueueActionState();
+            try
+            {
+                ApplicationAcceptanceProbe.RecordRun(this, timer.Elapsed);
+                activeTranscription = null;
+                StartPendingDictations();
+                OnPropertyChanged(nameof(CanCancelTranscription));
+                OnPropertyChanged(nameof(CanUseMicrophone));
+                RefreshQueueActionState();
+            }
+            finally
+            {
+                activeTranscriptionFinished = null;
+                finished.TrySetResult();
+            }
         }
     }
 

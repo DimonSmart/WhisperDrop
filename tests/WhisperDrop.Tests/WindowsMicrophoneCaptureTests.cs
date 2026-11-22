@@ -36,7 +36,7 @@ public sealed class WindowsMicrophoneCaptureTests : IDisposable
             Assert.Equal(second, await service.StopAsync());
         }
         finally { service.CleanupSession(); }
-        Assert.Empty(Directory.GetFiles(directory));
+        Assert.False(Directory.Exists(directory));
     }
 
     [Fact]
@@ -85,7 +85,10 @@ public sealed class WindowsMicrophoneCaptureTests : IDisposable
         Assert.Equal(new[] { otherFile }, Directory.GetFiles(directory));
     }
 
-    public void Dispose() => Directory.Delete(directory, true);
+    public void Dispose()
+    {
+        if (Directory.Exists(directory)) Directory.Delete(directory, true);
+    }
 
     private sealed class FakeCapture : IWaveIn
     {

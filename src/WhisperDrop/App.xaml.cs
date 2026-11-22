@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
@@ -19,6 +20,8 @@ public partial class App : Application
     private WindowsDictationCoordinator? dictation;
     private Window? settingsWindow;
     private bool isExiting;
+    private bool shutdownStarted;
+    private bool shutdownComplete;
 
     internal static Window MainWindow { get; private set; } = null!;
 
@@ -72,20 +75,58 @@ public partial class App : Application
             Title = "ParakeetDrop"
         };
         SetWindowIcon(MainWindow);
-        MainWindow.AppWindow.Closing += (_, args) =>
+        MainWindow.AppWindow.Closing += async (_, closingArgs) =>
         {
+            if (shutdownComplete)
+                return;
+
             var state = host.Services.GetRequiredService<InitialApplicationState>();
             if (WindowClosePolicy.ShouldHideOnClose(state.HideToTrayOnClose, dictation is not null, isExiting) &&
                 HideToTray())
             {
-                args.Cancel = true;
+                closingArgs.Cancel = true;
+                return;
+            }
+
+            // Do not dispose the native model on the UI thread while recognition is running.
+            closingArgs.Cancel = true;
+            if (shutdownStarted)
+                return;
+
+            shutdownStarted = true;
+            isExiting = true;
+            var stop = state.ShutdownAsync();
+            try
+            {
+                dictation?.Dispose();
+            }
+            catch (Exception exception)
+            {
+                ApplicationAcceptanceProbe.Record("dictation-shutdown-error", new { error = exception.GetType().Name });
+            }
+            finally
+            {
+                dictation = null;
+            }
+            try
+            {
+                await stop;
+                await Task.Run(() => host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession());
+            }
+            catch (Exception exception)
+            {
+                ApplicationAcceptanceProbe.Record("shutdown-error", new { error = exception.GetType().Name });
+            }
+            finally
+            {
+                shutdownComplete = true;
+                MainWindow.Close();
             }
         };
         MainWindow.Closed += (_, _) =>
         {
             settingsWindow?.Close();
             dictation?.Dispose();
-            host.Services.GetRequiredService<IMicrophoneCaptureService>().CleanupSession();
             host.Dispose();
         };
         MainWindow.Content = host.Services.GetRequiredService<MainPage>();

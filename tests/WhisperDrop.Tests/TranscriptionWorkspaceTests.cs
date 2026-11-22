@@ -41,6 +41,53 @@ public sealed class TranscriptionWorkspaceTests
     }
 
     [Fact]
+    public async Task Shutdown_cancels_active_recognition_and_waits_without_blocking_the_caller()
+    {
+        var recognition = new FakeRecognitionService
+        {
+            TranscriptionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            TranscriptionRelease = new(TaskCreationOptions.RunContinuationsAsynchronously)
+        };
+        var state = CreateAvailableState(recognition);
+        state.AddFiles(["recording.wav"]);
+        var run = state.TranscribeAsync(state.QueueRows[0]);
+        await recognition.TranscriptionStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var shutdown = state.ShutdownAsync();
+        Assert.False(shutdown.IsCompleted);
+        Assert.False(state.CanCancelTranscription);
+        recognition.TranscriptionRelease.SetResult();
+
+        await shutdown.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+        await state.TranscribeAsync(state.QueueRows[0]);
+        Assert.Single(recognition.Paths);
+    }
+
+    [Fact]
+    public async Task Shutdown_does_not_start_pending_dictations_after_cancellation()
+    {
+        var recognition = new FakeRecognitionService
+        {
+            TranscriptionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            TranscriptionRelease = new(TaskCreationOptions.RunContinuationsAsynchronously)
+        };
+        var state = CreateAvailableState(recognition);
+        state.AddFiles(["recording.wav"]);
+        var run = state.TranscribeAsync(state.QueueRows[0]);
+        await recognition.TranscriptionStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var dictation = state.AddDictationRecording("dictation.wav", DateTimeOffset.Now, DateTimeOffset.Now);
+        state.QueueDictationRecognition(dictation);
+
+        var shutdown = state.ShutdownAsync();
+        recognition.TranscriptionRelease.SetResult();
+        await shutdown.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+        Assert.Equal(TranscriptionState.Pending, dictation.TranscriptionState);
+        Assert.Single(recognition.Paths);
+    }
+
+    [Fact]
     public void Partial_transcript_preview_is_available_after_first_segment_and_captured_as_a_snapshot()
     {
         var item = new TranscriptionQueueItem("long.wav");
@@ -306,8 +353,10 @@ public sealed class TranscriptionWorkspaceTests
         public string Text { get; set; } = "initial";
         public bool Complete { get; set; } = true;
         public Action? OnUnload { get; set; }
+        public TaskCompletionSource? TranscriptionStarted { get; set; }
+        public TaskCompletionSource? TranscriptionRelease { get; set; }
 
-        public Task<RecognitionResult> TranscribeAsync(
+        public async Task<RecognitionResult> TranscribeAsync(
             string modelPath,
             RecognitionOptions options,
             string audioPath,
@@ -318,6 +367,10 @@ public sealed class TranscriptionWorkspaceTests
             Paths.Add(audioPath);
             Options.Add(options);
             OnCall?.Invoke(Paths.Count);
+            TranscriptionStarted?.TrySetResult();
+            if (TranscriptionRelease is not null)
+                await TranscriptionRelease.Task;
+            cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(0.5);
             if (failed.Contains(Path.GetFileName(audioPath)))
             {
@@ -326,7 +379,7 @@ public sealed class TranscriptionWorkspaceTests
 
             progress?.Report(1);
             var transcript = Text == "initial" ? $"{Path.GetFileName(audioPath)} transcript" : Text;
-            return Task.FromResult(new RecognitionResult(transcript, "ru") { IsComplete = Complete });
+            return new RecognitionResult(transcript, "ru") { IsComplete = Complete };
         }
 
         public void UnloadModel()

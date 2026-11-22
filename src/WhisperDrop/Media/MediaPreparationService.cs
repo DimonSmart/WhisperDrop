@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace WhisperDrop.Media;
 
-public sealed class MediaPreparationService : IMediaPreparationService
+public sealed class MediaPreparationService : IMediaPreparationService, IDisposable
 {
     private readonly IFfmpegRuntime runtime;
     private readonly string temporaryDirectory;
@@ -15,14 +15,14 @@ public sealed class MediaPreparationService : IMediaPreparationService
     {
     }
 
-    // The root can be isolated by tests; both cleanup and decoding always stay
-    // within the new application-owned area. Never discover legacy temp paths.
+    // Each instance owns a private directory; startup never sweeps other sessions.
     internal MediaPreparationService(IFfmpegRuntime runtime, string temporaryRoot)
     {
         this.runtime = runtime;
-        temporaryDirectory = Path.Combine(temporaryRoot, "ParakeetDrop", "media");
-        TryCleanStaleFiles();
+        temporaryDirectory = Path.Combine(temporaryRoot, "ParakeetDrop", "media", Guid.NewGuid().ToString("N"));
     }
+
+    internal string TemporaryDirectory => temporaryDirectory;
 
     public async Task<PreparedAudio> PrepareAsync(
         string sourcePath,
@@ -57,22 +57,15 @@ public sealed class MediaPreparationService : IMediaPreparationService
         }
     }
 
-    private void TryCleanStaleFiles()
+    public void Dispose()
     {
         try
         {
-            if (!Directory.Exists(temporaryDirectory))
-                return;
-
-            foreach (var file in Directory.EnumerateFiles(temporaryDirectory, "*.wav", SearchOption.TopDirectoryOnly))
-                TryDelete(file);
+            if (Directory.Exists(temporaryDirectory))
+                Directory.Delete(temporaryDirectory, recursive: true);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static void TryDelete(string path)

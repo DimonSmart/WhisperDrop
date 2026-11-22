@@ -43,7 +43,7 @@ public sealed class MacOsMicrophoneCaptureService : IMicrophoneCaptureService
     // performs the one required normalization to 16 kHz mono when transcription starts.
     private const int SampleRate = 44100;
     private readonly object gate = new();
-    private readonly string recordingsDirectory = Path.Combine(Path.GetTempPath(), "ParakeetDrop", "recordings");
+    private readonly string recordingsDirectory = Path.Combine(Path.GetTempPath(), "ParakeetDrop", "recordings", Guid.NewGuid().ToString("N"));
     private AudioQueueInputCallback? callback;
     private AudioStreamBasicDescription format;
     private IntPtr queue;
@@ -56,13 +56,9 @@ public sealed class MacOsMicrophoneCaptureService : IMicrophoneCaptureService
     public MacOsMicrophoneCaptureService()
     {
         Directory.CreateDirectory(recordingsDirectory);
-        foreach (var staleRecording in Directory.EnumerateFiles(recordingsDirectory, "*.wav", SearchOption.TopDirectoryOnly))
-        {
-            try { File.Delete(staleRecording); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
     }
+
+    internal string RecordingsDirectory => recordingsDirectory;
 
     public bool IsSupported => OperatingSystem.IsMacOS();
 
@@ -84,8 +80,14 @@ public sealed class MacOsMicrophoneCaptureService : IMicrophoneCaptureService
         }
         finally
         {
-            foreach (var recording in Directory.EnumerateFiles(recordingsDirectory, "*.wav", SearchOption.TopDirectoryOnly))
-                TryDelete(recording);
+            if (Directory.Exists(recordingsDirectory))
+            {
+                foreach (var recording in Directory.EnumerateFiles(recordingsDirectory, "*.wav", SearchOption.TopDirectoryOnly))
+                    TryDelete(recording);
+                try { Directory.Delete(recordingsDirectory); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
         }
     }
 
