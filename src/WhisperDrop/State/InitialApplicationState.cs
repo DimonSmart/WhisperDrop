@@ -273,8 +273,12 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         get => aiApiKey;
         set
         {
-            if (SetField(ref aiApiKey, value ?? string.Empty))
-                InvalidateAiConnectionTest();
+            var newValue = value ?? string.Empty;
+            if (aiApiKey == newValue)
+                return;
+
+            SetField(ref aiApiKey, newValue);
+            InvalidateAiConnectionTest();
         }
     }
 
@@ -296,8 +300,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         get => isAiConnectionTesting;
         private set
         {
-            if (SetField(ref isAiConnectionTesting, value))
-                OnPropertyChanged(nameof(CanTestAiConnection));
+            if (isAiConnectionTesting == value)
+                return;
+
+            SetField(ref isAiConnectionTesting, value);
+            OnPropertyChanged(nameof(CanTestAiConnection));
         }
     }
 
