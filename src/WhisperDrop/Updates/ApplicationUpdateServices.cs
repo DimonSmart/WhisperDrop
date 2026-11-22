@@ -171,11 +171,31 @@ public sealed class ProcessExecutor : IProcessExecutor
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();
 
-        await process.WaitForExitAsync(cancellationToken);
-        return new ProcessExecutionResult(
-            process.ExitCode,
-            await standardOutput,
-            await standardError);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+            return new ProcessExecutionResult(
+                process.ExitCode,
+                await standardOutput,
+                await standardError);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Cancelling WaitForExitAsync does not stop the subprocess.
+            // Homebrew's cancellable phases must not survive an abandoned update.
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between HasExited and Kill.
+            }
+
+            await process.WaitForExitAsync(CancellationToken.None);
+            throw;
+        }
     }
 }
 

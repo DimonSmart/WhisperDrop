@@ -38,6 +38,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private string aiApiKey = string.Empty;
     private string? aiConnectionStatus;
     private bool isAiConnectionTesting;
+    private CancellationTokenSource? activeAiConnectionTest;
     private bool isMicrophoneRecording;
     private bool isDictationRecording;
     private string? dictationStatus;
@@ -61,6 +62,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public async Task ShutdownAsync()
     {
         shuttingDown = true;
+        InvalidateAiConnectionTest();
         pendingDictations.Clear();
         var finished = activeTranscriptionFinished?.Task;
         CancelTranscription();
@@ -269,7 +271,11 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public string AiApiKey
     {
         get => aiApiKey;
-        set => SetField(ref aiApiKey, value ?? string.Empty);
+        set
+        {
+            if (SetField(ref aiApiKey, value ?? string.Empty))
+                InvalidateAiConnectionTest();
+        }
     }
 
     public string? AiRemoteEndpointWarning =>
@@ -288,8 +294,14 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     public bool IsAiConnectionTesting
     {
         get => isAiConnectionTesting;
-        private set => SetField(ref isAiConnectionTesting, value);
+        private set
+        {
+            if (SetField(ref isAiConnectionTesting, value))
+                OnPropertyChanged(nameof(CanTestAiConnection));
+        }
     }
+
+    public bool CanTestAiConnection => !IsAiConnectionTesting;
 
     public string? ProcessingDeviceReloadMessage =>
         runtimeSelector.RequiresModelReload(settings.ProcessingDevice)
@@ -866,38 +878,58 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
     public async Task TestAiConnectionAsync(CancellationToken cancellationToken = default)
     {
-        IsAiConnectionTesting = true;
-        AiConnectionStatus = "Testing…";
+        // One request per configuration. A settings edit invalidates the old request.
+        if (IsAiConnectionTesting)
+            return;
+
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        activeAiConnectionTest = timeout;
+        IsAiConnectionTesting = true;
+        AiConnectionStatus = "Testing…";
+        var options = CreateAiOptionsSnapshot() with { Enabled = true };
+
+        bool IsCurrent() => ReferenceEquals(activeAiConnectionTest, timeout);
 
         try
         {
-            await transcriptEnhancementService.TestConnectionAsync(
-                CreateAiOptionsSnapshot() with { Enabled = true },
-                timeout.Token);
-            AiConnectionStatus = "Connected.";
+            await transcriptEnhancementService.TestConnectionAsync(options, timeout.Token);
+            if (IsCurrent()) AiConnectionStatus = "Connected.";
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            AiConnectionStatus = "AI server is not available.";
+            if (IsCurrent()) AiConnectionStatus = null;
+            throw;
         }
         catch (OperationCanceledException)
         {
-            throw;
+            if (IsCurrent()) AiConnectionStatus = "AI server is not available.";
         }
         catch (TranscriptEnhancementException exception)
         {
-            AiConnectionStatus = exception.Message;
+            if (IsCurrent()) AiConnectionStatus = exception.Message;
         }
         catch
         {
-            AiConnectionStatus = "The configured AI endpoint or model could not be used.";
+            if (IsCurrent()) AiConnectionStatus = "The configured AI endpoint or model could not be used.";
         }
         finally
         {
-            IsAiConnectionTesting = false;
+            if (IsCurrent())
+            {
+                activeAiConnectionTest = null;
+                IsAiConnectionTesting = false;
+            }
         }
+    }
+
+    private void InvalidateAiConnectionTest()
+    {
+        var current = activeAiConnectionTest;
+        activeAiConnectionTest = null;
+        current?.Cancel();
+        IsAiConnectionTesting = false;
+        AiConnectionStatus = null;
     }
 
     public string GetCompletedTranscriptsForCopy() =>
@@ -947,7 +979,7 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
     private void UpdateAiSettings(AiPostProcessingSettings updated, string propertyName)
     {
         UpdateSettings(settings with { AiPostProcessing = updated }, propertyName);
-        AiConnectionStatus = null;
+        InvalidateAiConnectionTest();
         OnPropertyChanged(nameof(AiRemoteEndpointWarning));
         OnPropertyChanged(nameof(HasAiRemoteEndpointWarning));
     }
@@ -1071,7 +1103,6 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
         item.LatestCorrection = null;
         item.RecognitionResult = null;
         item.ProcessedTranscript = null;
-        item.ResetPartialTranscript();
         RefreshQueueActionState();
 
         var preparationProgress = new Progress<double>(value =>
@@ -1095,15 +1126,12 @@ public sealed class InitialApplicationState : INotifyPropertyChanged
 
             var recognitionProgress = new Progress<double>(value =>
                 item.Progress = $"{Math.Clamp(value, 0, 1) * 100:0}%");
-            var recognizedSegments = new Progress<string>(item.AppendRecognizedSegment);
-
             var result = await recognitionService.TranscribeAsync(
                 modelPath,
                 options,
                 prepared.AudioPath,
                 recognitionProgress,
-                cancellationToken,
-                recognizedSegments);
+                cancellationToken);
 
             item.RecognitionResult = result;
             item.Language = result.DetectedLanguage is { } detected && TryGetLanguageName(detected, out var displayName)

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -211,6 +213,46 @@ public sealed class ApplicationUpdateTests
 
     private static ProcessExecutionResult Failure(string standardError = "") =>
         new(1, string.Empty, standardError);
+
+    [Fact]
+    public async Task Cancelling_process_executor_stops_the_spawned_process()
+    {
+        if (OperatingSystem.IsWindows()) return; // /bin/sh and /bin/sleep test helper
+
+        var marker = Path.Combine(Path.GetTempPath(), $"ParakeetDrop-process-{Guid.NewGuid():N}.pid");
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var operation = new ProcessExecutor().RunAsync(
+            "/bin/sh",
+            ["-c", $"echo $ > '{marker}'; exec /bin/sleep 30"],
+            cancellation.Token);
+
+        try
+        {
+            for (var attempt = 0; attempt < 100 && !File.Exists(marker); attempt++)
+                await Task.Delay(20);
+            Assert.True(File.Exists(marker), "The test process should have started.");
+
+            var processId = int.Parse((await File.ReadAllTextAsync(marker)).Trim());
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => operation.WaitAsync(TimeSpan.FromSeconds(10)));
+
+            try
+            {
+                using var process = Process.GetProcessById(processId);
+                Assert.True(process.HasExited, "Cancellation must not leave the launched child running.");
+            }
+            catch (ArgumentException)
+            {
+                // The operating system already reaped the stopped process.
+            }
+        }
+        finally
+        {
+            cancellation.Cancel();
+            if (File.Exists(marker)) File.Delete(marker);
+        }
+    }
 
     private static StubUpdateEnvironment CreateMacEnvironment()
     {

@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 using WhisperDrop.Dictation;
 using WhisperDrop.State;
 
@@ -66,7 +65,6 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
     private string progress = "—";
     private string language = "Auto";
     private RecognitionResult? recognitionResult;
-    private readonly StringBuilder partialTranscript = new();
     private string? processedTranscript;
     private string? errorMessage;
     private string? aiEnhancementError;
@@ -225,26 +223,9 @@ public sealed class TranscriptionQueueItem : INotifyPropertyChanged
         internal set => Set(ref canEnhance, value);
     }
 
-    public bool CanPreviewTranscript => EffectiveTranscript is not null || partialTranscript.Length > 0;
+    public bool CanPreviewTranscript => EffectiveTranscript is not null;
 
-    public string GetPreviewTranscript() => EffectiveTranscript ?? partialTranscript.ToString();
-
-    internal void ResetPartialTranscript()
-    {
-        partialTranscript.Clear();
-        OnPropertyChanged(nameof(CanPreviewTranscript));
-    }
-
-    internal void AppendRecognizedSegment(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return;
-        }
-
-        partialTranscript.Append(text);
-        OnPropertyChanged(nameof(CanPreviewTranscript));
-    }
+    public string GetPreviewTranscript() => EffectiveTranscript ?? string.Empty;
 
     public bool CanCopy => EffectiveTranscript is not null;
 

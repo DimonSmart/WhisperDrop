@@ -24,7 +24,7 @@ public sealed class MediaPreparationIntegrationTests : IDisposable
             return;
 
         var source = Fixture(fixtureName);
-        var service = new MediaPreparationService(new FfmpegRuntime(), temporaryRoot);
+        using var service = new MediaPreparationService(new FfmpegRuntime(), temporaryRoot);
         string output;
 
         await using (var prepared = await service.PrepareAsync(source))
@@ -32,7 +32,9 @@ public sealed class MediaPreparationIntegrationTests : IDisposable
             Assert.Equal(ffmpeg.AV_LOG_QUIET, ffmpeg.av_log_get_level());
             output = prepared.AudioPath;
             Assert.NotEqual(source, output);
-            Assert.Equal(Path.Combine(temporaryRoot, "ParakeetDrop", "media"), Path.GetDirectoryName(output));
+            Assert.Equal(service.TemporaryDirectory, Path.GetDirectoryName(output));
+            Assert.StartsWith(Path.Combine(temporaryRoot, "ParakeetDrop", "media") + Path.DirectorySeparatorChar,
+                service.TemporaryDirectory);
             Assert.True(File.Exists(output));
             Assert.True(prepared.Duration is null || prepared.Duration > TimeSpan.Zero);
 
@@ -56,14 +58,14 @@ public sealed class MediaPreparationIntegrationTests : IDisposable
         if (OperatingSystem.IsLinux())
             return;
 
-        var service = new MediaPreparationService(new FfmpegRuntime(), temporaryRoot);
+        using var service = new MediaPreparationService(new FfmpegRuntime(), temporaryRoot);
 
         var exception = await Assert.ThrowsAsync<MediaPreparationException>(
             () => service.PrepareAsync(Fixture("no-audio.mp4")));
 
         Assert.Equal(MediaPreparationErrorKind.NoAudioStream, exception.Kind);
         Assert.Equal("The file does not contain an audio track.", exception.Message);
-        Assert.Empty(Directory.GetFiles(Path.Combine(temporaryRoot, "ParakeetDrop", "media")));
+        Assert.Empty(Directory.GetFiles(service.TemporaryDirectory));
     }
 
     private static string Fixture(string name) =>

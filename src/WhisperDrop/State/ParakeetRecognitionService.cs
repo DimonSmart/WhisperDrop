@@ -11,8 +11,7 @@ namespace WhisperDrop.State;
 public interface IRecognitionService : IDisposable
 {
     Task<RecognitionResult> TranscribeAsync(string modelPath, RecognitionOptions options, string audioPath,
-        IProgress<double>? progress = null, CancellationToken cancellationToken = default,
-        IProgress<string>? recognizedSegments = null);
+        IProgress<double>? progress = null, CancellationToken cancellationToken = default);
     void UnloadModel();
 }
 
@@ -51,8 +50,7 @@ public sealed class ParakeetRecognitionService : IRecognitionService
     { this.selector = selector; this.runtime = runtime; this.modelFileExists = modelFileExists; }
 
     public async Task<RecognitionResult> TranscribeAsync(string modelPath, RecognitionOptions options, string audioPath,
-        IProgress<double>? progress = null, CancellationToken cancellationToken = default,
-        IProgress<string>? recognizedSegments = null)
+        IProgress<double>? progress = null, CancellationToken cancellationToken = default)
     {
         await NativeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

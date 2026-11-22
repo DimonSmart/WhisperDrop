@@ -411,6 +411,7 @@
                             <Button
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Click="TestAiConnection_Click"
+                                IsEnabled="{x:Bind ViewModel.CanTestAiConnection, Mode=OneWay}"
                                 Content="Test connection" />
                             <TextBlock
                                 VerticalAlignment="Center"

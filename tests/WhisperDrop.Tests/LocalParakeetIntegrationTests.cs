@@ -103,11 +103,9 @@ public sealed class LocalParakeetIntegrationTests(ITestOutputHelper output)
                 {
                     var timer = Stopwatch.StartNew();
                     var progressCalls = 0;
-                    var segmentCalls = 0;
                     var result = await service.TranscribeAsync(model, new() { ProcessingDevice = device, CpuThreads = 2 }, prepared.AudioPath,
-                        new CallbackProgress<double>(_ => progressCalls++), recognizedSegments: new CallbackProgress<string>(_ => segmentCalls++));
+                        new CallbackProgress<double>(_ => progressCalls++));
                     Assert.Equal(0, progressCalls);
-                    Assert.Equal(0, segmentCalls);
                     Assert.True(result.IsComplete);
                     Assert.False(string.IsNullOrWhiteSpace(result.Transcript));
                     if (device == ProcessingDevice.Cpu)

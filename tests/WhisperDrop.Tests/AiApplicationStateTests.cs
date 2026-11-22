@@ -153,6 +153,76 @@ public sealed class AiApplicationStateTests
         Assert.Contains("https://example.com/v1/", state.AiRemoteEndpointWarning);
     }
 
+    [Fact]
+    public async Task Repeated_connection_checks_do_not_start_parallel_requests()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var enhancement = new FakeEnhancementService
+        {
+            ConnectionHandler = (_, _) => release.Task
+        };
+        var state = CreateState(new FakeRecognitionService(), enhancement);
+
+        var first = state.TestAiConnectionAsync();
+        Assert.True(state.IsAiConnectionTesting);
+        Assert.False(state.CanTestAiConnection);
+        await state.TestAiConnectionAsync();
+        Assert.Equal(1, enhancement.ConnectionCallCount);
+
+        release.SetResult();
+        await first;
+        Assert.Equal("Connected.", state.AiConnectionStatus);
+        Assert.False(state.IsAiConnectionTesting);
+        Assert.True(state.CanTestAiConnection);
+    }
+
+    [Fact]
+    public async Task Old_connection_result_cannot_overwrite_status_after_endpoint_change()
+    {
+        var firstResult = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondResult = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var enhancement = new FakeEnhancementService
+        {
+            ConnectionHandler = (options, _) =>
+                options.Endpoint.Contains("first.example", StringComparison.Ordinal)
+                    ? firstResult.Task : secondResult.Task
+        };
+        var state = CreateState(new FakeRecognitionService(), enhancement);
+        state.AiEndpoint = "https://first.example/v1/";
+        var oldCheck = state.TestAiConnectionAsync();
+        Assert.Equal("Testing…", state.AiConnectionStatus);
+
+        state.AiEndpoint = "https://second.example/v1/";
+        Assert.Null(state.AiConnectionStatus);
+        Assert.False(state.IsAiConnectionTesting);
+
+        var newCheck = state.TestAiConnectionAsync();
+        secondResult.SetResult();
+        await newCheck;
+        Assert.Equal("Connected.", state.AiConnectionStatus);
+
+        firstResult.SetResult(); // Deliberately simulate a client ignoring cancellation.
+        await oldCheck;
+        Assert.Equal("Connected.", state.AiConnectionStatus);
+        Assert.Equal(2, enhancement.ConnectionCallCount);
+        Assert.Equal("https://second.example/v1/", enhancement.ConnectionOptions[1].Endpoint);
+    }
+
+    [Fact]
+    public async Task Changing_api_key_invalidates_pending_connection_test()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var enhancement = new FakeEnhancementService { ConnectionHandler = (_, _) => release.Task };
+        var state = CreateState(new FakeRecognitionService(), enhancement);
+        var previous = state.TestAiConnectionAsync();
+        state.AiApiKey = "new key";
+        Assert.Null(state.AiConnectionStatus);
+        Assert.True(state.CanTestAiConnection);
+        release.SetResult();
+        await previous;
+        Assert.Null(state.AiConnectionStatus);
+    }
+
     private static InitialApplicationState CreateState(
         FakeRecognitionService recognition,
         FakeEnhancementService enhancement)
@@ -189,8 +259,7 @@ public sealed class AiApplicationStateTests
             RecognitionOptions options,
             string audioPath,
             IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default,
-            IProgress<string>? recognizedSegments = null)
+            CancellationToken cancellationToken = default)
         {
             CallCount++;
             var text = $"{Path.GetFileName(audioPath)} raw";
@@ -223,6 +292,10 @@ public sealed class AiApplicationStateTests
 
         public Func<RecognitionResult, string>? ResultFactory { get; set; }
 
+        public int ConnectionCallCount { get; private set; }
+        public List<AiPostProcessingOptions> ConnectionOptions { get; } = [];
+        public Func<AiPostProcessingOptions, CancellationToken, Task>? ConnectionHandler { get; set; }
+
         public Exception? Exception { get; set; }
 
         public Task<TranscriptEnhancementResult> EnhanceAsync(
@@ -251,7 +324,11 @@ public sealed class AiApplicationStateTests
 
         public Task TestConnectionAsync(
             AiPostProcessingOptions options,
-            CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+            CancellationToken cancellationToken = default)
+        {
+            ConnectionCallCount++;
+            ConnectionOptions.Add(options);
+            return ConnectionHandler?.Invoke(options, cancellationToken) ?? Task.CompletedTask;
+        }
     }
 }
