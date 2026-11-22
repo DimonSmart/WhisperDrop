@@ -14,18 +14,6 @@ public interface ISelectedModelAvailability
 
 public static class ModelIntegrity
 {
-    public static bool Verify(string path, RecognitionModel model)
-    {
-        try
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return stream.Length == model.SizeBytes &&
-                Convert.ToHexString(SHA256.HashData(stream)).Equals(model.Sha256, StringComparison.OrdinalIgnoreCase);
-        }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
-    }
-
     public static async Task<bool> VerifyAsync(string path, RecognitionModel model, CancellationToken token)
     {
         try
@@ -42,5 +30,17 @@ public static class ModelIntegrity
 public sealed class SelectedModelAvailability(IRecognitionModelCatalog catalog) : ISelectedModelAvailability
 {
     public string GetModelPath(string modelsFolder, string modelId) => Path.Combine(modelsFolder, catalog.Get(modelId).FileName);
-    public bool IsAvailable(string modelsFolder, string modelId) => ModelIntegrity.Verify(GetModelPath(modelsFolder, modelId), catalog.Get(modelId));
+    // A downloaded model is checked against the pinned SHA-256 once, before installation.
+    // Availability thereafter uses only file metadata; never hash 740 MB on startup.
+    public bool IsAvailable(string modelsFolder, string modelId)
+    {
+        var model = catalog.Get(modelId);
+        try
+        {
+            var file = new FileInfo(Path.Combine(modelsFolder, model.FileName));
+            return file.Exists && file.Length == model.SizeBytes;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
 }

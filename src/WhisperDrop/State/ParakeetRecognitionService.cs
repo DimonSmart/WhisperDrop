@@ -37,7 +37,7 @@ public sealed class ParakeetRecognitionService : IRecognitionService
     private static readonly SemaphoreSlim NativeGate = new(1, 1);
     private readonly IRecognitionRuntimeSelector selector;
     private readonly IParakeetRuntime runtime;
-    private readonly Func<string, CancellationToken, Task<bool>> verify;
+    private readonly Func<string, bool> modelFileExists;
     private IParakeetModel? model;
     private string? loadedPath;
     private ProcessingDevice loadedDevice;
@@ -45,10 +45,10 @@ public sealed class ParakeetRecognitionService : IRecognitionService
 
     public ParakeetRecognitionService() : this(new ParakeetRuntimeSelector()) { }
     public ParakeetRecognitionService(IRecognitionRuntimeSelector selector)
-        : this(selector, new ParakeetRuntime(), (path, token) => ModelIntegrity.VerifyAsync(path, new ParakeetModelCatalog().Get(ParakeetModelCatalog.ModelId), token)) { }
+        : this(selector, new ParakeetRuntime(), File.Exists) { }
     internal ParakeetRecognitionService(IRecognitionRuntimeSelector selector, IParakeetRuntime runtime,
-        Func<string, CancellationToken, Task<bool>> verify)
-    { this.selector = selector; this.runtime = runtime; this.verify = verify; }
+        Func<string, bool> modelFileExists)
+    { this.selector = selector; this.runtime = runtime; this.modelFileExists = modelFileExists; }
 
     public async Task<RecognitionResult> TranscribeAsync(string modelPath, RecognitionOptions options, string audioPath,
         IProgress<double>? progress = null, CancellationToken cancellationToken = default,
@@ -58,14 +58,14 @@ public sealed class ParakeetRecognitionService : IRecognitionService
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            return await Task.Run(async () =>
+            return await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (model is null || loadedPath != modelPath || loadedDevice != options.ProcessingDevice)
                 {
                     UnloadCore();
-                    if (!await verify(modelPath, cancellationToken).ConfigureAwait(false))
-                        throw new RecognitionConfigurationException("The Parakeet model is missing or invalid. Download or repair it in Models.");
+                    if (!modelFileExists(modelPath))
+                        throw new RecognitionConfigurationException("The Parakeet model file is missing. Download it in Models.");
                     model = runtime.Load(modelPath, options.ProcessingDevice);
                     loadedPath = modelPath;
                     loadedDevice = options.ProcessingDevice;

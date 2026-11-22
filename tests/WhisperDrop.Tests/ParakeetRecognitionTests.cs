@@ -139,10 +139,10 @@ public sealed class ParakeetRecognitionTests
         await Assert.ThrowsAsync<ObjectDisposedException>(() => service.TranscribeAsync("model", new(), Fixture));
     }
     [Fact]
-    public async Task Invalid_model_is_rejected_before_loading_native_code()
+    public async Task Missing_model_file_is_rejected_before_loading_native_code()
     {
         var runtime = new FakeRuntime();
-        using var service = new ParakeetRecognitionService(new ParakeetRuntimeSelector(), runtime, (_, _) => Task.FromResult(false));
+        using var service = new ParakeetRecognitionService(new ParakeetRuntimeSelector(), runtime, _ => false);
         await Assert.ThrowsAsync<RecognitionConfigurationException>(() => service.TranscribeAsync("model", new(), Fixture));
         Assert.Equal(0, runtime.LoadCount);
     }
@@ -160,7 +160,7 @@ public sealed class ParakeetRecognitionTests
     }
     private static string Fixture => Path.Combine(AppContext.BaseDirectory, "Fixtures", "test.wav");
     private static ParakeetRecognitionService CreateService(FakeRuntime runtime) =>
-        new(new ParakeetRuntimeSelector(), runtime, (_, _) => Task.FromResult(true));
+        new(new ParakeetRuntimeSelector(), runtime, _ => true);
     private sealed class FakeRuntime : IParakeetRuntime
     {
         public int LoadCount, SessionCount, ActiveSessions, ModelDisposals;

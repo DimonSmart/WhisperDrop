@@ -97,13 +97,14 @@ public sealed class SettingsTests : IDisposable
         Assert.Null(loaded.CpuThreads);
     }
     [Fact]
-    public void Model_availability_requires_exact_size_and_hash_offline()
+    public void Model_availability_checks_size_without_rehashing_existing_files()
     {
         var catalog = new TestModelCatalog(); var availability = new SelectedModelAvailability(catalog);
         Directory.CreateDirectory(root);
         var path = availability.GetModelPath(root, TestModelCatalog.Model.Id);
         Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
-        File.WriteAllText(path, "wrong"); Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        File.WriteAllText(path, "bad"); Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
+        File.WriteAllText(path, "wrong"); Assert.True(availability.IsAvailable(root, TestModelCatalog.Model.Id));
         File.WriteAllBytes(path, TestModelCatalog.Bytes); Assert.True(availability.IsAvailable(root, TestModelCatalog.Model.Id));
         File.AppendAllText(path, "x"); Assert.False(availability.IsAvailable(root, TestModelCatalog.Model.Id));
     }
